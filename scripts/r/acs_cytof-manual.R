@@ -216,6 +216,8 @@
     stimgate = file.path(pathPopulation, "stimgate"),
     tailgate = file.path(pathPopulation, "tailgate", "result.rds"),
     fbeta = file.path(pathPopulation, "fbeta", "result.rds"),
+    tailgate_default = file.path(pathPopulation, "tailgate_default", "result.rds"),
+    fbeta_default = file.path(pathPopulation, "fbeta_default", "result.rds"),
     stop("Unknown ACS method: ", method)
   )
 }
@@ -385,7 +387,7 @@
 ) {
   methods <- match.arg(
     methods,
-    choices = c("stimgate", "tailgate", "fbeta"),
+    choices = c("stimgate", .acsCytofComparatorMethods()),
     several.ok = TRUE
   )
   popMap <- .acsCytofManualPopulationMap()
@@ -510,7 +512,9 @@
   )
   if (anyDuplicated(manualTbl[joinBy])) stop("Duplicate ACS manual comparison keys.")
 
-  methodLevels <- c("stimgate", "tailgate", "fbeta")
+  methodLevels <- c(
+    "stimgate", "tailgate", "fbeta", "tailgate_default", "fbeta_default"
+  )
   popLevels <- stats::na.omit(unname(.acsCytofManualPopulationMap()))
   cytLevels <- unname(.acsCytofChannelMap())
 

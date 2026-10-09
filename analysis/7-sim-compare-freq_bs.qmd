@@ -68,7 +68,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v21"
+comparison_semantics_version <- "corrected-comparison-v23"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -152,7 +152,16 @@ bandwidth-estimation sample capped at 10,000 cells. Bandwidths are shared per
 marker (`bwScope = "cytokine"`). StimGate's
 unstimulated-sample bias is not fixed: it equals the bandwidth StimGate
 estimates at the start (`biasUns = NULL` with `biasUnsFactor = 1`). Tailgate is deliberately left to use its usual automatic
-bandwidth estimation so that it is evaluated as it would normally run.
+bandwidth estimation and automatic tolerance (`autoTol = TRUE`, 1% of the
+largest absolute first derivative of the density). Its cutpoint is then moved up
+by a bias of 0.1 (`tailgate_bias`), the same for every transformation, as
+StimGate's gates are moved up by its bias. In a pilot at 0.2% and 2% response,
+a bias left the Gaussian and skewed results almost unchanged and removed most
+of Tailgate's false positives in the gamma transformation, where its cutpoint
+otherwise falls inside the tail of the negative population; biases above 0.1
+removed true positives at low separation. Tailgate without the bias, as
+published, is kept as "Tailgate (default settings)" and shown in its own
+figure set.
 
 ### Simulation settings
 
@@ -198,7 +207,7 @@ sample_perturbation_sd_vec <- c(
 )[1]
 condition_perturbation_sd_vec <- c(
   0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2
-)[1:2]
+)[1]
 cluster_perturbation_sd_vec <- c(
   0, sqrt(1 / 4), sqrt(1 / 2), 1, sqrt(2), 2
 )[1]
@@ -257,6 +266,9 @@ tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
 tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
+# Tailgate's cutpoint is moved up by this amount, as StimGate's gates are
+# moved up by its bias. The unbiased cutpoint is kept as "tailgate_default".
+tailgate_bias <- 0.1
 tailgate_x <- "stim"
 ```
 
@@ -407,6 +419,7 @@ analysis_result_params <- list(
   tailgate_method = tailgate_method,
   tailgate_tol = tailgate_tol,
   tailgate_auto_tol = tailgate_auto_tol,
+  tailgate_bias = tailgate_bias,
   tailgate_x = tailgate_x
 )
 
@@ -471,6 +484,7 @@ if (isTRUE(run_simulations)) {
       fbetaWidth = fbeta_width,
       tailgateAdjust = tailgate_adjust,
       tailgateAutoTol = tailgate_auto_tol,
+      tailgateBias = tailgate_bias,
       tailgateMethod = tailgate_method,
       tailgateTol = tailgate_tol,
       tailgateX = tailgate_x,
@@ -595,11 +609,7 @@ compare_tbl <- compare_raw
 
 compare_tbl_focus <- compare_tbl |>
   dplyr::filter(
-    method %in% c(
-      "stimgate",
-      "fbeta",
-      "tailgate"
-    )
+    method %in% .simCompareMethods
   ) |>
   dplyr::mutate(
     freq_error = propRespEst - propRespTruth,
@@ -657,11 +667,12 @@ Pooled means and quantiles below describe tube-level distributions across
 simulated datasets. Tubes within a dataset share gating settings and are not
 independent replicates; uncertainty for method comparisons uses datasets.
 
-Every comparison figure is shown twice. "All methods" includes StimGate,
-Tailgate and F-beta. "Without Tailgate" leaves Tailgate out, because it
-performs very poorly without more tuning and squashes the scale for the other
-two methods. The two versions are saved in the `all_methods` and `no_tailgate`
-subfolders of each figure folder. Within each version there is one figure per
+Every comparison figure is shown three times. "All methods" includes StimGate,
+Tailgate (with its bias) and F-beta. "Without Tailgate" leaves Tailgate out, as
+it can squash the scale for the other two methods. "With Tailgate at default
+settings" adds Tailgate without the bias. The three versions are saved in the
+`all_methods`, `no_tailgate` and `tailgate_default` subfolders of each figure
+folder. Within each version there is one figure per
 mean position setting.
 
 **Monte Carlo intervals.** `show_mcse` / `SHOW_MCSE` accepts `off` or `on`
@@ -693,14 +704,16 @@ if (isTRUE(run_plots)) {
 The independent unit is the simulated dataset (`iter`), whose tubes are gated
 with shared settings and cluster gates. Within each scenario and dataset, we
 compute each method's mean absolute frequency error and mean absolute relative
-frequency error, then subtract the competitor's value from
+frequency error, and its median false discovery proportion, median
+sensitivity and median F1 score (defined below), then subtract the competitor's value from
 StimGate's value. Each dataset has equal weight. The tables report the mean
 paired difference and a 95% interval, mean ± 1.96 SD / √D, using the spread
 between the D datasets with finite paired summaries. Intervals are NA for D < 5.
 Dataset-pair coverage and finite-tube coverage are reported explicitly;
 undefined outcomes are omitted from the corresponding method summary and a
 dataset with no finite outcomes has no paired difference.
-Negative differences favour StimGate for both errors.
+Negative differences favour StimGate for both errors and for the false
+discovery proportion; positive differences favour it for sensitivity and F1.
 
 ```{r}
 #| label: dataset-paired-differences
@@ -709,7 +722,7 @@ Negative differences favour StimGate for both errors.
 if (isTRUE(run_plots)) {
   dataset_differences <- .simCompareDatasetDifferences(
     compare_tbl, scenarioCols = scenario_cols,
-    outcomes = c("abs_error", "abs_rel_error")
+    outcomes = c("abs_error", "abs_rel_error", "fdp", "sensitivity", "f1")
   )
   for (set in .simCompareMethodSets()) {
     .analysis_heading(set$heading, 4L)
@@ -1123,6 +1136,110 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### False discovery proportion, sensitivity and F1 score by cell count
+
+The frequency errors above score the background-subtracted frequency, in which
+negative cells above the gate in the stimulated tube are largely cancelled by
+those in the unstimulated tube. A gate set inside the negative tail can therefore
+estimate the frequency well while most of the cells it calls positive are
+negative. These figures score the cells each method's applied gate calls
+positive in the stimulated tube against the simulated labels. The false
+discovery proportion (FDP) is the fraction of called-positive cells that are
+negative; it is undefined when the gate calls no cells, and those tubes are
+counted in the coverage table. Sensitivity is the fraction of genuinely
+positive cells that are called positive (zero for an empty gate). The F1
+score, 2TP / (2TP + FP + FN), is the harmonic mean of precision (1 - FDP) and
+sensitivity, so it is low when a gate either misses positives or calls many
+negatives; it is zero for an empty gate on a tube with genuine positives. Each
+tube gives one value; the figures show tube-level medians and the worse tail
+(the 90th percentile of FDP and the 10th percentile of sensitivity and F1),
+pooled across datasets. Panels separate response frequencies and expression distributions,
+with one mean position setting per plot and no random condition perturbation.
+
+```{r}
+#| label: classification-summary
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  class_summary <- .simCompareClassificationSummary(
+    compare_tbl,
+    scenarioCols = scenario_cols, mcse = show_mcse
+  )
+  .analysis_report_table(
+    class_summary |>
+      dplyr::select(
+        dplyr::any_of(colnames(sim_grid)), approach, method,
+        n, n_valid, n_failed, n_fdp_defined, n_empty, n_fallback,
+        fdp_median, fdp_q90, sensitivity_median, sensitivity_q10,
+        f1_median, f1_q10
+      ),
+    c(fig_key, paste0("mcse_", mcse_mode), "classification-summary.csv"),
+    "Tube-level FDP, sensitivity and F1 with valid, defined, empty-gate and fallback counts.",
+    path_root = root_dir
+  )
+  .analysis_report_table(
+    .simComparePerformanceCoverage(class_summary, scenario_cols),
+    c(fig_key, paste0("mcse_", mcse_mode), "classification-bootstrap-coverage.csv"),
+    "Tube-level classification bootstrap coverage and unavailable intervals.",
+    path_root = root_dir
+  )
+}
+```
+
+```{r}
+#| label: classification-cell-count
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  class_plot_tbl <- class_summary |>
+    dplyr::filter(condition_perturbation_sd == 0)
+  class_figures <- list(
+    fdp_median = list(
+      heading = "Median false discovery proportion",
+      label = "Tube-level median FDP", dir = "fdp_median_by_n_cell"
+    ),
+    fdp_q90 = list(
+      heading = "90th percentile false discovery proportion",
+      label = "Tube-level 90th percentile FDP", dir = "fdp_q90_by_n_cell"
+    ),
+    sensitivity_median = list(
+      heading = "Median sensitivity",
+      label = "Tube-level median sensitivity", dir = "sensitivity_median_by_n_cell"
+    ),
+    sensitivity_q10 = list(
+      heading = "10th percentile sensitivity",
+      label = "Tube-level 10th percentile sensitivity", dir = "sensitivity_q10_by_n_cell"
+    ),
+    f1_median = list(
+      heading = "Median F1 score",
+      label = "Tube-level median F1 score", dir = "f1_median_by_n_cell"
+    ),
+    f1_q10 = list(
+      heading = "10th percentile F1 score",
+      label = "Tube-level 10th percentile F1 score", dir = "f1_q10_by_n_cell"
+    )
+  )
+  for (stat in names(class_figures)) {
+    fig <- class_figures[[stat]]
+    .analysis_heading(fig$heading, 4L)
+    .simCompareFigureLoop(
+      class_plot_tbl,
+      make_plot = function(d) {
+        .simComparePlotByCell(
+          d, stat, fig$label, percent_y = TRUE, mcse = show_mcse
+        ) + .analysis_y_floor(c(0, 1))
+      },
+      dir = file.path(plot_dir, fig$dir),
+      file_fn = function(pos, extra) {
+        paste0(stat, "_meanpos_setting_", pos, ".png")
+      },
+      height = 20,
+      level = 5L, mcse_mode = mcse_mode
+    )
+  }
+}
+```
+
 ### Threshold fallback rate
 
 The table includes both condition-perturbation settings and distinguishes
@@ -1226,6 +1343,7 @@ compare_one <- .simCompareRunScenario(
   fbetaWidth = fbeta_width,
   tailgateAdjust = tailgate_adjust,
   tailgateAutoTol = tailgate_auto_tol,
+  tailgateBias = tailgate_bias,
   tailgateMethod = tailgate_method,
   tailgateTol = tailgate_tol,
   tailgateX = tailgate_x,

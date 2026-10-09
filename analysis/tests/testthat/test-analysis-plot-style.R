@@ -59,8 +59,14 @@ test_that("loop headings are markdown headings at the given level", {
 test_that("method colours cover every method with readable labels", {
   env <- .plot_style_env()
   expect_identical(env$.analysis_method_colours,
-    c(stimgate = "#E69F00", tailgate = "#009E73", fbeta = "#0072B2"))
-  expect_identical(unname(env$.analysis_method_labels), c("StimGate", "Tailgate", "F-beta"))
+    c(stimgate = "#E69F00", tailgate = "#009E73", fbeta = "#0072B2",
+      tailgate_default = "#CC79A7"))
+  expect_identical(unname(env$.analysis_method_labels),
+    c("StimGate", "Tailgate", "F-beta", "Tailgate (default settings)"))
+  for (encoding in list(env$.analysis_method_labels, env$.analysis_method_shapes,
+    env$.analysis_method_linetypes)) {
+    expect_setequal(names(encoding), names(env$.analysis_method_colours))
+  }
   expect_s3_class(env$.analysis_scale_method(), "ScaleDiscrete")
 })
 

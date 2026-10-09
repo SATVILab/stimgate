@@ -3,9 +3,11 @@
 # detection in flow cytometry", Journal of Immunological Methods 409, 54-61.
 # https://doi.org/10.1016/j.jim.2014.04.002
 #
-# StimGate modification: histogram edges span the combined negative and
-# positive observations rather than the negative observations alone.  The
-# exact change is documented beside get_positivity_threshold().
+# StimGate modifications: histogram edges span the combined negative and
+# positive observations rather than the negative observations alone, and the
+# pdfs can be scaled (negScale/posScale) so that, after cells are dropped
+# before calling, each integrates to the retained fraction of its tube.  Both
+# changes are documented beside get_positivity_threshold().
 
 import os, sys, re
 import numpy as np
@@ -40,7 +42,7 @@ def calculate_fscore(neg_pdf,pos_pdf,beta=0.8,theta=2.0):
 
     return fscores,precision,recall
 
-def get_positivity_threshold(neg,pos,channelIndex,beta=0.8,theta=2.0, width=10, numBins=None):
+def get_positivity_threshold(neg,pos,channelIndex,beta=0.8,theta=2.0, width=10, numBins=None, negScale=1.0, posScale=1.0):
     '''
     In order to calculate the f-score the pdfs are found using histogram representations of the 
     data. The number of bins numBins controls how smoothly the pdf fits the actual distribution 
@@ -65,6 +67,14 @@ def get_positivity_threshold(neg,pos,channelIndex,beta=0.8,theta=2.0, width=10, 
     _, bins = np.histogram(np.concatenate([neg, pos]), bins=numBins)
     pdfNeg, bins = np.histogram(neg, bins=bins, normed=True)
     pdfPos, bins = np.histogram(pos, bins=bins, normed=True)
+
+    # StimGate addition: when cells have been removed before calling (for
+    # example the exact-zero spike in CyTOF data), negScale and posScale are
+    # the retained fractions of each tube, so each pdf integrates to that
+    # fraction rather than to one.  The defaults (1.0) leave the published
+    # procedure unchanged.
+    pdfNeg = pdfNeg * float(negScale)
+    pdfPos = pdfPos * float(posScale)
 
     pdfNeg = move_mean(pdfNeg, window=width)
     pdfPos = move_mean(pdfPos, window=width)

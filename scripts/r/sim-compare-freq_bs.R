@@ -222,6 +222,11 @@
 
 #' Call the fbeta Python implementation via reticulate
 #'
+#' With `removeZero = TRUE`, cells with an expression of exactly zero are
+#' dropped from both tubes before the histograms are built (in CyTOF data they
+#' are clearly negative), and each pdf is scaled by its tube's retained
+#' fraction so that it integrates to that fraction rather than to one.
+#'
 #' @keywords internal
 .simCompareFbetaThreshold <- function(
   xUns,
@@ -232,7 +237,8 @@
   beta = 0.8,
   theta = 2,
   width = 10,
-  numBins = NULL
+  numBins = NULL,
+  removeZero = FALSE
 ) {
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     stop("reticulate is required to call fbeta.py.")
@@ -242,6 +248,17 @@
   xStim <- as.numeric(xStim)
   xUns <- xUns[is.finite(xUns)]
   xStim <- xStim[is.finite(xStim)]
+
+  negScale <- 1
+  posScale <- 1
+  if (isTRUE(removeZero)) {
+    nUns <- length(xUns)
+    nStim <- length(xStim)
+    xUns <- xUns[xUns != 0]
+    xStim <- xStim[xStim != 0]
+    negScale <- length(xUns) / nUns
+    posScale <- length(xStim) / nStim
+  }
 
   if (length(xUns) < 2L || length(xStim) < 2L) {
     stop("F-beta estimation requires at least two finite cells per tube.")
@@ -264,7 +281,9 @@
     beta = beta,
     theta = theta,
     width = as.integer(width),
-    numBins = if (is.null(numBins)) NULL else as.integer(numBins)
+    numBins = if (is.null(numBins)) NULL else as.integer(numBins),
+    negScale = negScale,
+    posScale = posScale
   )
 
   threshold <- suppressWarnings(as.numeric(out[["threshold"]]))[1]
@@ -293,6 +312,12 @@
 #' cytoUtils:::.deriv_density(), whose default behaviour is to estimate the
 #' bandwidth with ks::hpi().
 #'
+#' `tol` is an absolute bound on the first derivative of the density, so it
+#' depends on the scale of `x`; `autoTol = TRUE` replaces it with 1% of the
+#' largest absolute derivative. A finite cutpoint is moved up by `bias`, as
+#' StimGate's gates are. With `removeZero = TRUE`, cells with an expression of
+#' exactly zero are dropped before the density is estimated.
+#'
 #' @keywords internal
 .simCompareTailgateThreshold <- function(
   x,
@@ -305,11 +330,19 @@
   tol = 1e-2,
   side = "right",
   strict = FALSE,
-  autoTol = FALSE
+  autoTol = FALSE,
+  bias = 0,
+  removeZero = FALSE
 ) {
   method <- match.arg(method)
+  if (length(bias) != 1L || !is.finite(bias)) {
+    stop("Tailgate bias must be a finite scalar.")
+  }
   x <- as.numeric(x)
   x <- x[is.finite(x)]
+  if (isTRUE(removeZero)) {
+    x <- x[x != 0]
+  }
 
   if (length(x) < 2L || length(unique(x)) < 2L) {
     stop("Tailgate estimation requires at least two distinct finite cells.")
@@ -350,7 +383,7 @@
     bandwidth = bandwidthUse
   )
 
-  threshold <- as.numeric(threshold)[1]
+  threshold <- as.numeric(threshold)[1] + bias
   list(
     threshold = threshold,
     thresholdMetric = NA_real_,
@@ -655,7 +688,8 @@
 # Proportions with a zero denominator are NA, not zero: FDP is undefined when
 # the gate selects no stimulated cells, sensitivity when the tube has no
 # genuine positives and the false-positive rate when it has no genuine
-# negatives. `gate_status` separates failed runs, fallback gates and
+# negatives. The F1 score, 2TP / (2TP + FP + FN), is undefined only when the
+# tube has no genuine positives and the gate selects no cells. `gate_status` separates failed runs, fallback gates and
 # calculated gates, each split by whether any stimulated cell was selected.
 # Runtime failures belong to the primary method's failure cohort. Keep their
 # error/provenance fields while recognizing the historical diagnostic label.
@@ -694,6 +728,7 @@
       fdp = ratio(.data$nFalsePos, .data$n_selected),
       sensitivity = ratio(.data$nTruePos, .data$n_genuine_pos),
       false_positive_rate = ratio(.data$nFalsePos, .data$n_genuine_neg),
+      f1 = ratio(2 * .data$nTruePos, 2 * .data$nTruePos + .data$nFalsePos + .data$nFalseNeg),
       selected_fraction = ratio(.data$n_selected, .data$n_classified),
       gate_empty = .data$n_selected == 0L,
       gate_status = dplyr::case_when(
@@ -759,6 +794,7 @@
   tailgateTol = 1e-2,
   tailgateSide = "right",
   tailgateAutoTol = TRUE,
+  tailgateBias = 0,
   fallbackHighValue = TRUE,
   fallbackMargin = 0.05
 ) {
@@ -842,7 +878,8 @@
           tol = tailgateTol,
           side = tailgateSide,
           strict = FALSE,
-          autoTol = tailgateAutoTol
+          autoTol = tailgateAutoTol,
+          bias = 0
         ),
         error = function(e) {
           tailgateError <<- conditionMessage(e)
@@ -854,6 +891,10 @@
         }
       )
 
+      # "tailgate" is the tuned cutpoint, moved up by `tailgateBias`;
+      # "tailgate_default" is the same cutpoint without the bias.
+      tailgateDefaultObj <- tailgateObj
+      tailgateObj$threshold <- tailgateObj$threshold + tailgateBias
       tailgateEst <- .simCompareEstimateFromThreshold(
         xStim = xStim,
         xUns = xUnsTailgate,
@@ -862,59 +903,60 @@
         fallbackMargin = fallbackMargin,
         labelsStim = labelsStim
       )
+      tailgateDefaultEst <- .simCompareEstimateFromThreshold(
+        xStim = xStim,
+        xUns = xUnsTailgate,
+        threshold = tailgateDefaultObj$threshold,
+        fallbackHighValue = is.na(tailgateError) && isTRUE(fallbackHighValue),
+        fallbackMargin = fallbackMargin,
+        labelsStim = labelsStim
+      )
 
-      tibble::tibble(
-        sample = as.character(sampleCurr),
-        ind = as.character(indStim),
-        chnl = chnl,
-        approach = c("fbeta", "tailgate"),
-        method = c("fbeta", "tailgate"),
-        threshold = c(fbetaEst$threshold, tailgateEst$threshold),
-        thresholdOrigin = c(
-          fbetaObj$thresholdOrigin,
-          tailgateObj$thresholdOrigin
-        ),
-        gateReturnPoint = c(
-          if (!is.na(fbetaError)) {
-            "fbeta_error"
-          } else if (isTRUE(fbetaEst$thresholdFallbackUsed)) {
-            "fbeta_fallback_high_value"
+      methodRow <- function(method, obj, est, err) {
+        tibble::tibble(
+          sample = as.character(sampleCurr),
+          ind = as.character(indStim),
+          chnl = chnl,
+          approach = method,
+          method = method,
+          threshold = est$threshold,
+          thresholdOrigin = obj$thresholdOrigin,
+          gateReturnPoint = if (!is.na(err)) {
+            paste0(method, "_error")
+          } else if (isTRUE(est$thresholdFallbackUsed)) {
+            paste0(method, "_fallback_high_value")
           } else {
-            "fbeta_calculated"
+            paste0(method, "_calculated")
           },
-          if (!is.na(tailgateError)) {
-            "tailgate_error"
-          } else if (isTRUE(tailgateEst$thresholdFallbackUsed)) {
-            "tailgate_fallback_high_value"
-          } else {
-            "tailgate_calculated"
-          }
-        ),
-        thresholdMetric = c(
-          fbetaObj$thresholdMetric %||% NA_real_,
-          tailgateObj$thresholdMetric %||% NA_real_
-        ),
-        thresholdFallbackUsed = c(
-          fbetaEst$thresholdFallbackUsed,
-          tailgateEst$thresholdFallbackUsed
-        ),
-        nCellStim = c(fbetaEst$nCellStim, tailgateEst$nCellStim),
-        nCellUns = c(fbetaEst$nCellUns, tailgateEst$nCellUns),
-        nPosStim = c(fbetaEst$nPosStim, tailgateEst$nPosStim),
-        nPosUns = c(fbetaEst$nPosUns, tailgateEst$nPosUns),
-        propStim = c(fbetaEst$propStim, tailgateEst$propStim),
-        propUns = c(fbetaEst$propUns, tailgateEst$propUns),
-        propRespEst = c(fbetaEst$propRespEst, tailgateEst$propRespEst),
-        nTruePos = c(fbetaEst$nTruePos, tailgateEst$nTruePos),
-        nFalsePos = c(fbetaEst$nFalsePos, tailgateEst$nFalsePos),
-        nFalseNeg = c(fbetaEst$nFalseNeg, tailgateEst$nFalseNeg),
-        nTrueNeg = c(fbetaEst$nTrueNeg, tailgateEst$nTrueNeg),
-        detailLevel = NA_character_,
-        locGenerated = NA,
-        locGeneratedDirect = NA,
-        locSource = NA_character_,
-        locReason = NA_character_,
-        error = c(fbetaError, tailgateError)
+          thresholdMetric = obj$thresholdMetric %||% NA_real_,
+          thresholdFallbackUsed = est$thresholdFallbackUsed,
+          nCellStim = est$nCellStim,
+          nCellUns = est$nCellUns,
+          nPosStim = est$nPosStim,
+          nPosUns = est$nPosUns,
+          propStim = est$propStim,
+          propUns = est$propUns,
+          propRespEst = est$propRespEst,
+          nTruePos = est$nTruePos,
+          nFalsePos = est$nFalsePos,
+          nFalseNeg = est$nFalseNeg,
+          nTrueNeg = est$nTrueNeg,
+          detailLevel = NA_character_,
+          locGenerated = NA,
+          locGeneratedDirect = NA,
+          locSource = NA_character_,
+          locReason = NA_character_,
+          error = err
+        )
+      }
+
+      dplyr::bind_rows(
+        methodRow("fbeta", fbetaObj, fbetaEst, fbetaError),
+        methodRow("tailgate", tailgateObj, tailgateEst, tailgateError),
+        methodRow(
+          "tailgate_default", tailgateDefaultObj, tailgateDefaultEst,
+          tailgateError
+        )
       )
     })
   })
@@ -1531,6 +1573,7 @@
   tailgateTol = 1e-2,
   tailgateSide = "right",
   tailgateAutoTol = FALSE,
+  tailgateBias = 0,
   fallbackHighValue = TRUE,
   fallbackMargin = 0.05,
   stimMeanShift = 0,
@@ -1722,6 +1765,7 @@
       tailgateTol = tailgateTol,
       tailgateSide = tailgateSide,
       tailgateAutoTol = tailgateAutoTol,
+      tailgateBias = tailgateBias,
       fallbackHighValue = fallbackHighValue,
       fallbackMargin = fallbackMargin
     )
@@ -1768,6 +1812,7 @@
         tailgateTol = tailgateTol,
         tailgateSide = tailgateSide,
         tailgateAutoTol = tailgateAutoTol,
+        tailgateBias = tailgateBias,
         stimMeanShift = stimMeanShift,
         stimSdMultiplier = stimSdMultiplier,
         stimMeanShiftClusters = if (is.null(stimMeanShiftClusters)) {
@@ -1883,6 +1928,13 @@
 
 # Explicit comparator exceptions are completed observations with missing scientific
 # outputs, not empty gates or whole-scenario infrastructure failures.
+# Every method in the comparison output; "tailgate_default" is Tailgate without
+# its bias and is shown only in its own figure set. It comes from the same
+# Tailgate run as "tailgate", so completeness checks need only the primary
+# methods.
+.simCompareMethods <- c("stimgate", "fbeta", "tailgate", "tailgate_default")
+.simComparePrimaryMethods <- c("stimgate", "fbeta", "tailgate")
+
 .simCompareRecordedComparatorErrors <- function(data) {
   required <- c("method", "error", "threshold", "thresholdOrigin", "gateReturnPoint",
     "thresholdFallbackUsed", "propRespEst", "nPosStim", .simCompareCountCols)
@@ -1890,7 +1942,7 @@
   missing_cols <- intersect(c("threshold", "thresholdMetric", "propRespEst", "propStim", "propUns",
     "nPosStim", "nPosUns", .simCompareCountCols), names(data))
   missing_outputs <- rowSums(!is.na(as.matrix(data[, missing_cols, drop = FALSE]))) == 0L
-  recorded <- data$method %in% c("fbeta", "tailgate") &
+  recorded <- data$method %in% setdiff(.simCompareMethods, "stimgate") &
     !is.na(data$error) & nzchar(trimws(as.character(data$error))) &
     !is.na(data$thresholdOrigin) & startsWith(data$thresholdOrigin, "error: ") &
     !is.na(data$gateReturnPoint) & data$gateReturnPoint == paste0(data$method, "_error") &
@@ -1901,7 +1953,7 @@
 # Give one concise reason for invalid structure; method failures remain separate
 # from completion so promotion and resume use exactly the same contract.
 .simComparePrimaryOutputStatus <- function(
-    data, nSample, nIter, methods = c("stimgate", "fbeta", "tailgate")) {
+    data, nSample, nIter, methods = .simComparePrimaryMethods) {
   invalid <- function(reason) list(complete = FALSE, reason = reason)
   required <- c("iter", "sample", "method", "propRespTruth", "propRespEst", "nCellStim",
     "nPosStim", .simCompareCountCols, "unsExprSum")
@@ -1943,7 +1995,7 @@
 }
 
 .simComparePrimaryOutputComplete <- function(
-    .data, nSample, nIter, methods = c("stimgate", "fbeta", "tailgate")) {
+    .data, nSample, nIter, methods = .simComparePrimaryMethods) {
   .simComparePrimaryOutputStatus(.data, nSample, nIter, methods)$complete
 }
 
@@ -2977,7 +3029,7 @@
   if (!"error" %in% names(raw)) raw$error <- NA_character_
   if (!"thresholdOrigin" %in% names(raw)) raw$thresholdOrigin <- NA_character_
   raw |>
-    dplyr::filter(.data$method %in% c("stimgate", "fbeta", "tailgate")) |>
+    dplyr::filter(.data$method %in% .simCompareMethods) |>
     .simCompareClassificationMetrics() |>
     dplyr::group_by(.data$method) |>
     dplyr::summarise(n = dplyr::n(),
@@ -3045,7 +3097,7 @@
 .simCompareSummariseFreqBs <- function(
   .data,
   scenarioCols = NULL,
-  keepMethods = c("stimgate", "fbeta", "tailgate"),
+  keepMethods = .simCompareMethods,
   mcse = FALSE,
   unit = "iter"
 ) {
@@ -3195,7 +3247,7 @@
 # Validate cross-setting invariants on the complete table before promotion.
 .simCompareValidateMismatch <- function(compare_raw) {
   counts_ok <- .simCompareCountsConsistent(
-    compare_raw[compare_raw$method %in% c("stimgate", "fbeta", "tailgate") &
+    compare_raw[compare_raw$method %in% .simCompareMethods &
       !.simCompareRecordedComparatorErrors(compare_raw), ]
   )
   if (!isTRUE(counts_ok)) {
@@ -3233,12 +3285,12 @@
 .simCompareDatasetDifferences <- function(
     .data, scenarioCols,
     outcomes = c("abs_error", "abs_rel_error"),
-    competitors = c("fbeta", "tailgate")) {
+    competitors = setdiff(.simCompareMethods, "stimgate")) {
   .data <- .simComparePrimaryMethodRows(.data)
   scenarioCols <- setdiff(
     scenarioCols, c("method", "approach", "sim_id", "sim_seed", "iter", "sample", "ind")
   )
-  allowed <- c("abs_error", "abs_rel_error", "fdp", "sensitivity")
+  allowed <- c("abs_error", "abs_rel_error", "fdp", "sensitivity", "f1")
   if (!length(outcomes) || any(!outcomes %in% allowed)) {
     stop("Unknown dataset comparison outcome")
   }
@@ -3246,12 +3298,13 @@
   if (!all(required %in% names(.data)) || !is.numeric(.data$iter) || any(!is.finite(.data$iter))) {
     stop("Dataset comparisons require scenario columns, method, sample and finite iter IDs")
   }
+  competitors <- competitors[competitors %in% .data$method]
   primary <- .data[.data$method %in% c("stimgate", competitors), , drop = FALSE]
   keys <- c(scenarioCols, "iter", "method", "sample")
   if (anyDuplicated(primary[keys])) {
     stop("Dataset comparisons require one primary row per tube and method")
   }
-  if (any(outcomes %in% c("fdp", "sensitivity"))) {
+  if (any(outcomes %in% c("fdp", "sensitivity", "f1"))) {
     primary <- .simCompareClassificationMetrics(primary)
   }
   if (any(outcomes %in% c("abs_error", "abs_rel_error"))) {
@@ -3401,9 +3454,9 @@
 # for the signed-error plots, `sim-bandwidth-analysis-plot.R`) sourced first.
 # ---------------------------------------------------------------------------
 
-# Method sets shown for every method-comparison figure. Tailgate performs very
-# poorly without more tuning and squashes the other methods' scale, so each
-# figure is also drawn without it.
+# Method sets shown for every method-comparison figure. Tailgate can squash
+# the other methods' scale, so each figure is also drawn without it. The last
+# set adds Tailgate at its default settings (no bias) for the appendix.
 .simCompareMethodSets <- function() {
   list(
     all_methods = list(
@@ -3413,6 +3466,10 @@
     no_tailgate = list(
       heading = "Without Tailgate",
       methods = c("stimgate", "fbeta")
+    ),
+    tailgate_default = list(
+      heading = "With Tailgate at default settings",
+      methods = c("stimgate", "tailgate", "tailgate_default", "fbeta")
     )
   )
 }
@@ -3457,8 +3514,14 @@
     stop("Figure loop headings would be deeper than level 6.")
   }
   sets <- .simCompareMethodSets()
+  drawn <- list()
   for (set_name in names(sets)) {
     set <- sets[[set_name]]
+    # Skip a set that would repeat an earlier one, e.g. the default-settings
+    # set when the data have no Tailgate rows at default settings.
+    present <- sort(intersect(set$methods, as.character(data[[method_col]])))
+    if (any(vapply(drawn, identical, logical(1), present))) next
+    drawn <- c(drawn, list(present))
     .analysis_heading(set$heading, level)
     set_data <- data[data[[method_col]] %in% set$methods, , drop = FALSE]
     for (pos in unique(as.character(data[[pos_col]]))) {
@@ -3567,7 +3630,8 @@
 .simComparePlotEstVsTruth <- function(data, maxwidth = 0.2, lower_limit = NULL) {
   data$transformation <- .analysis_trans_factor(data$transformation)
   response_levels <- sort(unique(data$prob_response))
-  methods <- .simCompareMethodSets()$all_methods$methods
+  # The default-settings set lists every method, in display order.
+  methods <- .simCompareMethodSets()$tailgate_default$methods
   methods <- methods[methods %in% data$method]
   offsets <- if (length(methods) == 1L) 0 else seq(-0.25, 0.25, length.out = length(methods))
   spacing <- if (length(methods) == 1L) 0.5 else min(diff(offsets))
@@ -3774,7 +3838,7 @@
 .simCompareSignedErrorSummary <- function(
     .data,
     scenarioCols,
-    keepMethods = c("stimgate", "fbeta", "tailgate"),
+    keepMethods = .simCompareMethods,
     mcse = FALSE,
     unit = "iter") {
   .data <- .simComparePrimaryMethodRows(.data)
@@ -3807,7 +3871,7 @@
 .simCompareUnsignedErrorSummary <- function(
     .data,
     scenarioCols,
-    keepMethods = c("stimgate", "fbeta", "tailgate"),
+    keepMethods = .simCompareMethods,
     mcse = FALSE,
     unit = "iter") {
   .data <- .simComparePrimaryMethodRows(.data)
@@ -3847,7 +3911,7 @@
   }
   required <- c(scenarioCols, "iter", "sample", "method", "propRespTruth", "propRespEst")
   if (!all(required %in% names(raw))) stop("Dataset maxima need scenario keys, iter, sample and frequency outcomes.")
-  rows <- .simCompareBootstrapContext(raw) |> dplyr::filter(.data$method %in% c("stimgate", "fbeta", "tailgate"))
+  rows <- .simCompareBootstrapContext(raw) |> dplyr::filter(.data$method %in% .simCompareMethods)
   if (!"error" %in% names(rows)) rows$error <- NA_character_
   rows <- rows |> dplyr::mutate(rel_error = dplyr::if_else(
     .data$propRespTruth != 0 & (is.na(.data$error) | !nzchar(.data$error)),
@@ -4069,7 +4133,7 @@
 .simCompareClassificationSummary <- function(
     .data,
     scenarioCols,
-    keepMethods = c("stimgate", "fbeta", "tailgate"),
+    keepMethods = .simCompareMethods,
     mcse = FALSE,
     unit = "iter") {
   .data <- .simComparePrimaryMethodRows(.data)
@@ -4103,6 +4167,8 @@
       fdp_q90 = q(.data$fdp, 0.9),
       sensitivity_median = q(.data$sensitivity, 0.5),
       sensitivity_q10 = q(.data$sensitivity, 0.1),
+      f1_median = q(.data$f1, 0.5),
+      f1_q10 = q(.data$f1, 0.1),
       fpr_median = q(.data$false_positive_rate, 0.5),
       fpr_q90 = q(.data$false_positive_rate, 0.9),
       selected_fraction_median = q(.data$selected_fraction, 0.5),
@@ -4116,6 +4182,7 @@
   spec <- list(
     fdp_median = item("fdp", 0.5), fdp_q90 = item("fdp", 0.9),
     sensitivity_median = item("sensitivity", 0.5), sensitivity_q10 = item("sensitivity", 0.1),
+    f1_median = item("f1", 0.5), f1_q10 = item("f1", 0.1),
     fpr_median = item("false_positive_rate", 0.5), fpr_q90 = item("false_positive_rate", 0.9)
   )
   out <- dplyr::select(out, -dplyr::any_of(names(spec)))
@@ -4130,7 +4197,7 @@
 .simComparePairingCheck <- function(
     .data,
     pairCols = "base_scenario_id",
-    keepMethods = c("stimgate", "fbeta", "tailgate")) {
+    keepMethods = .simCompareMethods) {
   .data |>
     dplyr::filter(.data$method %in% keepMethods) |>
     dplyr::group_by(dplyr::across(dplyr::all_of(c(pairCols, "iter", "sample")))) |>
@@ -4157,7 +4224,7 @@
     .data,
     pairCols = "base_scenario_id",
     reference = "mean_shift_all",
-    keepMethods = c("stimgate", "fbeta", "tailgate")) {
+    keepMethods = .simCompareMethods) {
   keys <- c(pairCols, "iter", "sample", "method")
   zero <- .data |>
     dplyr::filter(.data$method %in% keepMethods, .data$mismatch_val == 0) |>
@@ -4213,6 +4280,10 @@
     label = "Sensitivity",
     median = "sensitivity_median", tail = "sensitivity_q10"
   ),
+  f1 = c(
+    label = "F1 score",
+    median = "f1_median", tail = "f1_q10"
+  ),
   fpr = c(
     label = "False-positive rate",
     median = "fpr_median", tail = "fpr_q90"
@@ -4223,7 +4294,7 @@
 # `.simCompareClassificationSummary()`. Each scenario has adjacent outcome
 # panels, each with its own horizontal range; colour and shape identify the
 # method and line type the statistic (median, or the worse tail: 90th
-# percentile for FDP and false-positive rate, 10th for sensitivity). With
+# percentile for FDP and false-positive rate, 10th for sensitivity and F1). With
 # `unit_scale`, every vertical scale is fixed at 0-100%.
 .simComparePlotClassification <- function(
     tbl,
@@ -4233,9 +4304,9 @@
     mcse = FALSE) {
   spec <- .simCompareClassificationOutcomes[outcomes]
   tail_label <- if (length(outcomes) == 1L) {
-    if (outcomes == "sensitivity") "10th percentile" else "90th percentile"
+    if (outcomes %in% c("sensitivity", "f1")) "10th percentile" else "90th percentile"
   } else {
-    paste(c(fdp = "90th FDP", sensitivity = "10th sensitivity", fpr = "90th FPR")[outcomes],
+    paste(c(fdp = "90th FDP", sensitivity = "10th sensitivity", f1 = "10th F1", fpr = "90th FPR")[outcomes],
       collapse = " / ")
   }
   # One statistic's rows, with its Monte Carlo bounds when present.
@@ -4448,7 +4519,7 @@
 .simCompareSignedPercentileSummary <- function(
     .data,
     scenarioCols,
-    keepMethods = c("stimgate", "fbeta", "tailgate"),
+    keepMethods = .simCompareMethods,
     mcse = FALSE,
     unit = "iter") {
   .data <- .simComparePrimaryMethodRows(.data)

@@ -186,8 +186,22 @@ histogram support: common bin edges span the matched stimulated and unstimulated
 distributions, instead of being derived from the unstimulated range alone. This
 prevents stimulated response-tail events outside the observed unstimulated range
 from being omitted when no explicit strong positive control is available.
-Tailgate uses the stimulated distribution, automatic bandwidth estimation and
-automatic tolerance tuning.
+Tailgate uses the stimulated distribution and automatic bandwidth estimation.
+
+Both comparators are applied after removing cells with an expression of
+exactly zero, which are clearly negative in the CyTOF data (over half of the
+cells for some cytokines). Their frequencies are still calculated over every
+cell, so these cells count as negative. For F-beta, each histogram pdf is
+scaled to integrate to the retained fraction of its tube rather than to one.
+Tailgate's tolerance is fixed at `tol = 2e-5` rather than set automatically:
+the automatic tolerance (1% of the largest absolute first derivative of the
+density) is dominated by the zero spike, so the cutpoint stops at the shoulder
+of the negative population. Tailgate's cutpoint is then moved up by 0.2, as
+StimGate's gates are moved up by its bias. The tolerance was chosen against the
+manual gates for TNF and IFNg in CD4 T cells, so agreement there is optimistic.
+Both methods are also run with their published
+defaults on all cells (`tailgate_default` and `fbeta_default`); Analysis 10
+reports their agreement with the manual gating in an appendix.
 
 ### TCRgd tester
 
@@ -270,11 +284,12 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate)) {
 ## Tailgate and F-beta
 
 Tailgate and F-beta run concurrently across populations, using the same
-`n_workers` control as StimGate. Within each population, the two methods remain
-sequential so that they do not compete for the same GatingSet. Each method is
-saved to its own `result.rds`. Whenever `run_comparators` is true, both methods
-are recomputed for every population and replace the previous results only once
-both have finished, so a failed rerun keeps the last good results. When
+`n_workers` control as StimGate. Within each population, the tuned and default
+versions of the two methods run sequentially so that they do not compete for
+the same GatingSet. Each method is saved to its own `result.rds`. Whenever
+`run_comparators` is true, all four are recomputed for every population and
+replace the previous results only once all have finished, so a failed rerun
+keeps the last good results. When
 `run_comparators` is false, existing results remain available to
 the downstream comparison and plotting sections.
 
@@ -331,7 +346,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
     path_scratch_base = path_scratch_base,
     path_fcs_base = path_fcs_base,
     pop = pop_vec,
-    methods = c("stimgate", "tailgate", "fbeta"),
+    methods = c("stimgate", .acsCytofComparatorMethods()),
     path_dir_save = NULL,
     save_plots = FALSE,
     sample_map = fn_to_sampleid_map,
@@ -345,7 +360,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .write_rds_atomic(
     list(
-      analysis_semantics_version = "acs-cytof-v7",
+      analysis_semantics_version = "acs-cytof-v8",
       stimgate_loc_threshold_method = stimgate_loc_threshold_method,
       run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))
     ),
@@ -357,7 +372,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .analysis_check_expected_run(
     manual_run_manifest,
-    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v7"
+    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v8"
   )
   .acsCytofCheckRunManifestMethod(
     manual_run_manifest, stimgate_loc_threshold_method, analysis_qmd
@@ -370,6 +385,10 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   manual_comparison_tbl,
   locThresholdMethod = stimgate_loc_threshold_method
 )
+# The saved table also holds Tailgate and F-beta at their published defaults,
+# which Analysis 10 reports in its appendix; the results below use the tuned
+# comparators only.
+manual_comparison_tbl <- .acsCytofMainComparisonTable(manual_comparison_tbl)
 manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 ```
 
@@ -411,7 +430,7 @@ if (isTRUE(run_plots)) {
 
 ### Estimated versus reference response frequency
 
-Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Manual background-subtracted frequency (%) is on the horizontal axis and automated frequency (%) on the vertical axis. Colour identifies the method and shapes identify stimuli. Each population has its own figure with cytokine panels; both axis ranges differ between panels. Points closer to the dashed identity line indicate closer agreement.
+Each figure is shown for all methods and again without Tailgate. Manual background-subtracted frequency (%) is on the horizontal axis and automated frequency (%) on the vertical axis. Colour identifies the method and shapes identify stimuli. Each population has its own figure with cytokine panels; both axis ranges differ between panels. Points closer to the dashed identity line indicate closer agreement.
 
 ```{r}
 #| label: manual-comparison
@@ -447,7 +466,7 @@ if (isTRUE(run_plots)) {
 
 ### Relative error
 
-Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Boxplots show absolute relative error by method, with separate panels for populations and cytokines. The y axis uses a log1p display with ticks in original units, retaining zero errors and compressing outliers; each panel has its own y range. Box statistics remain on the original error scale. Smaller values indicate closer agreement; rows with non-positive manual background-subtracted frequencies have no relative-error estimate.
+Each figure is shown for all methods and again without Tailgate. Boxplots show absolute relative error by method, with separate panels for populations and cytokines. The y axis uses a log1p display with ticks in original units, retaining zero errors and compressing outliers; each panel has its own y range. Box statistics remain on the original error scale. Smaller values indicate closer agreement; rows with non-positive manual background-subtracted frequencies have no relative-error estimate.
 
 ```{r}
 #| label: manual-relative-error
@@ -567,7 +586,7 @@ if (isTRUE(run_plots)) {
 
 These are conditional error-severity diagnostics: exact agreement (zero error) is excluded from both directions. The direction shares use all finite errors, including zeros, as their denominator; the remaining share is exact agreement. An all-exact group has no directional curve. Use the unconditional signed-error percentiles for overall performance, and the coverage summaries for failed or undefined estimates.
 
-Each figure is shown for all methods and again without Tailgate, which performs poorly without more tuning. Relative error is (automated - manual) / manual for each sample, using the same samples as the figure above. Over-estimates are plotted above zero and under-estimates below, summarised separately by median, 95th percentile and maximum for each method, population (columns) and cytokine. Larger points mean more samples fell in that direction. The scale is linear down to -100% (0x, an estimate of zero) and doubles above zero, so -100% and a two-fold over-estimate are equally far from zero.
+Each figure is shown for all methods and again without Tailgate. Relative error is (automated - manual) / manual for each sample, using the same samples as the figure above. Over-estimates are plotted above zero and under-estimates below, summarised separately by median, 95th percentile and maximum for each method, population (columns) and cytokine. Larger points mean more samples fell in that direction. The scale is linear down to -100% (0x, an estimate of zero) and doubles above zero, so -100% and a two-fold over-estimate are equally far from zero.
 
 The companion ratio figures show automated/manual frequency with identical
 curves: 1x agrees with the manual reference, 0x is zero automated frequency

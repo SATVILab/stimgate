@@ -20,13 +20,14 @@
   c(
     stimgate = "StimGate",
     fbeta = "F-beta",
-    tailgate = "Tailgate"
+    tailgate = "Tailgate",
+    fbeta_default = "F-beta (default settings)",
+    tailgate_default = "Tailgate (default settings)"
   )
 }
 
 # Method sets for every method-comparison figure: all methods, and without
-# Tailgate (which performs poorly without more tuning). Names are the figure
-# subfolders; `label` is the heading.
+# Tailgate. Names are the figure subfolders; `label` is the heading.
 .acsCytofMethodSets <- function() {
   list(
     all_methods = list(
@@ -46,6 +47,23 @@
 
 .acsCytofValidationMethods <- function() {
   c("stimgate", "fbeta", "tailgate")
+}
+
+# Tailgate and F-beta at their published defaults (all cells, automatic
+# Tailgate tolerance, no bias), reported in the appendix of Analysis 10.
+.acsCytofValidationAppendixMethods <- function() {
+  c("fbeta_default", "tailgate_default")
+}
+
+# The main results use StimGate and the tuned comparators only.
+.acsCytofMainComparisonTable <- function(comparisonTbl) {
+  out <- comparisonTbl |>
+    dplyr::filter(.data$method %in% .acsCytofValidationMethods())
+  if (is.factor(out$method)) out$method <- droplevels(out$method)
+  for (nm in c("manifest", "exclusions", "summary")) {
+    attr(out, nm) <- attr(comparisonTbl, nm)
+  }
+  out
 }
 
 .acsCytofValidationValidateComparisonTable <- function(
@@ -193,7 +211,10 @@
 
 .acsCytofValidationPlotScatter <- function(comparisonTbl, method) {
   .acsCytofValidationValidateComparisonTable(comparisonTbl)
-  method <- match.arg(method, .acsCytofValidationMethods())
+  method <- match.arg(
+    method,
+    c(.acsCytofValidationMethods(), .acsCytofValidationAppendixMethods())
+  )
   if (!method %in% as.character(unique(comparisonTbl$method))) {
     stop("No ACS validation rows are available for method: ", method, ".")
   }
@@ -266,7 +287,10 @@
   realPopulationsOnly = TRUE
 ) {
   metric <- match.arg(metric)
-  method <- match.arg(method, .acsCytofValidationMethods())
+  method <- match.arg(
+    method,
+    c(.acsCytofValidationMethods(), .acsCytofValidationAppendixMethods())
+  )
   requiredCols <- c("method", "pop", "cyt", "stim", metric)
   missingCols <- setdiff(requiredCols, names(correlationTbl))
   if (length(missingCols) > 0L) {
@@ -441,7 +465,7 @@
   )
 
   methods <- intersect(
-    .acsCytofValidationMethods(),
+    c(.acsCytofValidationMethods(), .acsCytofValidationAppendixMethods()),
     as.character(unique(comparisonTbl$method))
   )
   if (length(methods) == 0L) {

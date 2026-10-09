@@ -82,7 +82,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v21"
+comparison_semantics_version <- "batch-mismatch-comparison-v23"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -232,6 +232,9 @@ tailgate_adjust <- 1
 tailgate_method <- "firstDeriv"
 tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
+# Tailgate's cutpoint is moved up by this amount, as StimGate's gates are
+# moved up by its bias.
+tailgate_bias <- 0.1
 tailgate_x <- "stim"
 
 background_relative_to_response <- 0.2
@@ -474,6 +477,7 @@ analysis_result_params <- list(
   tailgate_method = tailgate_method,
   tailgate_tol = tailgate_tol,
   tailgate_auto_tol = tailgate_auto_tol,
+  tailgate_bias = tailgate_bias,
   tailgate_x = tailgate_x
 )
 
@@ -544,6 +548,7 @@ if (isTRUE(run_simulations) && nrow(sim_grid) > 0L) {
     fbetaWidth = fbeta_width,
     tailgateAdjust = tailgate_adjust,
     tailgateAutoTol = tailgate_auto_tol,
+    tailgateBias = tailgate_bias,
     tailgateMethod = tailgate_method,
     tailgateTol = tailgate_tol,
     tailgateX = tailgate_x,
@@ -604,6 +609,7 @@ if (isTRUE(run_simulations) && sim_grid_chunk_index == 1L) {
       fbetaWidth = fbeta_width,
       tailgateAdjust = tailgate_adjust,
       tailgateAutoTol = tailgate_auto_tol,
+      tailgateBias = tailgate_bias,
       tailgateMethod = tailgate_method,
       tailgateTol = tailgate_tol,
       tailgateX = tailgate_x
@@ -813,11 +819,12 @@ if (!isTRUE(run_plots)) {
 
 ## Results
 
-Every comparison figure is shown twice. "All methods" includes StimGate,
-Tailgate and F-beta. "Without Tailgate" leaves Tailgate out, because it
-performs very poorly without more tuning and squashes the scale for the other
-two methods. The two versions are saved in the `all_methods` and `no_tailgate`
-subfolders of each figure folder. Within each version there is one figure per
+Every comparison figure is shown three times. "All methods" includes StimGate,
+Tailgate (with its bias) and F-beta. "Without Tailgate" leaves Tailgate out, as
+it can squash the scale for the other two methods. "With Tailgate at default
+settings" adds Tailgate without the bias. The three versions are saved in the
+`all_methods`, `no_tailgate` and `tailgate_default` subfolders of each figure
+folder. Within each version there is one figure per
 mean position setting and mismatch mechanism.
 
 Mean shifts are additive shifts on the transformed expression scale, the
@@ -1704,6 +1711,7 @@ compare_one <- .simCompareRunScenario(
   fbetaWidth = fbeta_width,
   tailgateAdjust = tailgate_adjust,
   tailgateAutoTol = tailgate_auto_tol,
+  tailgateBias = tailgate_bias,
   tailgateMethod = tailgate_method,
   tailgateTol = tailgate_tol,
   tailgateX = tailgate_x,

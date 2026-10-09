@@ -29,6 +29,8 @@
     stimgate = file.path(pathScratch, "stimgate"),
     tailgate = file.path(pathScratch, "tailgate", "result.rds"),
     fbeta = file.path(pathScratch, "fbeta", "result.rds"),
+    tailgate_default = file.path(pathScratch, "tailgate_default", "result.rds"),
+    fbeta_default = file.path(pathScratch, "fbeta_default", "result.rds"),
     stimgateCheck = file.path(pathScratch, "stimgate_check_sample_2.pdf")
   )
 }

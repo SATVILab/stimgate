@@ -79,7 +79,7 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
   expect_true(grepl("stimgate_bw_ncell_min = stimgate_bw_ncell_min", content, fixed = TRUE))
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'comparison_semantics_version <- "batch-mismatch-comparison-v21"',
+    'comparison_semantics_version <- "batch-mismatch-comparison-v23"',
     content,
     fixed = TRUE
   ))

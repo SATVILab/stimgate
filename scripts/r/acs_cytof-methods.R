@@ -9,35 +9,71 @@
   )
 }
 
-.acsCytofComparatorSettings <- function(method = c("tailgate", "fbeta")) {
+# Methods run on the ACS data besides StimGate. "tailgate" and "fbeta" are
+# the tuned comparators of the main results; "tailgate_default" and
+# "fbeta_default" keep each method's published defaults for the appendix.
+.acsCytofComparatorMethods <- function() {
+  c("fbeta", "tailgate", "fbeta_default", "tailgate_default")
+}
+
+.acsCytofComparatorSettings <- function(
+  method = c("tailgate", "fbeta", "tailgate_default", "fbeta_default")
+) {
   method <- match.arg(method)
+
+  # Cells with an expression of exactly zero are clearly negative in CyTOF
+  # data. The tuned comparators drop them before estimating the gate (F-beta
+  # scales each pdf to the retained fraction of its tube); frequencies are
+  # still calculated over every cell.
+  tailgateDefault <- list(
+    tailgateX = "stim",
+    adjust = 1,
+    bandwidth = NULL,
+    numPeaks = 1L,
+    refPeak = 1L,
+    derivativeMethod = "firstDeriv",
+    tol = 1e-2,
+    side = "right",
+    strict = FALSE,
+    autoTol = TRUE,
+    bias = 0,
+    removeZero = FALSE
+  )
+  fbetaDefault <- list(
+    beta = 0.8,
+    theta = 2,
+    width = 10L,
+    numBins = NULL,
+    patchPy2Compat = TRUE,
+    removeZero = FALSE
+  )
 
   params <- switch(
     method,
-    tailgate = list(
-      tailgateX = "stim",
-      adjust = 1,
-      bandwidth = NULL,
-      numPeaks = 1L,
-      refPeak = 1L,
-      derivativeMethod = "firstDeriv",
-      tol = 1e-2,
-      side = "right",
-      strict = FALSE,
-      autoTol = TRUE
-    ),
-    fbeta = list(
-      beta = 0.8,
-      theta = 2,
-      width = 10L,
-      numBins = NULL,
-      patchPy2Compat = TRUE
-    )
+    # The automatic tolerance (1% of the largest absolute derivative) is set by
+    # the zero spike and stops at the shoulder of the negative population.
+    # The fixed tolerance was chosen against the manual CD4 TNF and IFNg gates.
+    tailgate = utils::modifyList(tailgateDefault, list(
+      tol = 2e-5,
+      autoTol = FALSE,
+      bias = 0.2,
+      removeZero = TRUE
+    )),
+    fbeta = utils::modifyList(fbetaDefault, list(removeZero = TRUE)),
+    tailgate_default = tailgateDefault,
+    fbeta_default = fbetaDefault
   )
 
   list(
-    cacheVersion = if (identical(method, "fbeta")) 2L else 1L,
+    cacheVersion = switch(
+      method,
+      tailgate = 2L,
+      fbeta = 3L,
+      tailgate_default = 1L,
+      fbeta_default = 2L
+    ),
     method = method,
+    family = sub("_default$", "", method),
     channelMap = .acsCytofChannelMap(),
     params = params
   )
@@ -171,14 +207,15 @@
 ) {
   # A missing dependency must still stop the analysis; only estimation errors
   # for this sample and marker are recorded as failed thresholds below.
-  fn <- if (identical(method, "fbeta")) ".simCompareFbetaThreshold" else ".simCompareTailgateThreshold"
+  isFbeta <- identical(settings$family, "fbeta")
+  fn <- if (isFbeta) ".simCompareFbetaThreshold" else ".simCompareTailgateThreshold"
   if (!exists(fn, mode = "function", inherits = TRUE)) {
     stop("Source scripts/r/sim-compare-freq_bs.R before running ", method, ".")
   }
-  if (!identical(method, "fbeta") && !requireNamespace("cytoUtils", quietly = TRUE)) {
+  if (!isFbeta && !requireNamespace("cytoUtils", quietly = TRUE)) {
     stop("Package 'cytoUtils' is required for tailgate comparisons.")
   }
-  thresholdObj <- tryCatch(if (identical(method, "fbeta")) {
+  thresholdObj <- tryCatch(if (isFbeta) {
     if (
       !exists(
         ".simCompareFbetaThreshold",
@@ -224,7 +261,9 @@
         tol = settings$params$tol,
         side = settings$params$side,
         strict = settings$params$strict,
-        autoTol = settings$params$autoTol
+        autoTol = settings$params$autoTol,
+        bias = settings$params$bias,
+        removeZero = settings$params$removeZero
       )
     )
   }, error = function(e) {
@@ -268,7 +307,7 @@
 .acsCytofRunComparator <- function(
   gs,
   pop,
-  method = c("tailgate", "fbeta"),
+  method = .acsCytofComparatorMethods(),
   batchList,
   pathFbeta = NULL
 ) {
@@ -276,7 +315,7 @@
   settings <- .acsCytofComparatorSettings(method)
   channelMap <- settings$channelMap
   channels <- names(channelMap)
-  fbetaEnv <- if (identical(method, "fbeta")) {
+  fbetaEnv <- if (identical(settings$family, "fbeta")) {
     if (
       !exists(
         ".simCompareFbetaEnvironment",
@@ -523,7 +562,7 @@
     pathScratchBase = pathScratchBase,
     outputGroup = outputGroup
   )
-  methodVec <- c("fbeta", "tailgate")
+  methodVec <- .acsCytofComparatorMethods()
 
   if (!isTRUE(runMethods)) {
     resultList <- lapply(methodVec, function(method) {

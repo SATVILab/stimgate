@@ -186,6 +186,58 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
   expect_length(plots, 0L)
 })
 
+test_that("analysis 10 keeps default-settings comparators for its appendix only", {
+  lines <- readLines(qmd_path, warn = FALSE)
+  chunk_code <- function(label) {
+    start <- which(lines == paste0("#| label: ", label))
+    expect_length(start, 1L)
+    end <- which(lines == "```" & seq_along(lines) > start)[1L]
+    parse(text = lines[seq.int(start + 1L, end - 1L)])
+  }
+  appendix_methods <- env$.acsCytofValidationAppendixMethods()
+  expect_setequal(appendix_methods, c("fbeta_default", "tailgate_default"))
+
+  main <- .acs_validation_fixture()
+  all_tbl <- dplyr::bind_rows(
+    main,
+    dplyr::mutate(dplyr::filter(main, .data$method == "fbeta"), method = "fbeta_default"),
+    dplyr::mutate(dplyr::filter(main, .data$method == "tailgate"), method = "tailgate_default")
+  )
+  attr(all_tbl, "manifest") <- list(x = 1)
+
+  # The main results drop the default-settings rows but keep the attributes.
+  main_tbl <- env$.acsCytofMainComparisonTable(all_tbl)
+  expect_setequal(unique(main_tbl$method), env$.acsCytofValidationMethods())
+  expect_identical(attr(main_tbl, "manifest"), list(x = 1))
+
+  chunk_env <- new.env(parent = getNamespace("stimgate"))
+  source(script_runtime, local = chunk_env)
+  source(script_style, local = chunk_env)
+  source(script_plot, local = chunk_env)
+  chunk_env$manual_comparison_all_tbl <- all_tbl
+  chunk_env$appendix_methods <- appendix_methods
+  chunk_env$run_plots <- FALSE
+  eval(chunk_code("appendix-correlation-table"), envir = chunk_env)
+  expect_setequal(
+    unique(chunk_env$appendix_correlation_tbl$method), appendix_methods
+  )
+
+  plots <- list()
+  chunk_env$print <- function(x, ...) {
+    plots[[length(plots) + 1L]] <<- x
+    invisible(x)
+  }
+  chunk_env$run_plots <- TRUE
+  for (label in c("appendix-t-cell-correlations", "appendix-all-correlations")) {
+    out <- capture.output(eval(chunk_code(label), envir = chunk_env))
+    expect_true(any(grepl("#### Method: Tailgate (default settings)", out, fixed = TRUE)))
+    expect_true(any(grepl("Concordance correlation", out, fixed = TRUE)))
+  }
+  # Two methods, two metrics, two population sets.
+  expect_length(plots, 8L)
+  expect_true(all(vapply(plots, inherits, logical(1), what = "ggplot")))
+})
+
 test_that("validation input checks schema, methods, and duplicate keys", {
   comparison_tbl <- .acs_validation_fixture()
 
@@ -279,7 +331,7 @@ test_that("analysis 10 validates its input and does not delete last good figures
     fixed = TRUE
   ))
   expect_true(grepl(
-    "requiredMethods = validation_methods",
+    "requiredMethods = c(validation_methods, appendix_methods)",
     content,
     fixed = TRUE
   ))

@@ -99,6 +99,11 @@ test_that("classification comparisons use dataset medians and preserve undefined
   sens <- out[out$scenario == "a" & out$method == "fbeta" & out$outcome == "sensitivity", ]
   expect_equal(sens$mean_difference, -fdp$mean_difference)
   expect_equal(sens$lower, -fdp$upper)
+  # With FP = FN, F1 = 2TP / (2TP + 2FP) equals sensitivity in every tube.
+  f1 <- env$.simCompareDatasetDifferences(tbl, "scenario", "f1")
+  f1 <- f1[f1$scenario == "a" & f1$method == "fbeta", ]
+  expect_equal(f1$mean_difference, sens$mean_difference)
+  expect_equal(f1$lower, sens$lower)
   empty <- tbl$iter == 5 & tbl$method == "stimgate"
   tbl$nTruePos[empty] <- 0
   tbl$nFalsePos[empty] <- 0

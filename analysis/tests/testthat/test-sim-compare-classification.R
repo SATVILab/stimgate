@@ -126,6 +126,25 @@ test_that("classification metrics handle empty, perfect and failed gates", {
   expect_true(all(props >= 0 & props <= 1))
 })
 
+test_that("F1 combines precision and sensitivity and is undefined only without any positives", {
+  env <- .classification_env()
+  out <- env$.simCompareClassificationMetrics(tibble::tibble(
+    method = "stimgate",
+    nTruePos = c(6L, 0L, 0L, 0L),
+    nFalsePos = c(2L, 0L, 3L, 0L),
+    nFalseNeg = c(4L, 5L, 0L, 0L),
+    nTrueNeg = c(88L, 95L, 97L, 100L),
+    error = NA_character_
+  ))
+  # Precision 0.75 and sensitivity 0.6 give 2 * 0.75 * 0.6 / 1.35.
+  expect_equal(out$f1[[1]], 2 * 0.75 * 0.6 / 1.35)
+  expect_equal(out$f1[[1]], 12 / 18)
+  # An empty gate on a tube with positives, and false positives only, give zero.
+  expect_equal(out$f1[2:3], c(0, 0))
+  # No genuine positives and an empty gate: undefined.
+  expect_true(is.na(out$f1[[4]]))
+})
+
 test_that("classification summary uses tube values and excludes undefined FDP", {
   env <- .classification_env()
   raw <- tibble::tibble(
@@ -348,4 +367,70 @@ test_that("analysis 8 leads with FDP and sensitivity and keeps error results", {
   )
   expect_length(diag_chunk, 1L)
   expect_false(grepl(".simCompareGateDiagnosticRun", diag_chunk, fixed = TRUE))
+})
+
+test_that("analysis 7 reports FDP, sensitivity and F1 by cell count for every method", {
+  env <- .classification_env()
+  source(file.path(root_dir, "scripts", "r", "sim-compare-performance-plot.R"), local = env)
+  lines <- readLines(file.path(root_dir, "analysis", "7-sim-compare-freq_bs.qmd"), warn = FALSE)
+  chunk_code <- function(label) {
+    start <- which(lines == paste0("#| label: ", label))
+    expect_length(start, 1L)
+    end <- which(lines == "```" & seq_along(lines) > start)[1L]
+    parse(text = lines[seq.int(start + 1L, end - 1L)])
+  }
+
+  sim_grid <- tidyr::expand_grid(
+    transformation = c("gaussian", "gamma"), mean_pos_setting = "high",
+    prob_response = 0.002, n_cell = c(1e3, 1e4), condition_perturbation_sd = 0
+  )
+  env$sim_grid <- dplyr::mutate(sim_grid, sim_id = dplyr::row_number())
+  env$compare_tbl <- tidyr::expand_grid(
+    sim_grid, approach = "a", method = c("stimgate", "fbeta", "tailgate"),
+    iter = 1:5, sample = 1:2
+  ) |>
+    dplyr::mutate(
+      nTruePos = 8L, nFalsePos = ifelse(.data$method == "stimgate", 0L, 12L),
+      nFalseNeg = ifelse(.data$method == "stimgate", 2L, 0L), nTrueNeg = 978L,
+      thresholdFallbackUsed = FALSE, error = NA_character_
+    )
+  env$scenario_cols <- c(colnames(sim_grid), "approach", "method")
+  env$show_mcse <- FALSE
+  env$mcse_mode <- "off"
+  env$fig_key <- "analysis7"
+  env$root_dir <- root_dir
+  env$plot_dir <- withr::local_tempdir()
+  tables <- list()
+  env$.analysis_report_table <- function(x, ...) tables[[length(tables) + 1L]] <<- x
+  env$run_plots <- TRUE
+
+  eval(chunk_code("classification-summary"), envir = env)
+  expect_length(tables, 2L)
+  stimgate <- dplyr::filter(env$class_summary, .data$method == "stimgate")
+  fbeta <- dplyr::filter(env$class_summary, .data$method == "fbeta")
+  expect_equal(unique(stimgate$fdp_median), 0)
+  expect_equal(unique(stimgate$sensitivity_median), 0.8)
+  expect_equal(unique(fbeta$fdp_median), 0.6)
+  expect_equal(unique(fbeta$sensitivity_median), 1)
+  # F1 = 2TP / (2TP + FP + FN): 16 / 18 for StimGate, 16 / 28 for F-beta.
+  expect_equal(unique(stimgate$f1_median), 16 / 18)
+  expect_equal(unique(fbeta$f1_median), 16 / 28)
+
+  plots <- list()
+  env$.analysis_print_save_fig <- function(p, path, ...) {
+    plots[[length(plots) + 1L]] <<- p
+    invisible(p)
+  }
+  out <- capture.output(eval(chunk_code("classification-cell-count"), envir = env))
+  expect_true(any(grepl("Median false discovery proportion", out, fixed = TRUE)))
+  expect_true(any(grepl("10th percentile sensitivity", out, fixed = TRUE)))
+  expect_true(any(grepl("Median F1 score", out, fixed = TRUE)))
+  # Six statistics, each for all methods and without Tailgate.
+  expect_length(plots, 12L)
+  expect_setequal(as.character(unique(plots[[1]]$data$method)), c("stimgate", "fbeta", "tailgate"))
+
+  env$run_plots <- FALSE
+  plots <- list()
+  out <- capture.output(eval(chunk_code("classification-cell-count"), envir = env))
+  expect_length(plots, 0L)
 })

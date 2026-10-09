@@ -137,7 +137,7 @@ test_that("analysis 9 uses one runner for the tester and configured populations"
     fixed = TRUE
   ))
   expect_true(grepl(
-    'methods = c("stimgate", "tailgate", "fbeta")',
+    'methods = c("stimgate", .acsCytofComparatorMethods())',
     content,
     fixed = TRUE
   ))
