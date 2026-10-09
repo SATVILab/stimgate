@@ -705,14 +705,16 @@ if (isTRUE(run_plots)) {
 The independent unit is the simulated dataset (`iter`), whose tubes are gated
 with shared settings and cluster gates. Within each scenario and dataset, we
 compute each method's mean absolute frequency error and mean absolute relative
-frequency error, then subtract the competitor's value from
+frequency error, and its median false discovery proportion and median
+sensitivity (defined below), then subtract the competitor's value from
 StimGate's value. Each dataset has equal weight. The tables report the mean
 paired difference and a 95% interval, mean ± 1.96 SD / √D, using the spread
 between the D datasets with finite paired summaries. Intervals are NA for D < 5.
 Dataset-pair coverage and finite-tube coverage are reported explicitly;
 undefined outcomes are omitted from the corresponding method summary and a
 dataset with no finite outcomes has no paired difference.
-Negative differences favour StimGate for both errors.
+Negative differences favour StimGate for both errors and for the false
+discovery proportion; positive differences favour it for sensitivity.
 
 ```{r}
 #| label: dataset-paired-differences
@@ -721,7 +723,7 @@ Negative differences favour StimGate for both errors.
 if (isTRUE(run_plots)) {
   dataset_differences <- .simCompareDatasetDifferences(
     compare_tbl, scenarioCols = scenario_cols,
-    outcomes = c("abs_error", "abs_rel_error")
+    outcomes = c("abs_error", "abs_rel_error", "fdp", "sensitivity")
   )
   for (set in .simCompareMethodSets()) {
     .analysis_heading(set$heading, 4L)
@@ -1132,6 +1134,98 @@ if (isTRUE(run_plots)) {
       cat("\n\n")
     }
   )
+}
+```
+
+### False discovery proportion and sensitivity by cell count
+
+The frequency errors above score the background-subtracted frequency, in which
+negative cells above the gate in the stimulated tube are largely cancelled by
+those in the unstimulated tube. A gate set inside the negative tail can therefore
+estimate the frequency well while most of the cells it calls positive are
+negative. These figures score the cells each method's applied gate calls
+positive in the stimulated tube against the simulated labels. The false
+discovery proportion (FDP) is the fraction of called-positive cells that are
+negative; it is undefined when the gate calls no cells, and those tubes are
+counted in the coverage table. Sensitivity is the fraction of genuinely
+positive cells that are called positive (zero for an empty gate). Each tube
+gives one value; the figures show tube-level medians and the worse tail (the
+90th percentile of FDP and the 10th percentile of sensitivity), pooled across
+datasets. Panels separate response frequencies and expression distributions,
+with one mean position setting per plot and no random condition perturbation.
+
+```{r}
+#| label: classification-summary
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  class_summary <- .simCompareClassificationSummary(
+    compare_tbl,
+    scenarioCols = scenario_cols, mcse = show_mcse
+  )
+  .analysis_report_table(
+    class_summary |>
+      dplyr::select(
+        dplyr::any_of(colnames(sim_grid)), approach, method,
+        n, n_valid, n_failed, n_fdp_defined, n_empty, n_fallback,
+        fdp_median, fdp_q90, sensitivity_median, sensitivity_q10
+      ),
+    c(fig_key, paste0("mcse_", mcse_mode), "classification-summary.csv"),
+    "Tube-level FDP and sensitivity with valid, defined, empty-gate and fallback counts.",
+    path_root = root_dir
+  )
+  .analysis_report_table(
+    .simComparePerformanceCoverage(class_summary, scenario_cols),
+    c(fig_key, paste0("mcse_", mcse_mode), "classification-bootstrap-coverage.csv"),
+    "Tube-level classification bootstrap coverage and unavailable intervals.",
+    path_root = root_dir
+  )
+}
+```
+
+```{r}
+#| label: classification-cell-count
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  class_plot_tbl <- class_summary |>
+    dplyr::filter(condition_perturbation_sd == 0)
+  class_figures <- list(
+    fdp_median = list(
+      heading = "Median false discovery proportion",
+      label = "Tube-level median FDP", dir = "fdp_median_by_n_cell"
+    ),
+    fdp_q90 = list(
+      heading = "90th percentile false discovery proportion",
+      label = "Tube-level 90th percentile FDP", dir = "fdp_q90_by_n_cell"
+    ),
+    sensitivity_median = list(
+      heading = "Median sensitivity",
+      label = "Tube-level median sensitivity", dir = "sensitivity_median_by_n_cell"
+    ),
+    sensitivity_q10 = list(
+      heading = "10th percentile sensitivity",
+      label = "Tube-level 10th percentile sensitivity", dir = "sensitivity_q10_by_n_cell"
+    )
+  )
+  for (stat in names(class_figures)) {
+    fig <- class_figures[[stat]]
+    .analysis_heading(fig$heading, 4L)
+    .simCompareFigureLoop(
+      class_plot_tbl,
+      make_plot = function(d) {
+        .simComparePlotByCell(
+          d, stat, fig$label, percent_y = TRUE, mcse = show_mcse
+        ) + .analysis_y_floor(c(0, 1))
+      },
+      dir = file.path(plot_dir, fig$dir),
+      file_fn = function(pos, extra) {
+        paste0(stat, "_meanpos_setting_", pos, ".png")
+      },
+      height = 20,
+      level = 5L, mcse_mode = mcse_mode
+    )
+  }
 }
 ```
 

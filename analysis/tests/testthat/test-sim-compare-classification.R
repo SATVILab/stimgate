@@ -349,3 +349,65 @@ test_that("analysis 8 leads with FDP and sensitivity and keeps error results", {
   expect_length(diag_chunk, 1L)
   expect_false(grepl(".simCompareGateDiagnosticRun", diag_chunk, fixed = TRUE))
 })
+
+test_that("analysis 7 reports FDP and sensitivity by cell count for every method", {
+  env <- .classification_env()
+  source(file.path(root_dir, "scripts", "r", "sim-compare-performance-plot.R"), local = env)
+  lines <- readLines(file.path(root_dir, "analysis", "7-sim-compare-freq_bs.qmd"), warn = FALSE)
+  chunk_code <- function(label) {
+    start <- which(lines == paste0("#| label: ", label))
+    expect_length(start, 1L)
+    end <- which(lines == "```" & seq_along(lines) > start)[1L]
+    parse(text = lines[seq.int(start + 1L, end - 1L)])
+  }
+
+  sim_grid <- tidyr::expand_grid(
+    transformation = c("gaussian", "gamma"), mean_pos_setting = "high",
+    prob_response = 0.002, n_cell = c(1e3, 1e4), condition_perturbation_sd = 0
+  )
+  env$sim_grid <- dplyr::mutate(sim_grid, sim_id = dplyr::row_number())
+  env$compare_tbl <- tidyr::expand_grid(
+    sim_grid, approach = "a", method = c("stimgate", "fbeta", "tailgate"),
+    iter = 1:5, sample = 1:2
+  ) |>
+    dplyr::mutate(
+      nTruePos = 8L, nFalsePos = ifelse(.data$method == "stimgate", 0L, 12L),
+      nFalseNeg = ifelse(.data$method == "stimgate", 2L, 0L), nTrueNeg = 978L,
+      thresholdFallbackUsed = FALSE, error = NA_character_
+    )
+  env$scenario_cols <- c(colnames(sim_grid), "approach", "method")
+  env$show_mcse <- FALSE
+  env$mcse_mode <- "off"
+  env$fig_key <- "analysis7"
+  env$root_dir <- root_dir
+  env$plot_dir <- withr::local_tempdir()
+  tables <- list()
+  env$.analysis_report_table <- function(x, ...) tables[[length(tables) + 1L]] <<- x
+  env$run_plots <- TRUE
+
+  eval(chunk_code("classification-summary"), envir = env)
+  expect_length(tables, 2L)
+  stimgate <- dplyr::filter(env$class_summary, .data$method == "stimgate")
+  fbeta <- dplyr::filter(env$class_summary, .data$method == "fbeta")
+  expect_equal(unique(stimgate$fdp_median), 0)
+  expect_equal(unique(stimgate$sensitivity_median), 0.8)
+  expect_equal(unique(fbeta$fdp_median), 0.6)
+  expect_equal(unique(fbeta$sensitivity_median), 1)
+
+  plots <- list()
+  env$.analysis_print_save_fig <- function(p, path, ...) {
+    plots[[length(plots) + 1L]] <<- p
+    invisible(p)
+  }
+  out <- capture.output(eval(chunk_code("classification-cell-count"), envir = env))
+  expect_true(any(grepl("Median false discovery proportion", out, fixed = TRUE)))
+  expect_true(any(grepl("10th percentile sensitivity", out, fixed = TRUE)))
+  # Four statistics, each for all methods and without Tailgate.
+  expect_length(plots, 8L)
+  expect_setequal(as.character(unique(plots[[1]]$data$method)), c("stimgate", "fbeta", "tailgate"))
+
+  env$run_plots <- FALSE
+  plots <- list()
+  out <- capture.output(eval(chunk_code("classification-cell-count"), envir = env))
+  expect_length(plots, 0L)
+})
