@@ -18,6 +18,8 @@ scripts=(
   "dev-7-sim-compare-freq_bs.sh"
   "dev-8-sim-compare-freq_bs-batch.sh"
   "dev-9-real-compare-acs-cytof.sh"
+  "dev-11-sim-low-separation-cyt-pos.sh"
+  "dev-12-sim-cluster-gates.sh"
   "dev-13-real-debug-acs-cytof.sh"
 )
 
@@ -133,6 +135,12 @@ plot_qmds_for_script() {
     # Analysis 10 only presents analysis 9's saved results.
     dev-9-real-compare-acs-cytof.sh)
       echo "analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd"
+      ;;
+    dev-11-sim-low-separation-cyt-pos.sh)
+      echo "analysis/11-sim-low-separation-cyt-pos.qmd"
+      ;;
+    dev-12-sim-cluster-gates.sh)
+      echo "analysis/12-sim-cluster-gates.qmd"
       ;;
     dev-13-real-debug-acs-cytof.sh)
       echo "analysis/13-real-debug-acs-cytof.qmd"

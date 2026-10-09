@@ -177,10 +177,13 @@
   byGroup = TRUE
 ) {
   keys <- c("pop", "stim", "cyt", "SampleID")
-  candidates <- dplyr::distinct(tibble::as_tibble(candidates[keys]))
   if (!nrow(candidates)) {
-    return(dplyr::mutate(candidates, htmlReason = character(0L)))
+    return(tibble::tibble(
+      pop = character(), stim = character(), cyt = character(),
+      SampleID = character(), htmlReason = character()
+    ))
   }
+  candidates <- dplyr::distinct(tibble::as_tibble(candidates[keys]))
   if (!is.null(samples)) {
     return(candidates |>
       dplyr::filter(.data$SampleID %in% samples) |>

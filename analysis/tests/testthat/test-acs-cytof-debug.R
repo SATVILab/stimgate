@@ -382,3 +382,72 @@ test_that("HTML samples can be chosen across all combinations", {
   expect_equal(sum(sel$htmlReason == "random"), 2L)
   expect_equal(nrow(sel), 6L)
 })
+
+test_that("HTML selection uses Analysis 9 preprocessing and comparison layouts", {
+  env <- .load_acs_debug_env()
+  base <- withr::local_tempdir()
+  env$run_pops <- "tcrgd"
+  # The default `all` is NULL, not an empty population selection.
+  env$html_pops <- env$.acsCytofDebugList("all")
+  env$paths9 <- list(tcrgd = list(gs = file.path(base, "gs")))
+  sampleMap <- tibble::tibble(
+    ind = as.character(1:10), file = paste0("tube", 1:10, ".fcs"),
+    SampleID = rep(c("s1", "s2"), each = 5L),
+    stim = rep(c("uns", "p1", "mtb", "ebv", "p4"), 2L)
+  )
+  saveRDS(
+    list(sampleMap = sampleMap),
+    env$.acsCytofPreprocessingFile(env$paths9$tcrgd$gs)
+  )
+  # Analysis 9 saves population labels in `pop`, codes in `popCode`,
+  # factor cytokines/methods and the original snake_case frequency columns.
+  comparison <- tibble::tibble(
+    pop = factor("TCRgd"), popCode = "tcrgd", SampleID = c("s1", "s2"),
+    stim = "p1", cyt = factor("IL2"), method = factor("stimgate"),
+    freq_stim_man = 2, freq_uns_man = 1, freq_bs_man = 1,
+    freq_bs_auto = c(5, 1.1), diff = c(4, 0.1), abs_diff = c(4, 0.1),
+    thresholdFailed = FALSE, locThresholdMethod = "region"
+  )
+  attr(comparison, "manifest") <- list(
+    methods = list(tcrgd = list(stimgate = list(
+      context = list(preprocessing = list(sampleMap = sampleMap)),
+      settings = list(locThresholdMethod = "region"),
+      channelSettings = list(IL2 = list(locThresholdMethod = "region"))
+    ))),
+    comparisonSettings = list(locThresholdMethod = "region"),
+    manualInputHash = "fixture"
+  )
+  env$path_comparison <- file.path(base, "manual-comparison.rds")
+  saveRDS(comparison, env$path_comparison)
+  env$settings <- list(locThresholdMethod = "region")
+  env$analysis_quick <- FALSE
+  env$run_simulations <- TRUE
+  env$html_stims <- "p1"
+  env$html_cyts <- "IL2"
+  env$html_samples <- NULL
+  env$html_n_largest <- env$html_n_closest <- 1L
+  env$html_n_random <- 0L
+  env$html_seed <- 9L
+  env$html_by_group <- FALSE
+
+  # Execute the real candidate-building and selection portion of the chunk,
+  # stopping before the expensive population re-gating.
+  lines <- readLines(qmd13_path, warn = FALSE)
+  start <- which(lines == "#| label: run-regating") + 2L
+  end <- which(grepl("^  sel_samples <-", lines)) - 1L
+  select <- parse(text = c(lines[start:end], "}"))
+  eval(select, env)
+  expect_identical(env$html_keys$SampleID, c("s1", "s2"))
+  expect_identical(env$html_keys$htmlReason, c("largest error", "close agreement"))
+  expect_true(all(env$html_keys$pop == "tcrgd"))
+
+  env$html_pops <- character(0L)
+  eval(select, env)
+  expect_identical(env$html_keys, tibble::tibble(
+    pop = character(), stim = character(), cyt = character(),
+    SampleID = character(), htmlReason = character()
+  ))
+  expect_identical(
+    env$.acsCytofDebugSelectHtml(tibble::tibble()), env$html_keys
+  )
+})

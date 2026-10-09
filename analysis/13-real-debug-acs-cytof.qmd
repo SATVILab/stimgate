@@ -229,7 +229,7 @@ if (isTRUE(run_simulations)) {
     # The tester's gates differ from the full run that Analysis 9 scored.
     comparison[c("freqBsAnalysis9", "diffAnalysis9", "absDiffAnalysis9")] <- NA_real_
   }
-  candidates <- dplyr::bind_rows(lapply(intersect(html_pops, run_pops), function(pop) {
+  candidates <- dplyr::bind_rows(lapply(intersect(html_pops %||% run_pops, run_pops), function(pop) {
     .acsCytofReadPreprocessing(paths9[[pop]]$gs)$sampleMap |>
       dplyr::filter(.data$stim != "uns") |>
       tidyr::expand_grid(cyt = unname(.acsCytofChannelMap())) |>
