@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --time=12:00:00
+#SBATCH --job-name="dev-11-sim-low-separation-cyt-pos"
+#SBATCH --partition=ada
+
+# Serial simulation with its own cache; render plots in the dependent plot job.
+
+set -euo pipefail
+
+project_root="${PROJECT_ROOT:-${SLURM_SUBMIT_DIR:-$(pwd)}}"
+qmd_file="analysis/11-sim-low-separation-cyt-pos.qmd"
+
+if [[ ! -f "$project_root/$qmd_file" ]]; then
+  echo "ERROR: Could not find QMD: $project_root/$qmd_file" >&2
+  exit 1
+fi
+
+# Keep native thread pools within the single-task allocation.
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
+export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
+export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
+export RUN_SIMULATIONS="${RUN_SIMULATIONS:-true}"
+export RUN_PLOTS="${RUN_PLOTS:-false}"
+export PROJECT_ROOT="$project_root"
+
+cd "$project_root"
+start_time=$(date +%s)
+echo "HOSTNAME: $HOSTNAME"
+echo "SLURM_JOB_ID: ${SLURM_JOB_ID:-unknown}"
+echo "QMD file: $qmd_file"
+echo "SIM_SIZE: ${SIM_SIZE:-parameters.sim_size in _projr.yml}"
+echo "RUN_SIMULATIONS: $RUN_SIMULATIONS"
+echo "RUN_PLOTS: $RUN_PLOTS"
+date
+
+r_expr="qmd_file <- '$qmd_file'; if (requireNamespace('quarto', quietly = TRUE)) { quarto::quarto_render(input = qmd_file) } else { status <- system2('quarto', c('render', qmd_file)); if (!identical(status, 0L)) quit(status = status) }"
+apptainer-rscript -f stimgate -- "$r_expr"
+
+end_time=$(date +%s)
+duration=$((end_time - start_time))
+printf "Elapsed time: %02d:%02d:%02d\n" \
+  $((duration / 3600)) $(((duration % 3600) / 60)) $((duration % 60))

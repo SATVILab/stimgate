@@ -186,6 +186,13 @@ test_that("pairing and zero-mismatch checks flag unpaired data", {
     differ$mismatch_val == 0 & differ$iter == 1L] <- 1.1
   agreement <- env$.simCompareZeroMismatchAgreement(differ)
   expect_equal(agreement$n_same_threshold, 1L)
+
+  # Last-bit differences between compute nodes still count as the same gate.
+  last_bit <- base
+  last_bit$threshold[last_bit$mismatch_type == "mean_shift_negative" &
+    last_bit$mismatch_val == 0 & last_bit$iter == 1L] <- 1 + 4e-14
+  agreement <- env$.simCompareZeroMismatchAgreement(last_bit)
+  expect_equal(agreement$n_same_threshold, 2L)
 })
 
 test_that("mismatch settings are paired across replicates and agree at zero", {

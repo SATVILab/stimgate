@@ -355,6 +355,9 @@ population/stimulation/cytokine, a page per sample) and deleted. The run
 stage draws the pages into the cache; the plot stage copies them to
 `output/fig/13-real-debug-acs-cytof/per_sample/` and shows a subset chosen at
 re-gating time (largest, closest and random StimGate-manual differences).
+Analysis 13 represents an `all` population selection as NULL; resolve it to
+the run populations before intersecting, and return typed empty HTML keys
+when no candidate combinations remain.
 Analysis 11 applies the ordinary and cytokine-positive gates from one
 `gateStim()` run to the same cells and requires its recomputed cytokine-positive
 combination counts to equal `getStimStats()`; keep that check when changing
@@ -370,7 +373,8 @@ the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-onl
 the QMDs end to end in quick mode instead (simulate, then plot; one job per QMD). See
 `analysis/tests/README.md` for commands and coverage limits.
 
-The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked runs, and Analysis 13
+The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked runs,
+Analyses 11 and 12 as serial non-chunked simulations, and Analysis 13
 after Analysis 9: `sim_dependency_for_script()` makes 13's job wait `afterok` on 9's
 when both are submitted, and `dev.sh` submits 9 first whatever the order requested. Keep enabled
 chunked analyses in the `scripts` list and `chunked_qmd_stem_for_script()`

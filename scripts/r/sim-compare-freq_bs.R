@@ -4150,8 +4150,9 @@
 
 # Agreement of the zero-mismatch rows of each mechanism with the zero-shift
 # "shift all stimulated cells" rows on the same replicate, sample and method.
-# The shift variants add exactly zero, so they must agree exactly; zero SD
-# inflation rescales by one, which can change the last bit of a value.
+# The shift variants add exactly zero and the counts must agree exactly.
+# Thresholds may differ in the last bits when the settings ran on different
+# compute nodes, so they are compared with a small relative tolerance.
 .simCompareZeroMismatchAgreement <- function(
     .data,
     pairCols = "base_scenario_id",
@@ -4171,7 +4172,9 @@
     dplyr::filter(.data$mismatch_type != reference) |>
     dplyr::inner_join(ref, by = keys) |>
     dplyr::mutate(
-      same_threshold = .data$threshold == .data$threshold_ref,
+      same_threshold = .data$threshold == .data$threshold_ref |
+        abs(.data$threshold - .data$threshold_ref) <=
+          1e-10 * pmax(1, abs(.data$threshold_ref)),
       same_counts = .data$nTruePos == .data$nTruePos_ref &
         .data$nFalsePos == .data$nFalsePos_ref &
         .data$nFalseNeg == .data$nFalseNeg_ref &

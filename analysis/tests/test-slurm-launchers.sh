@@ -44,6 +44,11 @@ run_selection() {
 }
 
 run_selection
+for stem in 11-sim-low-separation-cyt-pos 12-sim-cluster-gates; do
+  [[ $(grep -c "dev-${stem}.sh" "$SLURM_TEST_LOG") -eq 1 ]]
+  plot=$(grep -F "plots-${stem}|" "$SLURM_TEST_LOG")
+  [[ "$plot" == *"PLOT_QMD_FILES=analysis/${stem}.qmd,ANALYSIS_RUN_ID=slurm-test-run,RUN_SIMULATIONS=false,RUN_PLOTS=true|"* ]]
+done
 [[ $(grep -c 'dev-2b-' "$SLURM_TEST_LOG") -eq 2 ]]
 for chunk in 1 2; do
   bias_job=$(grep -F "2b-sim-bias_uns-freq_bs/chunk-${chunk}|" "$SLURM_TEST_LOG")
@@ -156,6 +161,25 @@ for selection in "9 13" "13 9"; do
 done
 run_selection
 grep -Fq -- 'dev-13-real-debug-acs-cytof.sh' "$SLURM_TEST_LOG"
+
+# Analyses 11/12 each submit one serial simulation and one dependent plot job.
+for stem in 11-sim-low-separation-cyt-pos 12-sim-cluster-gates; do
+  run_selection "${stem%%-*}"
+  [[ $(wc -l < "$SLURM_TEST_LOG") -eq 2 ]]
+  sim=$(grep -F "dev-${stem}.sh" "$SLURM_TEST_LOG")
+  [[ "$sim" == *"RUN_SIMULATIONS=true,RUN_PLOTS=false|"* ]]
+  [[ "$sim" != *"SIM_GRID_CHUNK_INDEX"* ]]
+  plot=$(grep -F "render-plots.sh" "$SLURM_TEST_LOG")
+  [[ "$plot" == *"--dependency=afterok:101|"* ]]
+  : > "$SLURM_TEST_LOG"
+  RUN_SIMULATIONS=true RUN_PLOTS=false bash "$project_root/scripts/slurm/dev-${stem}.sh" > "$test_dir/output" 2>&1
+  grep -Fq "render_file_exists=analysis/${stem}.qmd" "$SLURM_TEST_LOG"
+  grep -Fq 'simulations=true|plots=false' "$SLURM_TEST_LOG"
+  : > "$SLURM_TEST_LOG"
+  PLOT_QMD_FILES="analysis/${stem}.qmd" bash "$project_root/scripts/slurm/render-plots.sh" > "$test_dir/output" 2>&1
+  grep -Fq "render_file_exists=analysis/${stem}.qmd" "$SLURM_TEST_LOG"
+  grep -Fq 'simulations=false|plots=true' "$SLURM_TEST_LOG"
+done
 
 # Non-chunked simulation jobs share the plot job's submission run ID.
 run_selection 1 9
