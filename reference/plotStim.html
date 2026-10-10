@@ -9,7 +9,7 @@ markers, also draw hexbin plots (requires the hexbin package)."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.34</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.35</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,8 @@ markers, also draw hexbin plots (requires the hexbin package).</p>
 <span>  chnlGate <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  markerGate <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gateTypeCytPos <span class="op">=</span> <span class="st">"cyt"</span>,</span>
-<span>  mult <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  mult <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  showGateCyt <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -162,13 +163,17 @@ cells; cannot be combined with <code>chnlGate</code>. Default: NULL.</p></dd>
 
 <dt id="arg-gatetypecytpos">gateTypeCytPos<a class="anchor" aria-label="anchor" href="#arg-gatetypecytpos"></a></dt>
 <dd><p>character Positivity rule: "base" uses the main gate;
-"cyt" also admits cells above a refined gate when another marker clears
-its main gate. Default: "cyt".</p></dd>
+"cyt" uses the saved refinement or coexpression rule. Default: "cyt".</p></dd>
 
 
 <dt id="arg-mult">mult<a class="anchor" aria-label="anchor" href="#arg-mult"></a></dt>
 <dd><p>logical Require positivity for at least two gating markers.
 Applies only when <code>chnlGate</code> or <code>markerGate</code> is supplied. Default: FALSE.</p></dd>
+
+
+<dt id="arg-showgatecyt">showGateCyt<a class="anchor" aria-label="anchor" href="#arg-showgatecyt"></a></dt>
+<dd><p>logical Draw cytokine-positive gates (lowered gates of the
+coexpression method) where available. Default: TRUE.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -188,7 +193,7 @@ by sample and univariate plots by marker. NULL if no sample meets <code>minCell<
 <span class="r-in"><span>  marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF1: 0.187</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF2: 0.191</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF2: 0.188</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting base gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>

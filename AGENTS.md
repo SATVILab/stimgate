@@ -756,12 +756,31 @@ the `flowWorkspace` stack from source.
     Analysis 9: a two-marker co-expression score from control-tube tail
     p-values, Poisson GAM departures from independence, and gates
     lowered for cells positive for the other cytokine
-    (`.acsCoexLowerGate()`: only with a clear double-positive response;
-    20 bins from gate to floor, each set judged on departure from
+    (`.coexLowerGate()`: only with a clear double-positive response; 20
+    bins from gate to floor, each set judged on departure from
     independence and purity relative to the double positives; the added
     band trimmed on purity), with conditional histograms scaled per
     100,000 tube cells. Floors use non-zero values; purity and expected
     counts use every cell.
+  - `coexpression-gates.R`: the reference implementation of the
+    co-expression gates for any number of markers (`.coexLowerGate()`,
+    `.coexLowerGates()` over every ordered pair, `.coexPositive()`,
+    `.coexCombnCounts()`), shared by Analyses 11, 17 and 18. The
+    package’s `stimControl(cytPosMethod = "coexpression")` must
+    reproduce it exactly (`test-coexpression-gates-package.R`); change
+    both together.
+  - `acs_cytof-coexpression-gates.R`: Analysis 18
+    (`18-explore-acs-cytof-coexpression-gates.qmd`), read-only on
+    Analysis 9: the co-expression gates on every population, stimulation
+    and donor from Analysis 9’s ordinary gates; single- and
+    multi-positive background-subtracted frequencies before and after,
+    per-tube pathology flags, hexagon plots of the most-changed tubes,
+    and SimpleCOMPASS on both sets of combination counts (all-negative
+    category last; shared categories with at least 5 stimulated cells in
+    3 donors). Results are cached in the projr cache
+    `acs_cytof_coexpression/`; `ACS_COEX_WORKERS` forks tubes and
+    COMPASS fits. Not in `dev.sh`’s default list: run it with
+    `dev.sh 18` (waits for 9).
   - `omip016-prepare.R` / `omip016-methods.R`: Analysis 15
     (`15-real-compare-omip016.qmd`, FlowRepository FR-FCM-ZZ2T). The
     deposited FCS files are uncompensated;
@@ -812,8 +831,13 @@ the `flowWorkspace` stack from source.
     result on one x range.
   - `sim-low-separation.R`: Analysis 11
     (`11-sim-low-separation-cyt-pos.qmd`): two-marker low-separation
-    simulations gated once per dataset, comparing ordinary and
-    cytokine-positive gates on the same cells against simulated labels.
+    simulations gated once per dataset, comparing ordinary,
+    cytokine-positive (refinement) and co-expression gates on the same
+    cells against simulated labels, over scenario families appended
+    after the original grid (its IDs and seeds unchanged; the families
+    draw seeds from `simulation_seed + 1`). Reports cell-level F1 per
+    quantity and 10th/50th/90th percentiles of estimated against true
+    frequencies.
   - `sim-cluster-lab.R` / `sim-cluster-weak.R`: Analysis 12
     (`12-sim-cluster-gates.qmd`): threshold-sharing clusters under a
     between-lab location shift, and original versus cluster-adjusted
@@ -1085,6 +1109,15 @@ or the dead `gateQuant` / `maxPosProbX` settings. Analyses toggle
 threshold clustering with logical `cluster_gates` / `clusterGates`, not
 a tolerance.
 
+Cytokine-positive coexpression uses cached raw control expression
+(without `biasUns`) and final ordinary gates selected with the
+refinement’s Clust/Adj precedence. Save ordered pairs in
+`gates/pop<pop>/coexpression.rds`; retain `gateName` internally when
+several gate variants are requested. Attach rules explicitly to sample
+gate tables before positivity classification, and use the paired
+stimulated sample’s rules for control statistics. Conditioning tests use
+strict expression cutoffs, never recursively inferred positivity.
+
 Cytometry entry points
 ([`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md),
 [`plotStim()`](https://satvilab.github.io/stimgate/reference/plotStim.md),
@@ -1101,7 +1134,12 @@ resolve to indices before persistence.
 
 Vectorised gate-line layers must preserve overlapping lines for
 coincident thresholds: give each line a distinct group, since ggplot2
-deduplicates identical rows before drawing reference lines.
+deduplicates identical rows before drawing reference lines. Coexpression
+plot overlays read the optional pairwise gate table once per
+[`plotStim()`](https://satvilab.github.io/stimgate/reference/plotStim.md)
+call. Draw lowered b gates only beyond a’s raised conditioning cut in
+bivariate views, and as dashed marginal lines in univariate views. Keep
+the ordinary-method plots unchanged when that table is unavailable.
 
 1.  **Taut-string density**: The piecewise-constant taut-string density
     used for antimode detection is provided by the internal helper

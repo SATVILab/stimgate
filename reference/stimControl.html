@@ -9,7 +9,7 @@ set only the options you need to change."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.34</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.35</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -95,7 +95,12 @@ set only the options you need to change.</p>
 <span>  normExcessBwMtd <span class="op">=</span> <span class="st">"hpi3"</span>,</span>
 <span>  normExcessNcell <span class="op">=</span> <span class="fl">10000L</span>,</span>
 <span>  normAdaptiveNcell <span class="op">=</span> <span class="fl">2500L</span>,</span>
-<span>  normMtd <span class="op">=</span> <span class="st">"moments"</span></span>
+<span>  normMtd <span class="op">=</span> <span class="st">"moments"</span>,</span>
+<span>  cytPosMethod <span class="op">=</span> <span class="st">"refine"</span>,</span>
+<span>  coexNBin <span class="op">=</span> <span class="fl">20L</span>,</span>
+<span>  coexResidualMin <span class="op">=</span> <span class="fl">3.5</span>,</span>
+<span>  coexPurityFrac <span class="op">=</span> <span class="fl">0.75</span>,</span>
+<span>  coexZMin <span class="op">=</span> <span class="fl">2</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -104,7 +109,8 @@ set only the options you need to change.</p>
 
 
 <dl><dt id="arg-calccytposgates">calcCytPosGates<a class="anchor" aria-label="anchor" href="#arg-calccytposgates"></a></dt>
-<dd><p>logical Refine gates using cells positive for another
+<dd><p>logical Apply the <code>cytPosMethod</code> rule. With "refine",
+refine gates using cells positive for another
 cytokine. Lower a clustered gate to the leftmost internal antimode between
 the stimulated marginal peak plus half its negative-population width
 (at least one marginal density bandwidth) and
@@ -450,6 +456,30 @@ component for adaptive normalised bandwidths. Default: 2500.</p></dd>
 replaces components with normals having matching moments; "boxcox" uses
 Box-Cox transformations for scalar bandwidths only. Default: "moments".</p></dd>
 
+
+<dt id="arg-cytposmethod">cytPosMethod<a class="anchor" aria-label="anchor" href="#arg-cytposmethod"></a></dt>
+<dd><p>character Cytokine-positive rule, "refine" or
+"coexpression"; used only when <code>calcCytPosGates = TRUE</code>. Default: "refine".</p></dd>
+
+
+<dt id="arg-coexnbin">coexNBin<a class="anchor" aria-label="anchor" href="#arg-coexnbin"></a></dt>
+<dd><p>integer Number of bins used to lower and trim pairwise gates.
+Default: 20L.</p></dd>
+
+
+<dt id="arg-coexresidualmin">coexResidualMin<a class="anchor" aria-label="anchor" href="#arg-coexresidualmin"></a></dt>
+<dd><p>numeric Minimum Pearson residual beyond independence.
+Default: 3.5.</p></dd>
+
+
+<dt id="arg-coexpurityfrac">coexPurityFrac<a class="anchor" aria-label="anchor" href="#arg-coexpurityfrac"></a></dt>
+<dd><p>numeric Required fraction of double-positive purity,
+greater than zero and at most one. Default: 0.75.</p></dd>
+
+
+<dt id="arg-coexzmin">coexZMin<a class="anchor" aria-label="anchor" href="#arg-coexzmin"></a></dt>
+<dd><p>numeric Minimum net double-positive z score. Default: 2.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -641,6 +671,21 @@ limits to Inf shares responders' thresholds without limits.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $normMtd</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "moments"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $cytPosMethod</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "refine"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $coexNBin</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 20</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $coexResidualMin</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 3.5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $coexPurityFrac</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.75</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $coexZMin</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "stimControl"</span>
 <span class="r-in"><span><span class="fu">stimControl</span><span class="op">(</span>bwAdj <span class="op">=</span> <span class="fl">1.5</span>, clusterGates <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
@@ -805,6 +850,21 @@ limits to Inf shares responders' thresholds without limits.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $normMtd</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "moments"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $cytPosMethod</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "refine"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $coexNBin</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 20</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $coexResidualMin</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 3.5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $coexPurityFrac</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.75</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $coexZMin</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "stimControl"</span>

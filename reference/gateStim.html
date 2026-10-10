@@ -11,7 +11,7 @@ background-subtracted statistics to a project directory."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.34</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.35</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -121,7 +121,8 @@ Default: stimControl().</p></dd>
 <dd><p>list or NULL Settings for single markers, named by marker
 label or channel,
 e.g. <code>list(IL2 = list(bw = 0.12, biasUns = 0))</code>. Accepts <code><a href="stimControl.html">stimControl()</a></code>
-settings except <code>locEnforceShapeThreshold</code> and <code>calcCytPosGates</code>, plus
+settings except <code>locEnforceShapeThreshold</code>, <code>calcCytPosGates</code>,
+<code>cytPosMethod</code> and the <code>coex*</code> settings, plus
 <code>bw</code>, <code>biasUns</code> and <code>popGate</code>. Default: NULL.</p></dd>
 
 
@@ -215,7 +216,7 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpnHFM5i/custom_gating_1aeb4f97a903"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmp8XMoyY/custom_gating_1a0f28c09e20"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Gate in-memory matrices; column names act as channels and markers</span></span></span>
 <span class="r-in"><span><span class="va">matrices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">gs</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span></span>
@@ -238,7 +239,7 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpnHFM5i/matrix_gating_1aeb7c2262b6"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmp8XMoyY/matrix_gating_1a0f37cc801d"</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

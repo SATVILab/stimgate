@@ -59,7 +59,12 @@ stimControl(
   normExcessBwMtd = "hpi3",
   normExcessNcell = 10000L,
   normAdaptiveNcell = 2500L,
-  normMtd = "moments"
+  normMtd = "moments",
+  cytPosMethod = "refine",
+  coexNBin = 20L,
+  coexResidualMin = 3.5,
+  coexPurityFrac = 0.75,
+  coexZMin = 2
 )
 ```
 
@@ -67,11 +72,11 @@ stimControl(
 
 - calcCytPosGates:
 
-  logical Refine gates using cells positive for another cytokine. Lower
-  a clustered gate to the leftmost internal antimode between the
-  stimulated marginal peak plus half its negative-population width (at
-  least one marginal density bandwidth) and that gate; keep the gate if
-  none exists. Default: TRUE.
+  logical Apply the `cytPosMethod` rule. With "refine", refine gates
+  using cells positive for another cytokine. Lower a clustered gate to
+  the leftmost internal antimode between the stimulated marginal peak
+  plus half its negative-population width (at least one marginal density
+  bandwidth) and that gate; keep the gate if none exists. Default: TRUE.
 
 - minCell:
 
@@ -407,6 +412,29 @@ stimControl(
   components with normals having matching moments; "boxcox" uses Box-Cox
   transformations for scalar bandwidths only. Default: "moments".
 
+- cytPosMethod:
+
+  character Cytokine-positive rule, "refine" or "coexpression"; used
+  only when `calcCytPosGates = TRUE`. Default: "refine".
+
+- coexNBin:
+
+  integer Number of bins used to lower and trim pairwise gates. Default:
+  20L.
+
+- coexResidualMin:
+
+  numeric Minimum Pearson residual beyond independence. Default: 3.5.
+
+- coexPurityFrac:
+
+  numeric Required fraction of double-positive purity, greater than zero
+  and at most one. Default: 0.75.
+
+- coexZMin:
+
+  numeric Minimum net double-positive z score. Default: 2.
+
 ## Value
 
 A named list of class `stimControl`, with one element per setting.
@@ -602,6 +630,21 @@ stimControl()
 #> $normMtd
 #> [1] "moments"
 #> 
+#> $cytPosMethod
+#> [1] "refine"
+#> 
+#> $coexNBin
+#> [1] 20
+#> 
+#> $coexResidualMin
+#> [1] 3.5
+#> 
+#> $coexPurityFrac
+#> [1] 0.75
+#> 
+#> $coexZMin
+#> [1] 2
+#> 
 #> attr(,"class")
 #> [1] "stimControl"
 stimControl(bwAdj = 1.5, clusterGates = FALSE)
@@ -766,6 +809,21 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> 
 #> $normMtd
 #> [1] "moments"
+#> 
+#> $cytPosMethod
+#> [1] "refine"
+#> 
+#> $coexNBin
+#> [1] 20
+#> 
+#> $coexResidualMin
+#> [1] 3.5
+#> 
+#> $coexPurityFrac
+#> [1] 0.75
+#> 
+#> $coexZMin
+#> [1] 2
 #> 
 #> attr(,"class")
 #> [1] "stimControl"

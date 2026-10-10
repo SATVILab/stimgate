@@ -28,7 +28,8 @@ plotStim(
   chnlGate = NULL,
   markerGate = NULL,
   gateTypeCytPos = "cyt",
-  mult = FALSE
+  mult = FALSE,
+  showGateCyt = TRUE
 )
 ```
 
@@ -127,14 +128,18 @@ plotStim(
 
 - gateTypeCytPos:
 
-  character Positivity rule: "base" uses the main gate; "cyt" also
-  admits cells above a refined gate when another marker clears its main
-  gate. Default: "cyt".
+  character Positivity rule: "base" uses the main gate; "cyt" uses the
+  saved refinement or coexpression rule. Default: "cyt".
 
 - mult:
 
   logical Require positivity for at least two gating markers. Applies
   only when `chnlGate` or `markerGate` is supplied. Default: FALSE.
+
+- showGateCyt:
+
+  logical Draw cytokine-positive gates (lowered gates of the
+  coexpression method) where available. Default: TRUE.
 
 ## Value
 
@@ -154,7 +159,7 @@ pathProject <- gateStim(
   marker = exampleData$marker
 )
 #> shared bandwidth for MarkerF1: 0.187
-#> shared bandwidth for MarkerF2: 0.191
+#> shared bandwidth for MarkerF2: 0.188
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates

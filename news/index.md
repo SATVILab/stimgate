@@ -1,5 +1,17 @@
 # Changelog
 
+## stimgate 0.99.35
+
+### New features
+
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  offers `stimControl(cytPosMethod = "coexpression")` to admit cells
+  with stimulation-specific cytokine co-expression using pairwise gates.
+  Statistics, expression selection and FCS exports use the same rule.
+  [`getStimGatesCoexpression()`](https://satvilab.github.io/stimgate/reference/getStimGatesCoexpression.md)
+  reads the saved pairwise thresholds and diagnostics. The existing
+  refinement remains the default.
+
 ## stimgate 0.99.34
 
 ### Bug fixes

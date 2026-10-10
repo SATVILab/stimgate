@@ -80,8 +80,8 @@ writeStimFCS(
 
 - gateTypeCytPos:
 
-  character Positivity rule: "base" uses main gates; "cyt" also uses
-  refined gates for cells positive for another marker. Default: "cyt".
+  character Positivity rule: "base" uses main gates; "cyt" uses the
+  saved refinement or coexpression rule. Default: "cyt".
 
 - mult:
 
@@ -99,6 +99,13 @@ Invisibly, a tibble with one row per sample and columns `ind`, `batch`,
 `fileName`, `nCellPos`, `written`, `reason`. The `pathDirSave` attribute
 holds the output path. Samples with no positive cells get no FCS file.
 
+## Details
+
+With coexpression, `coexpression.csv` records pairwise thresholds.
+Stimulated samples use their saved rules. For control exports, the
+chosen `gateUnsMethod` summarises ordinary, lowered and conditioning
+thresholds across the batch's stimulated samples.
+
 ## Examples
 
 ``` r
@@ -110,8 +117,8 @@ pathProject <- gateStim(
   tempfile("stimgate_"), gs, exampleData$batchList,
   marker = exampleData$marker
 )
-#> shared bandwidth for MarkerF1: 0.187
-#> shared bandwidth for MarkerF2: 0.188
+#> shared bandwidth for MarkerF1: 0.188
+#> shared bandwidth for MarkerF2: 0.189
 #> getting base gates
 #> chnl: BC1(La139)Dd
 #> getting pre-adjustment gates

@@ -91,9 +91,8 @@ getStimExpr(
 
 - gateTypeCytPos:
 
-  character Positivity rule: "base" uses the main gate; "cyt" also
-  admits cells above a refined gate when another marker clears its main
-  gate. Default: "cyt".
+  character Positivity rule: "base" uses the main gate; "cyt" uses the
+  saved refinement or coexpression rule. Default: "cyt".
 
 - mult:
 

@@ -9,7 +9,7 @@ one FCS file per sample that has positive cells, plus manifest.csv."></head><bod
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.34</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.35</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -115,7 +115,7 @@ Default: NULL.</p></dd>
 
 <dt id="arg-gatetypecytpos">gateTypeCytPos<a class="anchor" aria-label="anchor" href="#arg-gatetypecytpos"></a></dt>
 <dd><p>character Positivity rule: "base" uses main gates;
-"cyt" also uses refined gates for cells positive for another marker.
+"cyt" uses the saved refinement or coexpression rule.
 Default: "cyt".</p></dd>
 
 
@@ -135,6 +135,13 @@ Default: "min".</p></dd>
 <code>fileName</code>, <code>nCellPos</code>, <code>written</code>, <code>reason</code>. The <code>pathDirSave</code> attribute holds
 the output path. Samples with no positive cells get no FCS file.</p>
     </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>With coexpression, <code>coexpression.csv</code> records pairwise thresholds.
+Stimulated samples use their saved rules. For control exports, the chosen
+<code>gateUnsMethod</code> summarises ordinary, lowered and conditioning thresholds
+across the batch's stimulated samples.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
@@ -146,8 +153,8 @@ the output path. Samples with no positive cells get no FCS file.</p>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"stimgate_"</span><span class="op">)</span>, <span class="va">gs</span>, <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span>,</span></span>
 <span class="r-in"><span>  marker <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">marker</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF1: 0.187</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF2: 0.188</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF1: 0.188</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for MarkerF2: 0.189</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting base gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> chnl: BC1(La139)Dd</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting pre-adjustment gates</span>
