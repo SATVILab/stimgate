@@ -611,6 +611,11 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     each ACS population inside `.simDebugLoc()` and draws one 2c-style page per
     stimulated tube and cytokine, adding the final `loc_minClust` gate,
     Analysis 9's Tailgate/F-beta gates and manual frequencies.
+  - `acs_cytof-explore-cytpos.R`: Analysis 16 (`16-explore-acs-cytof-cytpos.qmd`):
+    read-only views of Analysis 9's latest ACS gates for the manually gated
+    donors — IFNg-TNF hexagon plots and IFNg/TNF densities among cells
+    positive for another cytokine (strict `x > gate`), to inform the
+    cytokine-positive rule. It never re-gates or writes to Analysis 9's caches.
   - `omip016-prepare.R` / `omip016-methods.R`: Analysis 15
     (`15-real-compare-omip016.qmd`, FlowRepository FR-FCM-ZZ2T). The deposited
     FCS files are uncompensated; `scripts/python/omip016_flowjo_jo.py` decodes
