@@ -129,14 +129,19 @@
 #' Fit a monotone increasing SCAM to the modelled probabilities
 #'
 #' Returns NULL when there are too few points and a try-error when the fit
-#' fails. quiet suppresses warnings raised while fitting.
+#' fails. quiet suppresses warnings raised while fitting. The expression
+#' values are fitted under the fixed column name `x`, because channel names
+#' such as `PE-A` are not valid in a model formula.
 #' @keywords internal
 .fitScam <- function(dataMod, bs, family, quiet) {
   idxMod <- attr(dataMod, "idxMod") %||%
     seq_len(nrow(dataMod))
-  chnl <- .getCpUnsLocGetChnl(dataMod)
 
   dataMod <- dataMod[idxMod, , drop = FALSE]
+  dataMod <- data.frame(
+    x = as.numeric(.getCut(dataMod)),
+    probSmooth = dataMod$probSmooth
+  )
   dataMod$probSmooth <- pmin(
     dataMod$probSmooth,
     0.999
@@ -156,9 +161,7 @@
 
   fml <- stats::as.formula(
     paste0(
-      "probSmooth ~ s(`",
-      chnl,
-      "`, bs = '",
+      "probSmooth ~ s(x, bs = '",
       bs,
       "', k = ",
       k,
@@ -194,16 +197,11 @@
 
 #' Construct the minimal prediction data required by the smoother
 #'
-#' The fitted SCAM contains only the expression channel as a predictor, so
-#' prediction does not require copying every column of dataMod.
+#' The fitted SCAM has only the expression values, named `x`, as a predictor
+#' (see `.fitScam()`), so prediction does not require copying dataMod.
 #' @keywords internal
-.getCpUnsLocGetProbSmoothNewData <- function(chnl, x) {
-  out <- data.frame(
-    value = x,
-    check.names = FALSE
-  )
-  names(out) <- chnl
-  out
+.getCpUnsLocGetProbSmoothNewData <- function(x) {
+  data.frame(x = x)
 }
 
 
@@ -219,15 +217,11 @@
     return(NULL)
   }
 
-  chnl <- .getCpUnsLocGetChnl(dataMod)
   x <- suppressWarnings(
     as.numeric(.getCut(dataMod))
   )
 
-  newData <- .getCpUnsLocGetProbSmoothNewData(
-    chnl = chnl,
-    x = x
-  )
+  newData <- .getCpUnsLocGetProbSmoothNewData(x = x)
 
   predVec <- try(
     stats::predict(
@@ -272,7 +266,6 @@
   dataMod,
   chnlSettings = list()
 ) {
-  chnl <- .getCpUnsLocGetChnl(dataMod)
 
   x <- suppressWarnings(
     as.numeric(.getCut(dataMod))
@@ -351,10 +344,7 @@
     xRight
   )
 
-  newData <- .getCpUnsLocGetProbSmoothNewData(
-    chnl = chnl,
-    x = predX
-  )
+  newData <- .getCpUnsLocGetProbSmoothNewData(x = predX)
 
   predAll <- try(
     stats::predict(
