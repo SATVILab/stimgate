@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.29</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.30</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -492,6 +492,7 @@
 <div class="section level3">
 <h3 id="saved-expression-and-stimulation-gates">Saved expression and stimulation gates<a class="anchor" aria-label="anchor" href="#saved-expression-and-stimulation-gates"></a></h3>
 <p>Reuse <code>.gateGetDirs()</code> for prefixed directory discovery and <code>.getExChnlPathDir()</code> for saved expression paths, preserving each caller’s validation and missing-path handling. The first sample of each <code>batchList</code> element is its unstimulated sample; no other argument, name pattern or rule identifies it. <code>.verifyBatchList()</code> requires at least one stimulated sample per batch and lets an unstimulated sample be shared across batches only if it is first in each; a stimulated sample belongs to exactly one batch. Code that needs a sample’s unstim relies on these rules. Sample-level diagnostic frequencies count positives with strict <code>x &gt; gate</code>, matching applied gates; keep threshold-selection tail calculations separate. Saved expression includes unstimulated samples, while final stimulation gate tables omit them. Positivity helpers must treat channels with no gate for the current sample as all-FALSE, preserving one logical value per cell. Completed <code>chnlSettings.rds</code> settings are keyed by marker labels, although saved expression columns use channel names. Resolve that mapping before applying the saved <code>biasUns</code>; channels without a saved bias use zero. <code><a href="reference/gateStim.html">gateStim()</a></code> clears the run populations’ cached expression and gates at start. It warms the expression cache once per sample before settings completion, allowing subsequent stages to read expression directly from the cache. Keep all caching and reuse result-preserving, including the order of random number generation calls.</p>
+<p>Never put channel names into model formulas or <code>newdata</code> column names: FCS channel names such as <code>PE-A</code> or <code>BC1(La139)Dd</code> are not valid R names, and a failed fit can fall back silently. Fit on fixed column names (the local-FDR smoother, <code><a href="reference/dot-fitScam.html">.fitScam()</a></code>, uses <code>x</code>) and test with such a channel name.</p>
 <p>Combination statistics classify raw unstimulated expression with the paired stim sample’s gates, without <code>biasUns</code>. Load the batch’s required unstimulated channels once, stream stimulated expression by channel, and reuse the first classification read for its cell count (read one channel for samples without gates). Retain logical comparisons for cyt+ context; discard base comparisons after adding their bits and recompute them only for the Reduce-based NA fallback. Samples with no gates report NA counts, while missing individual channel gates are FALSE.</p>
 </div>
 <div class="section level3">

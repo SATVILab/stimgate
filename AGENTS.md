@@ -961,6 +961,13 @@ allowing subsequent stages to read expression directly from the cache.
 Keep all caching and reuse result-preserving, including the order of
 random number generation calls.
 
+Never put channel names into model formulas or `newdata` column names:
+FCS channel names such as `PE-A` or `BC1(La139)Dd` are not valid R
+names, and a failed fit can fall back silently. Fit on fixed column
+names (the local-FDR smoother,
+[`.fitScam()`](https://satvilab.github.io/stimgate/reference/dot-fitScam.md),
+uses `x`) and test with such a channel name.
+
 Combination statistics classify raw unstimulated expression with the
 paired stim sample’s gates, without `biasUns`. Load the batch’s required
 unstimulated channels once, stream stimulated expression by channel, and

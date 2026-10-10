@@ -168,10 +168,10 @@ getStimGates(pathProject)
 #> # A tibble: 4 × 17
 #>   pop   gateName  chnl  marker ind   batch  gate locGenerated locGeneratedDirect
 #>   <chr> <chr>     <chr> <I<ch> <chr> <chr> <dbl> <lgl>        <lgl>             
-#> 1 root  loc_minC… BC1(… Marke… 2     batc…  4.50 TRUE         TRUE              
-#> 2 root  loc_minC… BC1(… Marke… 4     batc…  3.67 TRUE         TRUE              
-#> 3 root  loc_minC… BC2(… Marke… 2     batc…  3.99 TRUE         TRUE              
-#> 4 root  loc_minC… BC2(… Marke… 4     batc…  2.77 TRUE         TRUE              
+#> 1 root  loc_minC… BC1(… Marke… 2     batc…  4.62 TRUE         TRUE              
+#> 2 root  loc_minC… BC1(… Marke… 4     batc…  4.27 TRUE         TRUE              
+#> 3 root  loc_minC… BC2(… Marke… 2     batc…  4.09 TRUE         TRUE              
+#> 4 root  loc_minC… BC2(… Marke… 4     batc…  3.37 TRUE         TRUE              
 #> # ℹ 8 more variables: locSource <chr>, locReason <chr>, locResponder <lgl>,
 #> #   propBsEst <dbl>, locOwnFreq <dbl>, locShareLimit <chr>,
 #> #   locShareProposed <dbl>, gateCyt <dbl>
@@ -196,7 +196,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpLkQE7P/custom_gating_1a3342397e2a"
+#> [1] "/tmp/RtmplfJKyf/custom_gating_1a317a18c320"
 
 # Gate in-memory matrices; column names act as channels and markers
 matrices <- lapply(seq_along(gs), function(i) {
@@ -219,5 +219,5 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/RtmpLkQE7P/matrix_gating_1a3311392ba1"
+#> [1] "/tmp/RtmplfJKyf/matrix_gating_1a3164e755f5"
 ```

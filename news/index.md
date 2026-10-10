@@ -1,5 +1,16 @@
 # Changelog
 
+## stimgate 0.99.30
+
+### Bug fixes
+
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
+  now smooths the local-FDR response probability for channels whose
+  names are not valid R names, such as `PE-A` or `FITC-A`. Previously
+  the smoothing failed for these channels and StimGate silently used the
+  unsmoothed probabilities, which could place gates far into a sparse
+  upper tail. Gates change for data with such channel names.
+
 ## stimgate 0.99.29
 
 ### Breaking changes

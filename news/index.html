@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.29</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.30</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,14 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.30" id="stimgate-09930">stimgate 0.99.30<a class="anchor" aria-label="anchor" href="#stimgate-09930"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-0-99-30">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-99-30"></a></h3>
+<ul><li>
+<code><a href="../reference/gateStim.html">gateStim()</a></code> now smooths the local-FDR response probability for channels whose names are not valid R names, such as <code>PE-A</code> or <code>FITC-A</code>. Previously the smoothing failed for these channels and StimGate silently used the unsmoothed probabilities, which could place gates far into a sparse upper tail. Gates change for data with such channel names.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.29" id="stimgate-09929">stimgate 0.99.29<a class="anchor" aria-label="anchor" href="#stimgate-09929"></a></h2>
 <div class="section level3">
