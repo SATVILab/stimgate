@@ -1,0 +1,376 @@
+---
+title: Compare StimGate, Tailgate and F-beta on OMIP-111
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: true
+  run_preprocessing: null
+  run_methods: null
+  run_plots: true
+  run_diagnostics: true
+---
+
+## Suitability and scope
+
+OMIP-111 is suitable for an external **agreement comparison** of cytokine
+gating methods. The deposit includes ten matched mice (five C57BL/6, five
+BALB/c), each with a Brefeldin A control and a mitogen plus Brefeldin A tube,
+two author-supplied FlowJo workspaces, and a sample-key spreadsheet. The 18
+single-colour/unstained reference files are excluded from the biological
+comparison. The full-panel FCS files are already spectrally unmixed.
+
+The [OMIP-111 publication](https://pmc.ncbi.nlm.nih.gov/articles/PMC12758606/)
+describes 6-hour PMA/ionomycin stimulation and gating cytokines in conventional
+non-naïve CD4/CD8 T cells. We reconstruct those parent gate definitions, retaining
+the authors' lymphocyte, singlet, live CD45, lineage and non-naïve gates. All
+methods receive the same reconstructed parent cells. CD4 is evaluated for IFNγ, IL-2, TNF,
+**combined IL-4/5**, and IL-17A; CD8 is evaluated for IFNγ, IL-2 and TNF,
+matching the cytokine reference gates supplied in the workspaces.
+
+Manual gating is an imperfect reference, not biological ground truth. This
+small, strongly stimulated mouse dataset cannot establish performance on rare
+antigen-specific human responses. IL-17A and IL-4/5 are particularly sparse;
+percentage-point differences remain interpretable when relative errors would
+be unstable or undefined. The non-naïve denominator changes after stimulation;
+frequencies below refer to each tube's own non-naïve parent population.
+Strains are analysed separately, avoiding shared gates across different panels
+(NK1.1 versus NKp46) and potentially different display transformations.
+
+## Setup and scientific settings
+
+Run from the package root:
+
+```bash
+RUN_SIMULATIONS=true RUN_PLOTS=true quarto render analysis/14-real-compare-omip111.qmd
+```
+
+`RUN_PREPROCESSING` and `RUN_METHODS` override the umbrella computation flag.
+To redraw validated saved results, use `RUN_SIMULATIONS=false RUN_PLOTS=true`.
+The workspace importer requires Python with `flowkit==1.3.2`. On this workspace
+it is installed in the isolated `cache/omip111-python` environment. Override its
+Python path with `OMIP111_PYTHON` when needed. Create an equivalent environment
+with `python3 -m venv --system-site-packages <path>` and
+`<path>/bin/python -m pip install flowkit==1.3.2`.
+F-beta requires Python with NumPy, selected through `RETICULATE_PYTHON` where
+needed. Missing method dependencies fail before any method runs.
+
+```{r}
+#| label: setup
+#| include: false
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+isolated_library <- .analysis_project_dir("cache", "omip111-R-library", root_dir, create = FALSE)
+if (dir.exists(isolated_library)) .libPaths(c(isolated_library, .libPaths()))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
+source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
+source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
+source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
+source(file.path(scripts_r_dir, "omip111.R"))
+source(file.path(scripts_r_dir, "sim-debug-loc.R"))
+source(file.path(scripts_r_dir, "acs_cytof-debug.R"))
+source(file.path(scripts_r_dir, "omip111-debug.R"))
+run_simulations <- .as_flag(.get_qmd_param_env("run_simulations", "RUN_SIMULATIONS", FALSE))
+run_preprocessing <- .as_flag(.get_qmd_param_env("run_preprocessing", "RUN_PREPROCESSING", run_simulations))
+run_methods <- .as_flag(.get_qmd_param_env("run_methods", "RUN_METHODS", run_simulations))
+run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
+run_diagnostics <- .as_flag(.get_qmd_param_env("run_diagnostics", "RUN_DIAGNOSTICS", TRUE))
+fig_key <- .analysis_mode_key("14-real-compare-omip111", sized = FALSE)
+path_raw <- .analysis_project_dir("raw-data-large", "OMIP-111", root_dir, create = FALSE)
+path_prepared <- .analysis_project_dir("cache", c("omip111", "prepared"), root_dir, create = FALSE)
+path_results <- .analysis_project_dir("cache", c("omip111", "current"), root_dir, create = FALSE)
+path_fbeta <- file.path(root_dir, "scripts", "python", "fbeta.py")
+path_python <- Sys.getenv("OMIP111_PYTHON", unset = file.path(
+  .analysis_project_dir("cache", "omip111-python", root_dir, create = FALSE), "bin", "python"))
+path_importer <- file.path(root_dir, "scripts", "python", "omip111_masks.py")
+if (run_preprocessing && !file.exists(path_python)) stop("FlowKit Python environment is missing.")
+if (run_methods) .acsCytofEnsureCurrentCheckout(root_dir)
+```
+
+```{r}
+#| label: scientific-settings
+scientific_settings <- list(
+  semantics = "omip111-v4", seed = 20261009L,
+  preprocessing = list(reference = "raw cytokine lower cutoff on common non-naive parent",
+    cofactor = 150, parentRelativeTolerance = 0.02,
+    frequencyTolerancePp = 0.1),
+  control = list(bwMtd = "nrd0", bwScope = "cytokine", bwNcellMax = 1e4,
+    bwNcellMin = 1e4, bwFallback = "auto", bwMin = "none", bwMax = "none",
+    biasUnsFactor = 1, gateCombn = "min", clusterGates = TRUE,
+    calcCytPosGates = TRUE, minCell = 100, locThresholdMethod = "cap"),
+  comparators = list(
+    fbeta = .acsCytofComparatorSettings("fbeta_default")$params,
+    tailgate = .acsCytofComparatorSettings("tailgate_default")$params))
+```
+
+Before fitting any method, raw unmixed cytokine intensities are transformed
+with `asinh(x / 150)`, retaining negative values and casting to the same float32
+precision used by the package. Cofactor 150 is a conventional starting point
+for flow cytometry ([workflow reference](https://pmc.ncbi.nlm.nih.gov/articles/PMC5473464/));
+it is fixed here, not tuned against the projected reference. The authors' display
+transformations are used only for reconstructing their gates. Both examined
+importers differ from the stored FlowJo counts, so exact event reproduction is
+not claimed. Diagnostic guardrails require every non-naïve parent count to
+agree within 2%. Per-tube discrepancies above 0.1 percentage points flag the
+reconstructed **two-dimensional** author gates in the contextual audit. The
+primary one-dimensional reference is calculated directly from raw expression
+and is not subject to that display-coordinate reconstruction discrepancy.
+These are import checks, not statements of biological accuracy. Actual differences
+are reported below. The CSV retains the original FlowJo two-dimensional net
+frequencies as context, clearly separate from the projected cytokine-cut reference.
+
+StimGate uses shared per-cytokine bandwidths, bandwidth-based unstimulated bias,
+threshold sharing and cytokine-positive refinement, with the same control
+settings as the ACS real-data analysis. We score its final `loc_minClust`
+**combination counts**, marginalised to each cytokine; this preserves the
+conditional refinement actually applied by the package.
+
+F-beta uses β = 0.8, θ = 2, smoothing width 10 and automatic bin count.
+The existing Richards implementation uses common histogram edges spanning
+both tubes, rather than the original unstimulated-only range. Tailgate uses
+the stimulated distribution, automatic bandwidth and automatic derivative
+tolerance, without an added bias. We retain zero and negative fluorescence
+values, with no ACS-specific CyTOF zero-spike adjustments. Every comparator
+threshold is applied to both matched tubes using strict `x > threshold`.
+Genuine no-cutpoint outcomes retain an explicitly labelled empty-gate fallback;
+runtime errors retain missing estimates and counts.
+
+The main estimand is **unclipped** stimulated minus unstimulated frequency.
+Negative estimates are retained. The primary reference uses the cytokine lower boundary from each tube's author
+rectangle, applied alone to all cells in the common non-naïve parent. The author
+rectangles also require a CD44 interval; applying their complete 2-D counts as a
+reference for unrestricted cytokine positivity would change the estimand. We
+therefore project only the cytokine lower cutoff, omit the CD44 restriction and
+the finite upper display extent, and retain counts beyond that upper extent in
+the audit CSV. This projected reference is **derived from**, rather than
+identical to, the published manual frequencies. It is an imperfect one-dimensional
+reference, not biological truth. Primary reference subtraction uses each tube's
+own projected cutoff; automated subtraction uses the stimulated sample's
+final gating rule in both tubes. Errors are expressed in percentage points.
+Each mouse is the independent biological unit; markers and cell populations
+from one mouse are repeated outcomes, not extra independent replicates.
+
+## Preparation and method execution
+
+```{r}
+#| label: run-analysis
+#| include: false
+if (run_preprocessing) .omip111Preprocess(path_raw, path_prepared, scientific_settings$preprocessing, path_python, path_importer)
+if (run_methods) {
+  if (!file.exists(file.path(path_prepared, "COMPLETE"))) stop("Validated OMIP-111 inputs are missing.")
+  prepared_inputs <- readRDS(file.path(path_prepared, "inputs.rds"))
+  .omip111Run(prepared_inputs, path_results, scientific_settings, path_fbeta)
+}
+if (!file.exists(file.path(path_results, "COMPLETE"))) stop("Complete OMIP-111 results are missing; run the analysis first.")
+comparison_object <- readRDS(file.path(path_results, "result.rds"))
+if (!identical(comparison_object$settings, scientific_settings)) stop("Saved scientific settings differ; rerun methods.")
+comparison_results <- comparison_object$results
+comparison_summary <- .omip111Summary(comparison_results)
+```
+
+## Validation and method coverage
+
+```{r}
+#| label: validation
+#| results: asis
+if (run_plots) {
+  prepared_inputs <- readRDS(file.path(path_prepared, "inputs.rds"))
+  if (!identical(prepared_inputs$manifest, comparison_object$preprocessing)) {
+    stop("Prepared inputs differ from the method comparison manifest.")
+  }
+  cat("FlowKit import audited **", nrow(prepared_inputs$validation),
+    "** population counts against the saved FlowJo counts. Maximum absolute count difference across the full tree: **",
+    max(abs(prepared_inputs$validation$difference)), "**.\n\n", sep = "")
+  ref_audit <- prepared_inputs$references
+  cat("Maximum non-naïve parent-count difference: **",
+    round(100 * max(abs(ref_audit$importedParent / ref_audit$flowjoParent - 1)), 3),
+    "%**. Maximum per-tube manual cytokine-frequency difference: **",
+    round(max(abs(ref_audit$frequencyDifferencePp)), 4), " percentage points**.\n\n", sep = "")
+  .analysis_report_table(ref_audit, c(fig_key, "reference-audit.csv"),
+    "Full 2-D author-gate reproduction and projected 1-D reference counts.", root_dir)
+  .analysis_report_table(prepared_inputs$validation, c(fig_key, "gate-validation.csv"), "Gate-count validation.", root_dir)
+  .analysis_report_table(prepared_inputs$populations, c(fig_key, "parent-populations.csv"), "Parent-population cell counts.", root_dir)
+  coverage <- comparison_results |>
+    dplyr::group_by(.data$method) |>
+    dplyr::summarise(intended = dplyr::n(), finite = sum(is.finite(.data$propBs)),
+      reference_eligible = sum(.data$referenceAccepted),
+      errors = sum(!is.na(.data$error)), fallbacks = sum(.data$thresholdFallbackUsed, na.rm = TRUE),
+      .groups = "drop")
+  print(knitr::kable(coverage))
+  .analysis_report_table(comparison_results, c(fig_key, "comparison.csv"), "Every individual comparison, including failure and threshold provenance.", root_dir)
+  .analysis_report_table(comparison_summary, c(fig_key, "summary.csv"), "Per-strain, population and marker errors with finite-mouse coverage.", root_dir)
+}
+```
+
+## Frequency agreement and signed errors
+
+Each point represents one matched mouse and cytokine. The identity line marks
+agreement with the projected cytokine-cut reference. The signed-error plots retain exact zeros
+and negative net frequencies. No confidence intervals are inferred from the
+80 marker/population outcomes.
+
+```{r}
+#| label: agreement-figures
+#| results: asis
+#| fig-width: 10
+#| fig-height: 7
+if (run_plots) {
+  figure_dir <- .analysis_fig_dir(c(fig_key, "agreement"), root_dir)
+  method_colours <- c(StimGate = "#0072B2", `F-beta` = "#D55E00", Tailgate = "#009E73")
+  for (population in c("CD4", "CD8")) {
+    cat("\n\n### Non-naïve ", population, "\n\n", sep = "")
+    plot_data <- comparison_results[comparison_results$population == population & comparison_results$referenceAccepted, ]
+    plot_data$method <- factor(plot_data$method, levels = names(method_colours))
+    p <- ggplot2::ggplot(plot_data, ggplot2::aes(100 * manualBs, 100 * propBs,
+      colour = method, shape = method)) +
+      ggplot2::geom_abline(slope = 1, intercept = 0, colour = "grey60") +
+      ggplot2::geom_point(size = 1.7, alpha = 0.8, na.rm = TRUE) +
+      ggplot2::facet_wrap(ggplot2::vars(strain, marker), scales = "free", ncol = 5) +
+      ggplot2::scale_colour_manual(values = method_colours) +
+      ggplot2::scale_y_continuous(labels = .analysis_label_number) +
+      ggplot2::scale_x_continuous(labels = .analysis_label_number) +
+      ggplot2::labs(x = "Projected cytokine-cut net frequency (%)", y = "Automated net frequency (%)") +
+      .analysis_theme()
+    print(p)
+    ggplot2::ggsave(file.path(figure_dir, paste0(population, "-frequency-agreement.png")), p,
+      width = 10, height = 7, units = "in", dpi = 150)
+    p_error <- ggplot2::ggplot(plot_data, ggplot2::aes(method, errorPp, colour = method)) +
+      ggplot2::geom_hline(yintercept = 0, colour = "grey60") +
+      ggplot2::geom_point(ggplot2::aes(group = mouse), position = ggplot2::position_dodge(width = 0.4),
+        size = 1.7, alpha = 0.8, na.rm = TRUE) +
+      ggplot2::facet_wrap(ggplot2::vars(strain, marker), scales = "free_y", ncol = 5) +
+      .analysis_y_floor(c(-10, 10)) +
+      ggplot2::scale_colour_manual(values = method_colours) +
+      ggplot2::scale_y_continuous(labels = .analysis_label_number) +
+      ggplot2::labs(x = NULL, y = "Automated − projected reference (percentage points)") +
+      .analysis_theme() + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
+    print(p_error)
+    ggplot2::ggsave(file.path(figure_dir, paste0(population, "-signed-error.png")), p_error,
+      width = 10, height = 7, units = "in", dpi = 150)
+  }
+}
+```
+
+## Investigate individual gates
+
+These are the same diagnostic panels used for ACS in Analysis 13, for **every
+mouse, population and marker**. Expand a mouse below to inspect the control and
+stimulated densities, response probability and its derivative, expected responding
+cells per bin, and taut-string/filter boundaries. The lines overlay the initial
+gate, the final StimGate gate and conditional cytokine-positive gate, F-beta,
+Tailgate, and the actual author cytokine lower cutoffs transformed to `asinh(raw / 150)`.
+Overlapping stimulated/control author cutoffs can appear as one line.
+
+The purple author lines are the projected single-channel reference, rather than
+the full CD44/cytokine rectangles. The result block uses the saved Analysis 14
+frequencies: StimGate's combination-count result may differ from applying just
+its base gate to every cell. All samples are rerun together within each strain
+and population, with the original settings and seed, to preserve gate sharing.
+Both final base and conditional gates must exactly reproduce the saved comparison
+before any pages are published. Each PDF contains all five mice for its marker.
+
+`RUN_DIAGNOSTICS=true` regenerates these panels without requiring preprocessing
+or comparator refitting. Set `RUN_DIAGNOSTICS=false` to reuse validated pages.
+
+```{r}
+#| label: individual-gate-diagnostics
+#| results: asis
+#| echo: false
+#| out-width: 100%
+if (run_plots) {
+  diagnostic_dir <- .analysis_fig_dir(c(fig_key, "gate-diagnostics"), root_dir)
+  if (run_diagnostics) {
+    .acsCytofEnsureCurrentCheckout(root_dir)
+    .omip111DebugRun(prepared_inputs, comparison_results, scientific_settings,
+      diagnostic_dir, path_results)
+  }
+  if (!file.exists(file.path(diagnostic_dir, "COMPLETE"))) stop("Gate diagnostics are missing; use RUN_DIAGNOSTICS=true.")
+  diagnostic_object <- readRDS(file.path(diagnostic_dir, "diagnostics.rds"))
+  if (!identical(diagnostic_object$settings, scientific_settings) ||
+    !identical(diagnostic_object$context, prepared_inputs$manifest)) {
+    stop("Saved gate diagnostics are stale; use RUN_DIAGNOSTICS=true.")
+  }
+  diagnostic_index <- diagnostic_object$index
+  .analysis_report_table(diagnostic_index, c(fig_key, "gate-diagnostic-index.csv"),
+    "All 80 diagnostic pages, with PDF page numbers and saved-gate parity.", root_dir)
+  for (strain in c("C57", "BALB")) {
+    for (population in c("CD4", "CD8")) {
+      cat("\n\n### ", strain, " non-naïve ", population, "\n\n", sep = "")
+      subset <- diagnostic_index[diagnostic_index$strain == strain & diagnostic_index$population == population, ]
+      for (marker in unique(subset$marker)) {
+        cat("\n\n#### ", marker, "\n\n", sep = "")
+        pages <- subset[subset$marker == marker, ]
+        for (i in seq_len(nrow(pages))) {
+          cat("\n<details><summary>", pages$mouse[[i]], " — ", marker,
+            " (PDF page ", pages$page[[i]], ")</summary>\n\n", sep = "")
+          cat("![Gate diagnostics for ", pages$mouse[[i]], " ", population,
+            " ", marker, "](<", as.character(fs::path_rel(
+              file.path(diagnostic_dir, pages$png[[i]]),
+              start = file.path(root_dir, "analysis"))), ">)\n", sep = "")
+          cat("\n\n</details>\n\n")
+        }
+      }
+    }
+  }
+}
+```
+
+## Observed agreement
+
+All three methods completed 80 outcomes without runtime errors. One StimGate
+CD4 IL-17A outcome used a recorded shared-gate fallback. The full 2-D author
+reference remains contextual: its CD44 restriction can change the net frequency
+by almost 80 percentage points relative to the projected cytokine cutoff.
+No events in these parent populations exceed the authors' cytokine upper extents.
+
+
+```{r}
+#| label: observed-agreement
+#| results: asis
+if (run_plots) {
+  descriptive_errors <- comparison_results |>
+    dplyr::group_by(.data$method) |>
+    dplyr::summarise(eligible_outcomes = sum(is.finite(.data$errorPp)),
+      mean_absolute_error_pp = mean(.data$absoluteErrorPp, na.rm = TRUE),
+      median_absolute_error_pp = stats::median(.data$absoluteErrorPp, na.rm = TRUE),
+      .groups = "drop")
+  cat("Descriptive errors across retained marker/population outcomes, in percentage points. ",
+    "Outcomes from one mouse are repeated measurements; these averages do not provide independent-replicate confidence intervals.\n\n", sep = "")
+  print(knitr::kable(descriptive_errors, digits = 3))
+}
+```
+
+The full two-dimensional author gates require CD44-high expression as well as
+cytokine positivity. Their frequencies can be much lower than cytokine-cut
+positivity across the whole non-naïve compartment, especially for IL-2 and TNF.
+Those contextual differences must not be attributed to cytokine-threshold
+performance. The plots and error summaries above use the projected single-channel
+reference to compare like estimands.
+
+OMIP-111 is useful as an external agreement dataset and a stress test of
+background matching. A lower pooled error on this small panel should not be
+interpreted as general method superiority. The control and stimulated non-naïve
+populations have markedly different compositions, and the projected thresholds
+were originally drawn in a CD44-high context. Transformation sensitivity and
+expert review remain appropriate before claims about biological accuracy.
+
+## Interpretation limits
+
+The full CSV companions retain per-mouse, per-marker results and all missing
+outcomes. Agreement with manual gating supports external plausibility; it
+cannot establish biological sensitivity or false discovery rate. The controls
+have many fewer non-naïve cells than the stimulated tubes, so background
+estimation precision differs by condition. The two mouse strains, five mice
+per strain, one acquisition setting and mitogen stimulus provide a bounded
+external validation rather than a representative survey of use cases.
