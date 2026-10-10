@@ -1,3 +1,13 @@
+# stimgate 0.99.35
+
+## New features
+
+- `gateStim()` offers `stimControl(cytPosMethod = "coexpression")` to admit
+  cells with stimulation-specific cytokine co-expression using pairwise gates.
+  Statistics, expression selection and FCS exports use the same rule.
+  `getStimGatesCoexpression()` reads the saved pairwise thresholds and diagnostics.
+  The existing refinement remains the default.
+
 # stimgate 0.99.34
 
 ## Bug fixes

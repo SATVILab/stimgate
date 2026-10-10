@@ -30,7 +30,8 @@
 #' @param markerControl list or NULL Settings for single markers, named by marker
 #'   label or channel,
 #'   e.g. `list(IL2 = list(bw = 0.12, biasUns = 0))`. Accepts [stimControl()]
-#'   settings except `locEnforceShapeThreshold` and `calcCytPosGates`, plus
+#'   settings except `locEnforceShapeThreshold`, `calcCytPosGates`,
+#'   `cytPosMethod` and the `coex*` settings, plus
 #'   `bw`, `biasUns` and `popGate`. Default: NULL.
 #' @param parallel logical Use the active [future::plan()] for initial channel
 #'   gating. Default: FALSE.

@@ -24,7 +24,9 @@
     stop("posCache does not correspond to the supplied expression table.")
   }
 
-  hasGateCyt <- "gateCyt" %in% colnames(gateTbl)
+  low <- .coexRules(gateTbl)
+  hasGateCyt <- "gateCyt" %in% colnames(gateTbl) || !is.null(low)
+  if (!is.null(low)) posCache$coexpression <- TRUE
 
   for (chnlCurr in chnl) {
     gateTblChnlInd <- which(
@@ -49,8 +51,21 @@
       hasGateCyt &&
         is.null(posCache$cyt[[chnlCurr]])
     ) {
-      posCache$cyt[[chnlCurr]] <-
+      posCache$cyt[[chnlCurr]] <- if (is.null(low)) {
         ex[[chnlCurr]] > gateTbl$gateCyt[[gateTblChnlInd]]
+      } else {
+        gate <- gateTbl$gate[[gateTblChnlInd]]
+        pos <- if (is.finite(gate)) (ex[[chnlCurr]] > gate) %in% TRUE else rep(FALSE, nrow(ex))
+        pairs <- low[low$lowered & low$chnl == chnlCurr, , drop = FALSE]
+        if (is.finite(gate)) {
+          for (i in seq_len(nrow(pairs))) {
+            a <- pairs$chnlCond[[i]]
+            pos <- pos | ((ex[[a]] > pairs$condCut[[i]]) %in% TRUE &
+              (ex[[chnlCurr]] > pairs$cut[[i]]) %in% TRUE)
+          }
+        }
+        pos
+      }
     }
   }
 
@@ -176,6 +191,11 @@
     posCache = posCache
   )
 
+  if (gateTypeCytPos == "cyt" && isTRUE(posCache$coexpression)) {
+    count <- .getPosIndCacheCount(posCache, chnl, "cyt")
+    return(count$nTrue >= 2L)
+  }
+
   baseCount <- .getPosIndCacheCount(
     posCache = posCache,
     chnl = chnl,
@@ -239,6 +259,10 @@
 
   if (gateTypeCytPos == "base") {
     return(posCache$base[chnl])
+  }
+
+  if (isTRUE(posCache$coexpression)) {
+    return(posCache$cyt[chnl])
   }
 
   # The cyt+ rule for one cytokine is:
@@ -308,6 +332,13 @@
     chnl = chnl,
     posCache = posCache
   )
+
+  if (gateTypeCytPos == "cyt" && isTRUE(posCache$coexpression)) {
+    count <- .getPosIndCacheCount(posCache, chnl, "cyt")
+    return(lapply(chnl, function(m) {
+      .getPosIndCacheAnyExcept(posCache, count, m, "cyt")
+    }) |> stats::setNames(chnl))
+  }
 
   baseCount <- .getPosIndCacheCount(
     posCache = posCache,

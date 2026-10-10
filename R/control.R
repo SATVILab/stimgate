@@ -1,7 +1,17 @@
 #' @title Tune stimulation gating
 #' @description Set tuning options for [gateStim()]. Start with the defaults;
 #'   set only the options you need to change.
-#' @param calcCytPosGates logical Refine gates using cells positive for another
+#' @param cytPosMethod character Cytokine-positive rule, "refine" or
+#'   "coexpression"; used only when `calcCytPosGates = TRUE`. Default: "refine".
+#' @param coexNBin integer Number of bins used to lower and trim pairwise gates.
+#'   Default: 20L.
+#' @param coexResidualMin numeric Minimum Pearson residual beyond independence.
+#'   Default: 3.5.
+#' @param coexPurityFrac numeric Required fraction of double-positive purity,
+#'   greater than zero and at most one. Default: 0.75.
+#' @param coexZMin numeric Minimum net double-positive z score. Default: 2.
+#' @param calcCytPosGates logical Apply the `cytPosMethod` rule. With "refine",
+#'   refine gates using cells positive for another
 #'   cytokine. Lower a clustered gate to the leftmost internal antimode between
 #'   the stimulated marginal peak plus half its negative-population width
 #'   (at least one marginal density bandwidth) and
@@ -269,9 +279,28 @@ stimControl <- function(
   normExcessBwMtd = "hpi3",
   normExcessNcell = 10000L,
   normAdaptiveNcell = 2500L,
-  normMtd = "moments"
+  normMtd = "moments",
+  cytPosMethod = "refine",
+  coexNBin = 20L,
+  coexResidualMin = 3.5,
+  coexPurityFrac = 0.75,
+  coexZMin = 2
 ) {
   ctrl <- as.list(environment())
+
+  if (!is.character(cytPosMethod) || length(cytPosMethod) != 1L ||
+      is.na(cytPosMethod) || !cytPosMethod %in% c("refine", "coexpression")) {
+    stop("`cytPosMethod` must be 'refine' or 'coexpression'.")
+  }
+  for (nm in c("coexNBin", "coexResidualMin", "coexPurityFrac", "coexZMin")) {
+    value <- ctrl[[nm]]
+    if (!is.numeric(value) || length(value) != 1L || !is.finite(value) ||
+        value <= 0 || (nm == "coexNBin" && (value != floor(value) || value > .Machine$integer.max)) ||
+        (nm == "coexPurityFrac" && value > 1)) {
+      stop("`", nm, "` must be a finite positive number",
+        if (nm == "coexNBin") " of whole bins." else if (nm == "coexPurityFrac") " at most 1." else ".")
+    }
+  }
 
   if (
     !is.logical(calcCytPosGates) || length(calcCytPosGates) != 1L ||

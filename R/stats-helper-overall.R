@@ -132,7 +132,8 @@
     .getStatsBatchGnFilterOrNonCombn(
       exList = exList,
       indBatch = indBatch,
-      gateTblGn = gateTbl |> dplyr::filter(gateName == gn), # nolint
+      gateTblGn = .coexAttach(gateTbl |> dplyr::filter(gateName == gn),
+        pathProject, popGate), # nolint
       gn = gn,
       chnl = chnl,
       filterOtherCytPos = filterOtherCytPos,
@@ -179,6 +180,7 @@
       .debug("i: ", i)
       ind <- indBatch[[i + 1L]]
       gates <- gateTblGn |> dplyr::filter(.data$ind == .env$ind)
+      gates <- .coexAttach(gates, pathProject, popGate, ind)
       stim <- .getStatsCombnTube(
         .data, ind, indBatch[[1]], batch, popGate, pathProject,
         chnl, nCellChnl, gates, gateTypeCytPosCalc, combnMatList, bitIndex
@@ -256,6 +258,11 @@
       }
     } else {
       tibble::tibble(.rows = n)
+    }
+    low <- .coexRules(gateTbl)
+    if (gateTypeCytPos == "cyt" && !is.null(low)) {
+      cond <- unique(low$chnlCond[low$lowered & low$chnl == chnl[[k]]])
+      for (m in setdiff(cond, names(ex))) ex[[m]] <- .readChnl(m)[[m]]
     }
     if (chnl[[k]] == firstChnl) {
       exFirst <- NULL

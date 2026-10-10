@@ -158,8 +158,7 @@
 #' @param markerGate character or NULL Marker labels used to select positive
 #'   cells; cannot be combined with `chnlGate`. Default: NULL.
 #' @param gateTypeCytPos character Positivity rule: "base" uses the main gate;
-#'   "cyt" also admits cells above a refined gate when another marker clears
-#'   its main gate. Default: "cyt".
+#'   "cyt" uses the saved refinement or coexpression rule. Default: "cyt".
 #' @param mult logical Require positivity for at least two gating markers.
 #'   Applies only when `chnlGate` or `markerGate` is supplied. Default: FALSE.
 #' @param combnExc list or NULL Channel combinations to exclude: each vector
@@ -428,6 +427,25 @@ getStimExpr <- function(
   gateTblInd <- .gateGetGateTblAll(pop, chnlGate, pathProject) |>
     dplyr::filter(.data$ind == .env$ind) # nolint
 
+  gateTblInd <- .coexAttach(gateTblInd, pathProject, pop, ind)
+  low <- .coexRules(gateTblInd)
+  originalChnl <- names(ex)
+  if (gateTypeCytPos == "cyt" && !is.null(low)) {
+    cond <- unique(low$chnlCond[low$lowered & low$chnl %in% chnlGate])
+    missing <- setdiff(cond, names(ex))
+    if (length(missing)) {
+      extra <- .dataGetExInit(NULL, pop, missing, ind, pathProject)
+      # Filtering minima changes row alignment: match selection on the original
+      # cached columns before adding the conditioning expression.
+      full <- .dataGetExInit(NULL, pop, originalChnl, ind, pathProject)
+      keep <- rep(TRUE, nrow(full))
+      if (!is.null(attr(ex, "probGMin"))) {
+        for (m in originalChnl) keep <- keep & full[[m]] > min(full[[m]], na.rm = TRUE)
+      }
+      for (m in missing) ex[[m]] <- extra[[m]][keep]
+    }
+  }
+
   ex <- .dataGetExCytPosInc(
     ex,
     gateTblInd,
@@ -438,7 +456,7 @@ getStimExpr <- function(
 
   if (nrow(ex) == 0L) {
     message("No stimulation-positive cells.")
-    return(ex)
+    return(if (identical(names(ex), originalChnl)) ex else ex[, originalChnl, drop = FALSE])
   }
 
   ex <- .dataGetExCytPosExc(
@@ -453,10 +471,10 @@ getStimExpr <- function(
     message(
       "No stimulation-positive cells after excluding specified cytokine combinations."
     ) # nolint
-    return(ex)
+    return(if (identical(names(ex), originalChnl)) ex else ex[, originalChnl, drop = FALSE])
   }
 
-  ex
+  if (identical(names(ex), originalChnl)) ex else ex[, originalChnl, drop = FALSE]
 }
 
 #' @keywords internal

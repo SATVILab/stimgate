@@ -874,6 +874,14 @@ removed tuning arguments on `gateStim()` or the dead `gateQuant` / `maxPosProbX`
 settings.
 Analyses toggle threshold clustering with logical `cluster_gates` / `clusterGates`, not a tolerance.
 
+Cytokine-positive coexpression uses cached raw control expression (without
+`biasUns`) and final ordinary gates selected with the refinement's Clust/Adj
+precedence. Save ordered pairs in `gates/pop<pop>/coexpression.rds`; retain
+`gateName` internally when several gate variants are requested. Attach rules
+explicitly to sample gate tables before positivity classification, and use the
+paired stimulated sample's rules for control statistics. Conditioning tests
+use strict expression cutoffs, never recursively inferred positivity.
+
 Cytometry entry points (`gateStim()`, `plotStim()`, `writeStimFCS()` and
 `getStimExpr()`) normalise inputs with `.asStimGatingSet()`. Accepted inputs are
 GatingSets, flowSets/cytosets, individual frames, FCS paths/directories, numeric
