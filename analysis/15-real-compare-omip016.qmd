@@ -269,13 +269,13 @@ thresholds, are saved with the prepared data as
 ```{r}
 #| label: run-stimgate
 #| include: false
-prep <- .omip016ReadPrepared(path_prepared)
+omip016_prep <- .omip016ReadPrepared(path_prepared)
 path_stimgate <- file.path(path_methods, "stimgate")
 if (isTRUE(run_stimgate)) {
   set.seed(analysis_seed)
   dir.create(path_methods, recursive = TRUE, showWarnings = FALSE)
   .acsCytofReplaceDir(path_stimgate, function(path_tmp) {
-    .omip016RunStimGate(prep, path_tmp, stimgate_settings)
+    .omip016RunStimGate(omip016_prep, path_tmp, stimgate_settings)
   })
 }
 ```
@@ -286,10 +286,10 @@ if (isTRUE(run_stimgate)) {
 path_comparators <- file.path(path_methods, "comparators.rds")
 if (isTRUE(run_comparators)) {
   comparator_results <- lapply(c("tailgate", "fbeta"), function(method) {
-    .omip016RunComparator(prep, method, pathFbeta = path_fbeta)
+    .omip016RunComparator(omip016_prep, method, pathFbeta = path_fbeta)
   })
   names(comparator_results) <- c("tailgate", "fbeta")
-  comparator_results$preprocessing <- prep$pre[c("version", "inputContentHash", "settings")]
+  comparator_results$preprocessing <- omip016_prep$pre[c("version", "inputContentHash", "settings")]
   .write_rds_atomic(comparator_results, path_comparators)
 }
 ```
@@ -305,7 +305,7 @@ if (!file.exists(file.path(path_stimgate, "omip016-debug-records.rds"))) {
 }
 stimgate_manifest <- readRDS(file.path(path_stimgate, "omip016-manifest.rds"))
 comparator_results <- readRDS(path_comparators)
-current_pre <- prep$pre[c("version", "inputContentHash", "settings")]
+current_pre <- omip016_prep$pre[c("version", "inputContentHash", "settings")]
 if (!identical(stimgate_manifest$preprocessing, current_pre) ||
     !identical(comparator_results$preprocessing, current_pre)) {
   stop("OMIP-016 method results were made from other prepared data; re-run all methods.")
@@ -319,16 +319,16 @@ for (method in c("tailgate", "fbeta")) {
   }
 }
 gates <- rbind(
-  .omip016StimGateGates(prep, path_stimgate),
+  .omip016StimGateGates(omip016_prep, path_stimgate),
   comparator_results$tailgate$gates,
   comparator_results$fbeta$gates,
-  .omip016ManualGates(prep, manual_thresholds)
+  .omip016ManualGates(omip016_prep, manual_thresholds)
 )
-scored <- .omip016Score(prep, gates)
-.omip016CheckStimGateCounts(prep, path_stimgate, scored)
+scored <- .omip016Score(omip016_prep, gates)
+.omip016CheckStimGateCounts(omip016_prep, path_stimgate, scored)
 scored$method <- factor(scored$method, levels = c("manual", .omip016Methods()))
 scored$stim <- factor(scored$stim, levels = c("gag", "seb"))
-scored$cyt <- factor(scored$cyt, levels = unname(prep$pre$responseChannels))
+scored$cyt <- factor(scored$cyt, levels = unname(omip016_prep$pre$responseChannels))
 scored <- scored[order(scored$stim, scored$cyt, scored$method), ]
 ```
 
@@ -436,12 +436,12 @@ only through the rectangles' other bounds.
 #| label: fig-gates
 #| results: asis
 if (isTRUE(run_plots)) {
-  channels <- names(prep$pre$responseChannels)
-  ex_tbl <- do.call(rbind, lapply(seq_len(nrow(prep$pre$sampleMap)), function(ind) {
-    ex <- .omip016Expr(prep$gs, ind, channels)
+  channels <- names(omip016_prep$pre$responseChannels)
+  ex_tbl <- do.call(rbind, lapply(seq_len(nrow(omip016_prep$pre$sampleMap)), function(ind) {
+    ex <- .omip016Expr(omip016_prep$gs, ind, channels)
     do.call(rbind, lapply(channels, function(chnl) data.frame(
-      tube = prep$pre$sampleMap$stim[[ind]],
-      cyt = prep$pre$responseChannels[[chnl]],
+      tube = omip016_prep$pre$sampleMap$stim[[ind]],
+      cyt = omip016_prep$pre$responseChannels[[chnl]],
       x = ex[, chnl]
     )))
   }))
@@ -467,8 +467,8 @@ if (isTRUE(run_plots)) {
 
 ```{r}
 #| label: mip1b-debug
-mip1b_chnl <- names(prep$pre$responseChannels)[prep$pre$responseChannels == "MIP1b"]
-mip1b_ind <- prep$pre$sampleMap$ind[prep$pre$sampleMap$stim == "seb"]
+mip1b_chnl <- names(omip016_prep$pre$responseChannels)[omip016_prep$pre$responseChannels == "MIP1b"]
+mip1b_ind <- omip016_prep$pre$sampleMap$ind[omip016_prep$pre$sampleMap$stim == "seb"]
 mip1b_debug <- .omip016DebugGate(path_stimgate, mip1b_ind, mip1b_chnl, scored)
 mip1b_info <- mip1b_debug$summary
 mip1b_rows <- scored[scored$stim == "seb" & scored$cyt == "MIP1b", ]

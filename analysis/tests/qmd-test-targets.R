@@ -62,7 +62,14 @@
     "13-real-debug-acs-cytof.qmd" = c(
       "test-acs-cytof-debug.R", "test-sim-debug-loc.R", "test-acs-cytof-gate.R"
     ),
-    "15-real-compare-omip016.qmd" = "test-omip016.R"
+    "14-real-compare-omip111.qmd" = "test-omip111.R",
+    "14b-real-compare-omip111-shifted-peak.qmd" = c(
+      "test-omip111.R", "test-omip-shifted-peak.R"
+    ),
+    "15-real-compare-omip016.qmd" = "test-omip016.R",
+    "15b-real-compare-omip016-shifted-peak.qmd" = c(
+      "test-omip016.R", "test-omip-shifted-peak.R"
+    )
   )
   documents <- list.files(file.path(root_dir, "analysis"), pattern = "[.]qmd$")
   if (!setequal(documents, names(targets))) {

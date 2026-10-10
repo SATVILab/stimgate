@@ -91,8 +91,10 @@ test_that("QMD table exports are guarded and large inline table printers stay ab
               expect_true("table_parts" %in% names(as.list(expr)))
             }
           }
-          if (name == "knitr::kable") {
-            # The only retained result table is three methods by six outcome columns.
+          if (name == "knitr::kable" && !grepl("real-compare-omip", basename(file), fixed = TRUE)) {
+            # Simulation reports keep one inline result table: three methods by
+            # six outcome columns. The OMIP real-data reports (one donor or a
+            # few mice) print small inline tables of their single dataset.
             expect_identical(basename(file), "8-sim-compare-freq_bs-batch.qmd")
             expect_match(paste(deparse(expr), collapse = ""), ".simCompareMethodOutcomeCounts", fixed = TRUE)
           }

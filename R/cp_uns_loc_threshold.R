@@ -25,6 +25,7 @@
   densityBw <- attr(dataMod, "locDensityBw")
   method <- .getCpUnsLocThresholdMethod(chnlSettings)
   regionX <- NA_real_
+  shiftedPeakRef <- attr(dataMod, "locShiftedPeakRef")
 
   if (!is.data.frame(dataMod)) {
     .intSaveNm("noDataModDf", NULL, ind, stageChnl, pathProject)
@@ -143,6 +144,12 @@
 
   attr(cpObj, "locThresholdMethod") <- method
   attr(cpObj, "locRegionX") <- regionX
+  # Only when the shifted-peak rule was requested, so default outputs are
+  # unchanged.
+  if (!is.null(shiftedPeakRef)) {
+    cpObj$locShiftedPeakRef <- isTRUE(shiftedPeakRef$applied)
+    attr(cpObj, "locShiftedPeakInfo") <- shiftedPeakRef
+  }
   # Carried with the gate to limit how far shared gates may lower it.
   cpObj$propBsEst <- .getCpUnsLocProbBsEst(dataThreshold)
   locDetailCondition <- .getCpUnsLocConditionDetailRow(

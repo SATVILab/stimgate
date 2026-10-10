@@ -30,6 +30,8 @@ stimControl(
   locShareCap = 1.5,
   locShareCellCap = 0.5,
   locEnforceShapeThreshold = FALSE,
+  locShiftedPeakRef = FALSE,
+  locShiftedPeakBwMult = 2,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1/6,
   locAntimodeLowRel = 0.25,
@@ -193,6 +195,24 @@ Details. Default: 0.5.}
 above the lower of the first stimulated-density antimode right of the main
 negative peak and the adjusted stimulated-density tailgate. Restrict later
 marginal filtering to this region. Default: FALSE.}
+
+\item{locShiftedPeakRef}{logical Handle a stimulated tube whose main peak
+has moved right because most of its cells respond. The search for
+responding cells normally starts one third of a left-window width above
+the higher of the stimulated and unstimulated main peaks. When \code{TRUE} and
+the stimulated main peak lies more than \code{locShiftedPeakBwMult}
+bandwidths to the right of the unstimulated main peak, the search instead
+starts above the unstimulated peak, using only the unstimulated tube's
+left-window width. The bandwidth is the shared bandwidth estimated on
+\code{bwNcellMax} cells, without the widening for small tubes from
+\code{bwScaleNcell}; a fixed \code{bw} when supplied; the sample's own bandwidth
+with \code{bwScope = "sample"}; and, for adaptive bandwidths, the bandwidth
+curve at the unstimulated peak. Tubes where the rule applied are flagged
+in the \code{locShiftedPeakRef} column of \code{\link[=getStimGates]{getStimGates()}}. Default: FALSE.}
+
+\item{locShiftedPeakBwMult}{numeric Number of bandwidths by which the
+stimulated main peak must exceed the unstimulated main peak for
+\code{locShiftedPeakRef} to apply. Must be positive. Default: 2.}
 
 \item{locDipAlpha}{numeric Dip-test p-value cutoff for inspecting density
 antimodes before thresholding. Default: 0.2.}

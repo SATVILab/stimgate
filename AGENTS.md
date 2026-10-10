@@ -1064,6 +1064,21 @@ rows before drawing reference lines.
    as `getStimStats()` does. `Inf`/`Inf` must reproduce unlimited
    responder-only sharing. Record `locShareLimit` and `locShareProposed`.
 
+18. **Shifted stimulated peak (`locShiftedPeakRef`)**:
+   Off by default; when off, gates and gate tables must stay identical.
+   When on, and the stimulated main peak exceeds the unstimulated main peak
+   by more than `locShiftedPeakBwMult` (2) reference bandwidths,
+   `.getCpUnsLocProbTblFilter()` starts the response search at the
+   unstimulated peak plus a third of the unstimulated left window only.
+   The reference bandwidth is the unscaled shared bandwidth (no small-tube
+   widening), else the fixed `bw`, the per-sample bandwidth
+   (`bwScope = "sample"`) or the adaptive curve at the unstimulated peak
+   (`.getCpUnsLocShiftedPeakSettings()`). Provenance is the
+   `locShiftedPeakRef` column of `getStimGates()` and `locShiftedPeak*`
+   columns of the condition rows in `getStimGatesDetailed()`, present only
+   when the rule is requested. Analyses 14b/15b are the rule-on versions of
+   14/15 and keep their own cache and figure keys.
+
 ---
 
 ## 8. Testing Best Practices & Guidelines

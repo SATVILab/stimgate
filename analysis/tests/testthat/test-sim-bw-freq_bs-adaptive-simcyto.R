@@ -31,6 +31,9 @@ test_that("analysis/6-sim-bw-freq_bs-adaptive.qmd does not source functionsForBe
 })
 
 test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto for gamma and skew scenarios", {
+  # Fixed expected values need R's default generators; an earlier test
+  # can leave the parallel (L'Ecuyer) generator selected.
+  withr::local_seed(1L, .rng_kind = "Mersenne-Twister", .rng_normal_kind = "Inversion", .rng_sample_kind = "Rejection")
   withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)

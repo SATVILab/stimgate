@@ -16,7 +16,8 @@
   chnlSettings,
   applyPreliminaryFilter = TRUE,
   peakX = NULL,
-  windowWidth = NULL
+  windowWidth = NULL,
+  shiftedPeakRef = NULL
 )
 }
 \description{

@@ -1,3 +1,16 @@
+# stimgate 0.99.31
+
+## New features
+
+- `stimControl()` gains `locShiftedPeakRef` (default `FALSE`) and
+  `locShiftedPeakBwMult` (default 2) for stimulations where most cells
+  respond. When the stimulated tube's main peak lies more than
+  `locShiftedPeakBwMult` bandwidths to the right of the unstimulated main
+  peak, the search for responding cells starts above the unstimulated peak,
+  rather than above the stimulated peak (which is then made of responding
+  cells). `getStimGates()` reports where this happened in a
+  `locShiftedPeakRef` column. Results are unchanged unless it is switched on.
+
 # stimgate 0.99.30
 
 ## Bug fixes

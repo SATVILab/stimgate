@@ -360,6 +360,25 @@
     stop(paste0(prefix, "`locThresholdCap` must be a single number of at least 1."))
   }
 
+  shiftedPeakRef <- settings[["locShiftedPeakRef"]]
+  if (
+    !is.null(shiftedPeakRef) &&
+      (!is.logical(shiftedPeakRef) || length(shiftedPeakRef) != 1L ||
+        is.na(shiftedPeakRef))
+  ) {
+    stop(paste0(prefix, "`locShiftedPeakRef` must be TRUE or FALSE."))
+  }
+  shiftedPeakMult <- settings[["locShiftedPeakBwMult"]]
+  if (
+    !.verifyIsNullOrNa(shiftedPeakMult) &&
+      (!is.numeric(shiftedPeakMult) || length(shiftedPeakMult) != 1L ||
+        !is.finite(shiftedPeakMult) || shiftedPeakMult <= 0)
+  ) {
+    stop(paste0(
+      prefix, "`locShiftedPeakBwMult` must be a single positive number."
+    ))
+  }
+
   # Sharing limits; Inf switches a limit off.
   for (nm in c("locShareCap", "locShareCellCap")) {
     val <- settings[[nm]]

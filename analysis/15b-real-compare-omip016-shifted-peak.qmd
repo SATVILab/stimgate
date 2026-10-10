@@ -1,0 +1,269 @@
+---
+title: OMIP-016 comparison with the shifted-peak rule
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: true
+  run_stimgate: null
+  run_plots: true
+---
+
+## What this document is
+
+This is the **shifted-peak rule on** version of Analysis 15
+(`15-real-compare-omip016.qmd`). Analysis 15 stays the current-default version.
+Everything is the same as Analysis 15 (prepared data, StimGate settings, seed,
+comparators, manual reference and scoring) except one StimGate setting:
+`stimControl(locShiftedPeakRef = TRUE)`.
+
+StimGate normally starts looking for responding cells one third of a
+left-window width above the higher of the stimulated and unstimulated main
+peaks. With the rule on, if the stimulated main peak lies more than 2
+bandwidths to the right of the unstimulated main peak, the search starts
+above the unstimulated peak instead, using only the unstimulated tube's
+left-window width. The bandwidth is the shared per-marker bandwidth estimated
+on 10,000 cells, without the widening for smaller tubes.
+
+**Smoothing fix.** stimgate 0.99.30 fixed the smoothing of the response
+probability for channels whose names are not valid R names, such as `PE-A`.
+Before that, smoothing failed for every OMIP-016 tube. 15b includes the
+smoothing fix; compare it with Analysis 15 re-gated on the same fixed version.
+The comparison below therefore isolates the shifted-peak rule.
+
+StimGate results are written to their own cache (`omip016/shifted-peak`) and
+figure folders. Analysis 15's prepared data, StimGate result and comparator
+results are only read: Tailgate and F-beta do not depend on StimGate, so their
+saved results are reused. Read Analysis 15 for the data, the manual reference
+and the limits of the comparison; they all apply here.
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+fig_key <- .analysis_mode_key("15b-real-compare-omip016-shifted-peak", sized = FALSE)
+source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
+source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
+source(file.path(scripts_r_dir, "sim-misc.R"))
+source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
+source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
+source(file.path(scripts_r_dir, "sim-debug-loc.R"))
+source(file.path(scripts_r_dir, "acs_cytof-debug.R"))
+source(file.path(scripts_r_dir, "omip016-prepare.R"))
+source(file.path(scripts_r_dir, "omip016-methods.R"))
+source(file.path(scripts_r_dir, "omip-shifted-peak.R"))
+
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations", "RUN_SIMULATIONS", FALSE
+))
+run_stimgate <- .as_flag(.get_qmd_param_env(
+  "run_stimgate", "RUN_STIMGATE", run_simulations
+))
+run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
+
+.acsCytofEnsureCurrentCheckout(root_dir)
+
+# Setup starts in the QMD directory; keep configured paths absolute.
+path_small <- projr::projr_path_get(
+  "raw-data-small", "comparison_data", "omip016", format = "absolute"
+)
+path_prepared <- .analysis_project_dir("cache", c("omip016", "prepared"), root_dir, create = FALSE)
+path_methods_default <- .analysis_project_dir("cache", c("omip016", "methods"), root_dir, create = FALSE)
+path_methods <- .analysis_project_dir("cache", c("omip016", "shifted-peak", "methods"), root_dir, create = FALSE)
+```
+
+```{r}
+#| label: scientific-settings
+analysis_seed <- 20261009L
+default_settings <- .omip016StimGateSettings(
+  locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = TRUE
+)
+stimgate_settings <- .omip016StimGateSettings(
+  locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = TRUE,
+  locShiftedPeakRef = TRUE
+)
+```
+
+```{r}
+#| label: run-stimgate
+#| include: false
+prepared <- .omip016ReadPrepared(path_prepared)
+path_stimgate <- file.path(path_methods, "stimgate")
+if (isTRUE(run_stimgate)) {
+  set.seed(analysis_seed)
+  dir.create(path_methods, recursive = TRUE, showWarnings = FALSE)
+  .acsCytofReplaceDir(path_stimgate, function(path_tmp) {
+    .omip016RunStimGate(prepared, path_tmp, stimgate_settings)
+  })
+}
+```
+
+```{r}
+#| label: collate
+#| include: false
+path_stimgate_default <- file.path(path_methods_default, "stimgate")
+path_comparators <- file.path(path_methods_default, "comparators.rds")
+if (!dir.exists(path_stimgate)) {
+  stop("Shifted-peak StimGate result is missing; render with RUN_SIMULATIONS=true.")
+}
+if (!dir.exists(path_stimgate_default) || !file.exists(path_comparators)) {
+  stop("Analysis 15 results are missing; render Analysis 15 first.")
+}
+current_pre <- prepared$pre[c("version", "inputContentHash", "settings")]
+manifest <- readRDS(file.path(path_stimgate, "omip016-manifest.rds"))
+manifest_default <- readRDS(file.path(path_stimgate_default, "omip016-manifest.rds"))
+comparator_results <- readRDS(path_comparators)
+if (!identical(manifest$preprocessing, current_pre) ||
+    !identical(manifest_default$preprocessing, current_pre) ||
+    !identical(comparator_results$preprocessing, current_pre)) {
+  stop("OMIP-016 results were made from other prepared data.")
+}
+if (!identical(manifest$settings, stimgate_settings)) {
+  stop("Saved shifted-peak StimGate result used other settings; re-run with RUN_STIMGATE=true.")
+}
+if (!identical(manifest_default$settings, default_settings)) {
+  stop("Analysis 15's StimGate result used other settings.")
+}
+for (method in c("tailgate", "fbeta")) {
+  if (!identical(comparator_results[[method]]$settings, .omip016ComparatorSettings(method))) {
+    stop("Analysis 15's ", method, " result used other settings.")
+  }
+}
+manual_thresholds <- utils::read.csv(file.path(path_prepared, "reference", "manual_thresholds.csv"),
+                                     check.names = FALSE)
+comparators <- rbind(comparator_results$tailgate$gates, comparator_results$fbeta$gates,
+                     .omip016ManualGates(prepared, manual_thresholds))
+scored <- .omip016Score(prepared, rbind(.omip016StimGateGates(prepared, path_stimgate), comparators))
+.omip016CheckStimGateCounts(prepared, path_stimgate, scored)
+scored_default <- .omip016Score(prepared, rbind(.omip016StimGateGates(prepared, path_stimgate_default), comparators))
+fired <- .omipShiftedPeakFired(path_stimgate, labels = data.frame(project = "OMIP-016"))
+sg <- scored[scored$method == "stimgate", ]
+sg_default <- scored_default[scored_default$method == "stimgate", ]
+sg_default <- sg_default[match(paste(sg$ind, sg$chnl), paste(sg_default$ind, sg_default$chnl)), ]
+paired <- data.frame(
+  method = "stimgate", stim = sg$stim, marker = sg$cyt, unit = sg$stim,
+  threshold = sg$gate, thresholdDefault = sg_default$gate,
+  gateCyt = sg$gateCyt, gateCytDefault = sg_default$gateCyt,
+  freqBsManual = sg$freq_bs_man, freqBs = sg$freq_bs, freqBsDefault = sg_default$freq_bs,
+  errorPp = sg$freq_bs - sg$freq_bs_man,
+  errorPpDefault = sg_default$freq_bs - sg_default$freq_bs_man,
+  shiftedPeakRef = fired$shiftedPeakRef[match(paste(sg$ind, sg$chnl), paste(fired$ind, fired$chnl))]
+)
+if (anyNA(paired$shiftedPeakRef)) stop("Missing shifted-peak flags.")
+```
+
+## How often the rule applied
+
+The rule applied for **`r sum(paired$shiftedPeakRef)`** of
+**`r nrow(paired)`** stimulated tube/marker outcomes. The flag is StimGate's
+record for each tube's own local-FDR gate; threshold sharing and
+cytokine-positive refinement can still move the final gate.
+
+```{r}
+#| label: fired
+knitr::kable(paired[, c("stim", "marker", "shiftedPeakRef")], row.names = FALSE)
+```
+
+## StimGate with and without the rule
+
+Gates on the GatingSet scale (`asinh(x / 150)`) and background-subtracted
+frequencies (%, clipped at zero, as in Analysis 15). Errors are StimGate minus
+the manual frequency, in percentage points. "Default" is Analysis 15's saved
+StimGate result.
+
+```{r}
+#| label: error-table
+show <- paired[, c("stim", "marker", "shiftedPeakRef", "thresholdDefault", "threshold",
+                   "freqBsManual", "freqBsDefault", "freqBs", "errorPpDefault", "errorPp")]
+knitr::kable(show, digits = 3, row.names = FALSE,
+             col.names = c("Tube", "Marker", "Rule applied", "Gate (default)",
+                           "Gate (shifted peak)", "Manual (%)", "Default (%)",
+                           "Shifted peak (%)", "Error default (pp)", "Error shifted peak (pp)"))
+if (isTRUE(run_plots)) {
+  .analysis_report_table(paired, c(fig_key, "stimgate-default-vs-shifted-peak.csv"),
+                         "StimGate gates, frequencies and errors with and without the rule.")
+}
+```
+
+The rule changed StimGate's final gate for **`r sum(paired$threshold != paired$thresholdDefault)`**
+of `r nrow(paired)` outcomes.
+
+```{r}
+#| label: error-figure
+#| results: asis
+#| fig-width: 10
+#| fig-height: 5
+if (isTRUE(run_plots)) {
+  p <- .omipShiftedPeakErrorPlot(paired, facet = "stim")
+  .analysis_print_save_fig(p, file.path(.analysis_fig_dir(c(fig_key, "stimgate-error")),
+                                        "stimgate-error-default-vs-shifted-peak.png"))
+}
+```
+
+## All methods with the rule on
+
+Background-subtracted frequencies (%) with StimGate's shifted-peak gates; the
+other methods are unchanged from Analysis 15.
+
+```{r}
+#| label: frequencies
+freq_wide <- stats::reshape(
+  scored[scored$method != "manual", c("stim", "cyt", "method", "freq_bs")],
+  idvar = c("stim", "cyt"), timevar = "method", direction = "wide"
+)
+names(freq_wide) <- sub("^freq_bs\\.", "", names(freq_wide))
+freq_wide$manual <- scored$freq_bs_man[match(paste(freq_wide$stim, freq_wide$cyt),
+                                             paste(scored$stim, scored$cyt))]
+knitr::kable(freq_wide, digits = 3, row.names = FALSE)
+cls <- scored[scored$method != "manual", c("method", "stim", "cyt", "fdp", "sensitivity", "f1")]
+if (isTRUE(run_plots)) {
+  .analysis_report_table(cls, c(fig_key, "classification.csv"),
+                         "Per-cell agreement with the manual labels, rule on.")
+}
+```
+
+## Local-FDR gating where the rule applied
+
+The recorded initial local-FDR gating of each outcome where the rule applied,
+with StimGate's final gates and the manual threshold.
+
+```{r}
+#| label: fired-debug
+#| results: asis
+#| fig-width: 12
+#| fig-height: 10
+if (isTRUE(run_plots)) {
+  fired_rows <- which(paired$shiftedPeakRef)
+  if (length(fired_rows) == 0L) cat("The rule did not apply to any outcome.\n\n")
+  for (i in fired_rows) {
+    cat("\n\n### ", toupper(paired$stim[[i]]), " ", paired$marker[[i]], "\n\n", sep = "")
+    dbg <- .omip016DebugGate(path_stimgate, sg$ind[[i]], sg$chnl[[i]], scored)
+    .analysis_print_save_fig(
+      dbg$plot,
+      file.path(.analysis_fig_dir(c(fig_key, "stimgate_debug")),
+                paste0(paired$stim[[i]], "-", paired$marker[[i]], "-local_fdr.png")),
+      width = 30, height = 25
+    )
+  }
+}
+```
+
+## Limitations
+
+With one donor and two stimulated tubes, these are case-level comparisons;
+see Analysis 15's limitations.

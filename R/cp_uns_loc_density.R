@@ -105,7 +105,8 @@
     chnlSettings = chnlSettings,
     applyPreliminaryFilter = FALSE,
     peakX = ordinary$probTblList$peakX,
-    windowWidth = ordinary$probTblList$windowWidth
+    windowWidth = ordinary$probTblList$windowWidth,
+    shiftedPeakRef = ordinary$probTblList$shiftedPeakRef
   )
 
   .getCpUnsLocAttachShapeFitInfo(
@@ -136,7 +137,8 @@
   chnlSettings,
   applyPreliminaryFilter = TRUE,
   peakX = NULL,
-  windowWidth = NULL
+  windowWidth = NULL,
+  shiftedPeakRef = NULL
 ) {
   ind <- .getInd(exTblStimNoMin)
   chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
@@ -158,7 +160,13 @@
     stage = stage,
     cpMin = chnlSettings$cpMin + bias,
     exVecStimThreshold = .getCut(exTblStimThreshold),
-    exVecUnsThreshold = .getCut(exTblUnsThreshold)
+    exVecUnsThreshold = .getCut(exTblUnsThreshold),
+    shiftedPeak = .getCpUnsLocShiftedPeakSettings(
+      chnlSettings = chnlSettings,
+      exTblStimThreshold = exTblStimThreshold,
+      exTblUnsThreshold = exTblUnsThreshold,
+      densityBw = attr(densTblRaw, "locDensityBw")
+    )
   )
   if (!isTRUE(applyPreliminaryFilter)) {
     # whether or not we should actually do this preliminary filtering.
@@ -171,6 +179,11 @@
       probTblList$windowWidth <- suppressWarnings(
         as.numeric(windowWidth)[1L]
       )
+    }
+    # The shape-restricted refit reuses the ordinary fit's reference peak,
+    # so it also reports whether the ordinary fit used the shifted-peak rule.
+    if (!is.null(shiftedPeakRef)) {
+      probTblList$shiftedPeakRef <- shiftedPeakRef
     }
   }
   .intSave(ind, stageChnl, pathProject, probTblList)
@@ -195,6 +208,9 @@
     chnl = chnl,
     chnlSettings = chnlSettings
   )
+  if (!is.null(dataMod) && !is.null(probTblList$shiftedPeakRef)) {
+    attr(dataMod, "locShiftedPeakRef") <- probTblList$shiftedPeakRef
+  }
 
   list(dataMod = dataMod, probTblList = probTblList)
 }
@@ -1036,7 +1052,8 @@
   stage,
   cpMin,
   exVecStimThreshold,
-  exVecUnsThreshold
+  exVecUnsThreshold,
+  shiftedPeak = NULL
 ) {
   .debug("Normalising probabilities") # nolint
 
@@ -1057,7 +1074,8 @@
     exVecUns = exVecUnsThreshold,
     stage = stage,
     peakStimX = peakX[["stim"]],
-    peakUnsX = peakX[["uns"]]
+    peakUnsX = peakX[["uns"]],
+    shiftedPeak = shiftedPeak
   )
 
   list(
@@ -1076,7 +1094,8 @@
         unstim = suppressWarnings(as.numeric(.data$no))
       ),
     peakX = probTblPosList[["peakX"]],
-    windowWidth = probTblPosList[["windowWidth"]]
+    windowWidth = probTblPosList[["windowWidth"]],
+    shiftedPeakRef = probTblPosList[["shiftedPeakRef"]]
   )
 }
 
@@ -1167,7 +1186,8 @@
   exVecUns,
   stage,
   peakStimX,
-  peakUnsX
+  peakUnsX,
+  shiftedPeak = NULL
 ) {
   .debug("Filtering before smoothing") # nolint
   peakX <- max(peakStimX, peakUnsX)
@@ -1182,6 +1202,20 @@
   )))
   windowWidth <- max(windowWidthStim, windowWidthUns, na.rm = TRUE)
 
+  # Optional rule for a stimulated main peak that is itself the responders
+  # (most cells respond): start the search from the unstimulated peak.
+  shiftedPeakRef <- .getCpUnsLocShiftedPeakRule(
+    shiftedPeak = shiftedPeak,
+    peakStimX = peakStimX,
+    peakUnsX = peakUnsX,
+    windowWidthUns = windowWidthUns
+  )
+  if (isTRUE(shiftedPeakRef$applied)) {
+    .debug("Shifted stimulated peak: using the unstimulated peak") # nolint
+    peakX <- peakUnsX
+    windowWidth <- windowWidthUns
+  }
+
   probTbl <- probTbl |>
     dplyr::filter(xStim > peakX + windowWidth / 3) # nolint
 
@@ -1189,7 +1223,8 @@
     return(list(
       "probTbl" = probTbl,
       "windowWidth" = windowWidth,
-      "peakX" = peakX
+      "peakX" = peakX,
+      "shiftedPeakRef" = shiftedPeakRef
     ))
   }
 
@@ -1224,7 +1259,89 @@
   list(
     "probTbl" = probTbl,
     "windowWidth" = windowWidth,
-    "peakX" = peakX
+    "peakX" = peakX,
+    "shiftedPeakRef" = shiftedPeakRef
+  )
+}
+
+# Settings for the optional shifted-peak rule (`locShiftedPeakRef`), or NULL
+# when it is off. The reference bandwidth is the per-channel shared bandwidth
+# at the `bwNcellMax` reference size, before any widening for small tubes
+# (smaller of the stimulated and unstimulated tubes' values with
+# `bwScope = "cluster"`). Without a shared bandwidth it is the bandwidth of the
+# local-FDR densities: a fixed `bw`, the per-sample estimate with
+# `bwScope = "sample"`, or for adaptive bandwidths the blended bandwidth curve,
+# read at the unstimulated peak.
+#' @keywords internal
+.getCpUnsLocShiftedPeakSettings <- function(
+  chnlSettings,
+  exTblStimThreshold,
+  exTblUnsThreshold,
+  densityBw
+) {
+  if (!isTRUE(.getCpUnsLocSetting(chnlSettings, "locShiftedPeakRef", FALSE))) {
+    return(NULL)
+  }
+  mult <- suppressWarnings(as.numeric(
+    .getCpUnsLocSetting(chnlSettings, "locShiftedPeakBwMult", 2)
+  )[1L])
+  out <- list(mult = mult, bw = NA_real_, bwSource = NA_character_)
+  if (is.list(densityBw) && isTRUE(densityBw$adaptive)) {
+    out$bwSource <- "adaptive"
+    out$bwGrid <- list(x = densityBw$grid, y = densityBw$sharedGrid)
+  } else if (!is.null(chnlSettings[["bw"]])) {
+    out$bw <- suppressWarnings(as.numeric(chnlSettings[["bw"]])[1L])
+    out$bwSource <- "fixed"
+  } else if (!is.null(chnlSettings[["bwShared"]])) {
+    out$bw <- min(
+      .bwSharedGet(chnlSettings, .getInd(exTblStimThreshold)),
+      .bwSharedGet(chnlSettings, .getInd(exTblUnsThreshold))
+    )
+    out$bwSource <- "shared"
+  } else {
+    out$bw <- suppressWarnings(as.numeric(densityBw)[1L])
+    out$bwSource <- "sample"
+  }
+  out
+}
+
+# Apply the shifted-peak rule: it fires when the stimulated main peak lies
+# more than `mult` reference bandwidths to the right of the unstimulated
+# peak and the unstimulated left window is available. NULL when it is off.
+#' @keywords internal
+.getCpUnsLocShiftedPeakRule <- function(
+  shiftedPeak,
+  peakStimX,
+  peakUnsX,
+  windowWidthUns
+) {
+  if (is.null(shiftedPeak)) {
+    return(NULL)
+  }
+  bw <- shiftedPeak$bw
+  if (!is.null(shiftedPeak$bwGrid) && is.finite(peakUnsX)) {
+    grid <- shiftedPeak$bwGrid
+    ok <- is.finite(grid$x) & is.finite(grid$y)
+    bw <- if (sum(ok) >= 2L) {
+      stats::approx(grid$x[ok], grid$y[ok], xout = peakUnsX, rule = 2)$y
+    } else {
+      NA_real_
+    }
+  }
+  bw <- suppressWarnings(as.numeric(bw)[1L])
+  shift <- peakStimX - peakUnsX
+  applied <- is.finite(bw) && bw > 0 && is.finite(shift) &&
+    is.finite(windowWidthUns) && windowWidthUns > 0 &&
+    shift > shiftedPeak$mult * bw
+  list(
+    applied = isTRUE(applied),
+    peakStimX = peakStimX,
+    peakUnsX = peakUnsX,
+    shift = shift,
+    bw = bw,
+    bwSource = shiftedPeak$bwSource,
+    mult = shiftedPeak$mult,
+    windowWidthUns = windowWidthUns
   )
 }
 

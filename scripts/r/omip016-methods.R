@@ -31,10 +31,13 @@
   list(cacheVersion = 2L, method = method, family = method, params = params)
 }
 
+# `locShiftedPeakRef = TRUE` (Analysis 15b) adds the shifted-peak rule; the
+# element is omitted when FALSE so Analysis 15's saved settings still match.
 .omip016StimGateSettings <- function(locThresholdMethod = "cap",
                                      clusterGates = TRUE,
-                                     calcCytPosGates = TRUE) {
-  list(
+                                     calcCytPosGates = TRUE,
+                                     locShiftedPeakRef = FALSE) {
+  settings <- list(
     biasUns = NULL, biasUnsFactor = 1, bwMtd = "nrd0", bwScope = "cytokine",
     bwNcellMax = 1e4, bwFallback = "auto", bwMin = "none", bwMax = "none",
     gateCombn = "min", clusterGates = clusterGates,
@@ -42,6 +45,8 @@
     locThresholdMethod = locThresholdMethod,
     gateName = if (isTRUE(clusterGates)) "loc_minClust" else "loc"
   )
+  if (isTRUE(locShiftedPeakRef)) settings$locShiftedPeakRef <- TRUE
+  settings
 }
 
 .omip016ReadPrepared <- function(pathOut) {
@@ -90,6 +95,8 @@
 }
 
 .omip016GateStim <- function(prep, pathProject, settings) {
+  # Passed by name so the API checks can see the threshold-sharing switch.
+  clusterGates <- settings$clusterGates
   stimgate::gateStim(
     pathProject = pathProject,
     .data = prep$gs,
@@ -106,10 +113,11 @@
       bwMin = settings$bwMin,
       bwMax = settings$bwMax,
       gateCombn = settings$gateCombn,
-      clusterGates = settings$clusterGates,
+      clusterGates = clusterGates,
       calcCytPosGates = settings$calcCytPosGates,
       minCell = settings$minCell,
-      locThresholdMethod = settings$locThresholdMethod
+      locThresholdMethod = settings$locThresholdMethod,
+      locShiftedPeakRef = isTRUE(settings$locShiftedPeakRef)
     )
   )
 }
