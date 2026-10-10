@@ -76,6 +76,14 @@ test_that("frequency plots separate methods and preserve nonpositive estimates",
   without <- env$.simComparePlotEstVsTruth(dplyr::filter(data, .data$method != "tailgate"))
   expect_equal(sort(unique(without$data$method_position - without$data$response_position)), c(-0.25, 0.25))
   expect_error(env$.simComparePlotEstVsTruth(data, maxwidth = 0.3), "method spacing")
+  # With the default width, four methods (including default-settings Tailgate)
+  # still fit between neighbouring methods.
+  four <- dplyr::bind_rows(data, dplyr::mutate(
+    dplyr::filter(data, .data$method == "tailgate"), method = "tailgate_default"
+  ))
+  four_plot <- env$.simComparePlotEstVsTruth(four, lower_limit = 0.00001)
+  expect_equal(length(unique(round(four_plot$data$method_position - four_plot$data$response_position, 8))), 4L)
+  expect_true(all(is.finite(ggplot2::ggplot_build(four_plot)$data[[1]]$y)))
   for (p in list(plot, without)) {
     expect_null(p$labels$title)
     expect_null(p$labels$subtitle)

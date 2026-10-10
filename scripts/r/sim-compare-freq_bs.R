@@ -3626,8 +3626,10 @@
     .analysis_theme()
 }
 
-# Estimated against true background-subtracted frequency.
-.simComparePlotEstVsTruth <- function(data, maxwidth = 0.2, lower_limit = NULL) {
+# Estimated against true background-subtracted frequency. With `maxwidth`
+# NULL, each method's cloud is 0.2 wide, narrowed to fit when four or more
+# methods share a response level.
+.simComparePlotEstVsTruth <- function(data, maxwidth = NULL, lower_limit = NULL) {
   data$transformation <- .analysis_trans_factor(data$transformation)
   response_levels <- sort(unique(data$prob_response))
   # The default-settings set lists every method, in display order.
@@ -3635,6 +3637,7 @@
   methods <- methods[methods %in% data$method]
   offsets <- if (length(methods) == 1L) 0 else seq(-0.25, 0.25, length.out = length(methods))
   spacing <- if (length(methods) == 1L) 0.5 else min(diff(offsets))
+  if (is.null(maxwidth)) maxwidth <- min(0.2, 0.8 * spacing)
   if (length(maxwidth) != 1L || !is.finite(maxwidth) || maxwidth <= 0 || maxwidth >= spacing) {
     stop("maxwidth must be positive and smaller than the method spacing (", spacing, ").")
   }
