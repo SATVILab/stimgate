@@ -893,6 +893,10 @@ added. Character `batchList` sample names resolve to indices before persistence.
 Vectorised gate-line layers must preserve overlapping lines for coincident
 thresholds: give each line a distinct group, since ggplot2 deduplicates identical
 rows before drawing reference lines.
+Coexpression plot overlays read the optional pairwise gate table once per
+`plotStim()` call. Draw lowered b gates only beyond a's raised conditioning
+cut in bivariate views, and as dashed marginal lines in univariate views.
+Keep the ordinary-method plots unchanged when that table is unavailable.
 
 1. **Taut-string density**:
    The piecewise-constant taut-string density used for antimode detection is
