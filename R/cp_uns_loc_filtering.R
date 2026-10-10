@@ -13,13 +13,18 @@
 
 #' Apply all filtering steps after smoothing
 #' @keywords internal
+#' @param exTblStimOrig,exTblUnsOrig data.frame or NULL Original sample
+#'   expression, without unstimulated bias, for marginal span frequencies.
+#'   Default: NULL (skip trimming when original expression is unavailable).
 .getCpUnsLocFilterAfterSmoothingLegacy <- function(
   dataMod,
   exTblStimNoMin,
   exTblUnsBias,
   cpMin,
   stage,
-  chnlSettings
+  chnlSettings,
+  exTblStimOrig = NULL,
+  exTblUnsOrig = NULL
 ) {
   force(stage)
   info <- list(applied = FALSE, reason = "not_filtered")
@@ -202,7 +207,9 @@
     threshold = thresholdMarginal,
     dominance = dominanceMarginal,
     globalLowerBoundX = globalLowerBoundX,
-    shapeLowerBoundX = shapeLowerBoundX
+    shapeLowerBoundX = shapeLowerBoundX,
+    exTblStimOrig = exTblStimOrig,
+    exTblUnsOrig = exTblUnsOrig
   )
   dataMod <- marginal$dataMod
   info$marginal <- marginal$info
@@ -545,6 +552,9 @@
 
 #' Find the marginal reference threshold and scan bins to its left
 #' @keywords internal
+#' @param exTblStimOrig,exTblUnsOrig data.frame or NULL Original sample
+#'   expression, without unstimulated bias, for marginal span frequencies.
+#'   Default: NULL (skip trimming when original expression is unavailable).
 .getCpUnsLocFilterMarginal <- function(
   dataMod,
   chnlSettings,
@@ -553,7 +563,9 @@
   threshold = NULL,
   dominance = NULL,
   globalLowerBoundX = NA_real_,
-  shapeLowerBoundX = NA_real_
+  shapeLowerBoundX = NA_real_,
+  exTblStimOrig = NULL,
+  exTblUnsOrig = NULL
 ) {
   if (is.null(threshold)) {
     threshold <- .getCpUnsLocStageThreshold(
@@ -637,7 +649,9 @@
     chnlSettings = chnlSettings,
     probCol = probCol,
     startX = referenceX,
-    lowerBoundX = lowerBoundX
+    lowerBoundX = lowerBoundX,
+    exTblStimOrig = exTblStimOrig,
+    exTblUnsOrig = exTblUnsOrig
   )
   out$info$thresholdX <- referenceX
   out$info$purityStartX <- referenceX
@@ -1017,20 +1031,42 @@
   deriv
 }
 
-#' Apply the appendix marginal-bin acceptance rule
+#' Apply the marginal-bin scan and trim unsupported boundary extensions
+#'
+#' Empty bins are pending: they neither move the cut nor interrupt consecutive
+#' non-empty rejections. An accepted non-empty bin pulls in intervening empty
+#' bins and up to two rejected non-empty bins. Each acceptance records a span
+#' [new cut, previous cut). From the last span backwards, undo steps whose raw
+#' stimulated fraction minus raw unstimulated fraction is not positive, stopping
+#' at the first positive contribution. Denominators include all original cells.
+#' scanTbl records pending, accepted and finally retained bins; trimTbl records
+#' each step's counts, contribution and final retention, with nStepsTrimmed and
+#' trimReason explaining the trim outcome. finalStartX is the final cut.
 #' @keywords internal
+#' @param exTblStimOrig,exTblUnsOrig data.frame or NULL Original sample
+#'   expression, without unstimulated bias, for marginal span frequencies.
+#'   Default: NULL (skip trimming when original expression is unavailable).
 .getCpUnsLocFilterMarginalBins <- function(
   dataMod,
   chnlSettings,
   probCol,
   startX,
-  lowerBoundX = NA_real_
+  lowerBoundX = NA_real_,
+  exTblStimOrig = NULL,
+  exTblUnsOrig = NULL
 ) {
   info <- list(
     applied = FALSE,
     reason = "marginal_filter_not_run",
     startX = startX,
-    lowerBoundX = lowerBoundX
+    lowerBoundX = lowerBoundX,
+    trimTbl = tibble::tibble(
+      step = integer(), cutFrom = numeric(), cutTo = numeric(),
+      nStim = integer(), nUns = integer(), contribution = numeric(),
+      kept = logical()
+    ),
+    nStepsTrimmed = 0L,
+    trimReason = "marginal_scan_not_run"
   )
   if (!is.data.frame(dataMod) || nrow(dataMod) < 4L || !is.finite(startX)) {
     info$reason <- "insufficient_data_for_marginal_filter"
@@ -1094,6 +1130,7 @@
       info$gridSpacing <- grid$spacing
       info$refIndex <- refIndex
       info$scanTbl <- tibble::tibble()
+      info$trimReason <- "no_acceptance_steps"
       return(list(
         dataMod = .getCpUnsLocSubsetRows(dataMod, keep),
         info = info
@@ -1167,17 +1204,18 @@
 
   currentCut <- startX
   scan <- vector("list", length(leftBins))
-  stopReason <- "accepted_all_left_bins"
+  steps <- list()
+  stopReason <- "scanned_all_left_bins"
   consecutiveRejections <- 0L
-  lastAcceptedJ <- 0L
 
   for (j in seq_along(leftBins)) {
     i <- leftBins[[j]]
     nCell <- binNCell[[i]]
     expectedResp <- binExpectedResp[[i]]
     purity <- if (nCell == 0L) NA_real_ else expectedResp / nCell
-    accepted <- nCell == 0L ||
-      (is.finite(purity) && nCell <= maxCells && purity >= minPurity)
+    pending <- nCell == 0L
+    accepted <- !pending &&
+      is.finite(purity) && nCell <= maxCells && purity >= minPurity
 
     scan[[j]] <- tibble::tibble(
       left = breaks[[i]],
@@ -1189,26 +1227,81 @@
       refPurity = refPurity,
       maxCells = maxCells,
       minPurity = minPurity,
-      accepted = accepted
+      accepted = accepted,
+      pending = pending
     )
 
     if (accepted) {
-      # An accepted bin also retains either one or two immediately preceding
-      # rejected bins, because the cutoff moves to this accepted bin's left edge.
+      # Only an accepted non-empty bin retains the intervening pending bins
+      # and up to two rejected non-empty bins.
+      steps[[length(steps) + 1L]] <- tibble::tibble(
+        step = length(steps) + 1L,
+        cutFrom = currentCut,
+        cutTo = breaks[[i]],
+        nStim = NA_integer_,
+        nUns = NA_integer_,
+        contribution = NA_real_,
+        kept = TRUE
+      )
       consecutiveRejections <- 0L
-      lastAcceptedJ <- j
-      currentCut <- breaks[i]
-    } else {
+      currentCut <- breaks[[i]]
+    } else if (!pending) {
       consecutiveRejections <- consecutiveRejections + 1L
 
-      # Three consecutive rejected bins terminate the scan. None of those three
-      # bins is retained, because currentCut still marks the last accepted bin.
+      # Pending empty bins leave this count unchanged. Three rejected non-empty
+      # bins stop the scan without retaining the trailing bins.
       if (consecutiveRejections >= 3L) {
         stopReason <- "three_consecutive_rejections"
         break
       }
     }
   }
+
+  if (length(steps) > 0L) {
+    info$trimTbl <- dplyr::bind_rows(steps)
+  }
+  trimTbl <- info$trimTbl
+  xStim <- if (!is.null(exTblStimOrig)) .getCut(exTblStimOrig) else NULL
+  xUns <- if (!is.null(exTblUnsOrig)) .getCut(exTblUnsOrig) else NULL
+  for (k in seq_len(nrow(trimTbl))) {
+    if (!is.null(xStim)) {
+      trimTbl$nStim[[k]] <- sum(
+        xStim >= trimTbl$cutTo[[k]] & xStim < trimTbl$cutFrom[[k]],
+        na.rm = TRUE
+      )
+    }
+    if (!is.null(xUns)) {
+      trimTbl$nUns[[k]] <- sum(
+        xUns >= trimTbl$cutTo[[k]] & xUns < trimTbl$cutFrom[[k]],
+        na.rm = TRUE
+      )
+    }
+  }
+  if (is.null(exTblUnsOrig)) {
+    info$trimReason <- "unstimulated_expression_unavailable"
+  } else if (is.null(exTblStimOrig)) {
+    info$trimReason <- "stimulated_expression_unavailable"
+  } else if (nrow(exTblStimOrig) == 0L || nrow(exTblUnsOrig) == 0L) {
+    info$trimReason <- "empty_original_expression"
+  } else if (nrow(trimTbl) == 0L) {
+    info$trimReason <- "no_acceptance_steps"
+  } else {
+    trimTbl$contribution <- trimTbl$nStim / nrow(exTblStimOrig) -
+      trimTbl$nUns / nrow(exTblUnsOrig)
+    info$trimReason <- "trimmed_all_steps"
+    for (k in rev(seq_len(nrow(trimTbl)))) {
+      if (trimTbl$contribution[[k]] > 0) {
+        info$trimReason <- "positive_span_contribution"
+        break
+      }
+      trimTbl$kept[[k]] <- FALSE
+      currentCut <- trimTbl$cutFrom[[k]]
+      info$nStepsTrimmed <- info$nStepsTrimmed + 1L
+    }
+  }
+  info$trimTbl <- trimTbl
+  .debug("Marginal span trim reason", info$trimReason) # nolint
+  .debug("Marginal steps trimmed", info$nStepsTrimmed) # nolint
 
   keep <- is.finite(x) & x >= currentCut
   info$applied <- sum(!keep) > 0L
@@ -1233,7 +1326,7 @@
   info$minLeftBinPurity <- minPurity
   info$scanTbl <- dplyr::bind_rows(scan)
   if (nrow(info$scanTbl) > 0L) {
-    info$scanTbl$retained <- seq_len(nrow(info$scanTbl)) <= lastAcceptedJ
+    info$scanTbl$retained <- info$scanTbl$left >= currentCut
   }
 
   list(dataMod = .getCpUnsLocSubsetRows(dataMod, keep), info = info)
@@ -1302,17 +1395,22 @@
 
 #' Apply current post-smoothing filtering for the ordinary local-FDR route
 #' @keywords internal
+#' @param exTblStimOrig,exTblUnsOrig data.frame or NULL Original sample
+#'   expression, without unstimulated bias, for marginal span frequencies.
+#'   Default: NULL (skip trimming when original expression is unavailable).
 .getCpUnsLocFilterAfterSmoothing <- function(
   dataMod,
   exTblStimNoMin,
   exTblUnsBias,
   cpMin,
   stage,
-  chnlSettings
+  chnlSettings,
+  exTblStimOrig = NULL,
+  exTblUnsOrig = NULL
 ) {
   force(stage)
 
-  # Leave the separate shape-enforced arm exactly as it was.
+  # Reuse the shape-enforced arm with the same raw-expression trim rule.
   if (isTRUE(attr(dataMod, "locShapeThresholdRequested"))) {
     return(.getCpUnsLocFilterAfterSmoothingLegacy(
       dataMod = dataMod,
@@ -1320,7 +1418,9 @@
       exTblUnsBias = exTblUnsBias,
       cpMin = cpMin,
       stage = stage,
-      chnlSettings = chnlSettings
+      chnlSettings = chnlSettings,
+      exTblStimOrig = exTblStimOrig,
+      exTblUnsOrig = exTblUnsOrig
     ))
   }
 
@@ -1441,7 +1541,9 @@
     chnlSettings = chnlSettings,
     probCol = probCol,
     xClear = xClear,
-    lowerBoundX = preliminaryLowerBoundX
+    lowerBoundX = preliminaryLowerBoundX,
+    exTblStimOrig = exTblStimOrig,
+    exTblUnsOrig = exTblUnsOrig
   )
   xQual <- quality$thresholdX
   info$marginal <- quality$info
@@ -1705,19 +1807,26 @@
 
 #' Obtain the quality-based lower boundary starting at x_clear
 #' @keywords internal
+#' @param exTblStimOrig,exTblUnsOrig data.frame or NULL Original sample
+#'   expression, without unstimulated bias, for marginal span frequencies.
+#'   Default: NULL (skip trimming when original expression is unavailable).
 .getCpUnsLocQualityBoundaryCurrent <- function(
   dataMod,
   chnlSettings,
   probCol,
   xClear,
-  lowerBoundX = NA_real_
+  lowerBoundX = NA_real_,
+  exTblStimOrig = NULL,
+  exTblUnsOrig = NULL
 ) {
   out <- .getCpUnsLocFilterMarginalBins(
     dataMod = dataMod,
     chnlSettings = chnlSettings,
     probCol = probCol,
     startX = xClear,
-    lowerBoundX = lowerBoundX
+    lowerBoundX = lowerBoundX,
+    exTblStimOrig = exTblStimOrig,
+    exTblUnsOrig = exTblUnsOrig
   )
 
   xQual <- suppressWarnings(as.numeric(out$info$finalStartX)[1L])

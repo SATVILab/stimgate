@@ -1,3 +1,13 @@
+# stimgate 0.99.33
+
+## Bug fixes
+
+- Local-FDR region boundaries no longer extend across an empty gap below a
+  response unless responding cells are found beyond it, and are pulled back
+  where the added stretch does not raise the background-subtracted frequency.
+  This can raise some gates from `gateStim()` in sparse markers so that
+  control-tube tail cells are no longer counted above them.
+
 # stimgate 0.99.32
 
 ## Bug fixes

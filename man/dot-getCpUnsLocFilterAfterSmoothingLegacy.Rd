@@ -10,8 +10,15 @@
   exTblUnsBias,
   cpMin,
   stage,
-  chnlSettings
+  chnlSettings,
+  exTblStimOrig = NULL,
+  exTblUnsOrig = NULL
 )
+}
+\arguments{
+\item{exTblStimOrig, exTblUnsOrig}{data.frame or NULL Original sample
+expression, without unstimulated bias, for marginal span frequencies.
+Default: NULL (skip trimming when original expression is unavailable).}
 }
 \description{
 Apply all filtering steps after smoothing

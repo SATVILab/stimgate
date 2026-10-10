@@ -73,7 +73,9 @@ test_that("ordinary post-smoothing filter respects boundary hierarchy", {
     exTblUnsBias = data_mod,
     cpMin = NULL,
     stage = "init",
-    chnlSettings = list()
+    chnlSettings = list(),
+    exTblStimOrig = data_mod,
+    exTblUnsOrig = data_mod
   )
 
   expect_s3_class(res$dataMod, "data.frame")
@@ -95,6 +97,7 @@ test_that("ordinary post-smoothing filter respects boundary hierarchy", {
 
   # Distinguish from legacy global filter: no global filter applied
   expect_false(info_final$globalFilterApplied)
+  expect_false(grepl("unavailable", res$info$marginal$trimReason))
   expect_equal(
     res$info$reason,
     "filtered_at_lowest_supported_post_smoothing_boundary"
@@ -324,4 +327,145 @@ test_that("taut string extrema helper identifies modes and antimodes", {
   empty_extrema <- .getCpUnsLocTautStringExtremaCurrent(NULL)
   expect_equal(nrow(empty_extrema$modes), 0L)
   expect_equal(nrow(empty_extrema$antimodes), 0L)
+})
+
+# Unit-spaced bins make scan boundaries and half-open span counts explicit.
+.marginalExpression <- function(x) {
+  out <- data.frame(marker = x)
+  attr(out, "chnlCut") <- "marker"
+  out
+}
+
+.marginalModel <- function(leftX, leftProb) {
+  out <- .marginalExpression(c(leftX, seq(10.5, 48.5, by = 1)))
+  out$pred <- c(leftProb, rep(1, 39))
+  attr(out, "idxMod") <- seq_len(nrow(out))
+  attr(out, "binVec") <- c(0, 49)
+  out
+}
+
+test_that("an empty gap followed only by rejected cells leaves the cut at start", {
+  # C57_M2-like: responding stim cells are above start, negatives below a gap,
+  # and raw control tail cells lie in that gap. Empty bins provide no support.
+  dm <- .marginalModel(c(3.5, 4.5, 5.5), rep(0.003, 3))
+  out <- .getCpUnsLocFilterMarginalBins(
+    dm, list(), "pred", startX = 10,
+    exTblStimOrig = dm,
+    exTblUnsOrig = .marginalExpression(c(0, 6.2, 7.1))
+  )
+  expect_equal(out$info$finalStartX, 10)
+  expect_equal(out$dataMod$marker, seq(10.5, 48.5, by = 1))
+  expect_equal(out$info$stopReason, "three_consecutive_rejections")
+  expect_equal(sum(out$info$scanTbl$pending), 4)
+  expect_false(any(out$info$scanTbl$accepted))
+  expect_false(any(out$info$scanTbl$retained))
+  expect_equal(nrow(out$info$trimTbl), 0L)
+  expect_equal(out$info$trimReason, "no_acceptance_steps")
+})
+
+test_that("a non-empty acceptance retains a preceding empty gap only", {
+  dm <- .marginalModel(c(0.5, 1.5, 3.5, 5.5, 6.5), c(1, 0, 0, 0, 1))
+  out <- .getCpUnsLocFilterMarginalBins(
+    dm, list(), "pred", startX = 10,
+    exTblStimOrig = dm, exTblUnsOrig = .marginalExpression(c(0, 0))
+  )
+  expect_equal(out$info$finalStartX, 6)
+  expect_equal(out$dataMod$marker, c(6.5, seq(10.5, 48.5, by = 1)))
+  scan <- out$info$scanTbl
+  expect_equal(scan$left[scan$accepted], 6)
+  expect_true(all(scan$retained[scan$left >= 6]))
+  # Empty bins after the last acceptance remain pending and are not retained.
+  expect_false(any(scan$retained[scan$left < 6]))
+  expect_false(any(scan$accepted[scan$pending]))
+  # Pending bins between rejections do not reset their counter.
+  expect_equal(sum(!scan$pending & !scan$accepted), 3)
+  expect_equal(tail(scan$left, 1), 1)
+  expect_equal(out$info$stopReason, "three_consecutive_rejections")
+})
+
+test_that("marginal trim undoes the last span and keeps the next positive span", {
+  dm <- .marginalModel(c(1.5, 3.5, 5.5, 6.5, 8.5, 9.5), c(0, 0, 0, 1, 0, 1))
+  # Extra raw cells are absent from dataMod, but enter counts and denominators.
+  # Exact edges check [cutTo, cutFrom): 6 and 9 enter, 10 does not.
+  stim <- .marginalExpression(c(dm$marker, rep(0, 100), 6, 9, 10))
+  uns <- .marginalExpression(c(rep(0, 97), 6, 6.8, 8.9, 10))
+  out <- .getCpUnsLocQualityBoundaryCurrent(
+    dm, list(), "pred", xClear = 10,
+    exTblStimOrig = stim, exTblUnsOrig = uns
+  )
+  expect_equal(out$thresholdX, 9)
+  expect_equal(out$info$finalStartX, 9)
+  expect_equal(out$dataMod$marker, c(9.5, seq(10.5, 48.5, by = 1)))
+  trim <- out$info$trimTbl
+  expect_equal(trim$step, 1:2)
+  expect_equal(trim$cutFrom, c(10, 9))
+  expect_equal(trim$cutTo, c(9, 6))
+  expect_equal(trim$nStim, c(2, 3))
+  expect_equal(trim$nUns, c(0, 3))
+  expect_equal(trim$contribution, c(2, 3) / nrow(stim) - c(0, 3) / nrow(uns))
+  expect_identical(trim$kept, c(TRUE, FALSE))
+  expect_equal(out$info$nStepsTrimmed, 1L)
+  expect_equal(out$info$trimReason, "positive_span_contribution")
+  # Scan acceptance remains recorded even when trimming removes that bin.
+  expect_equal(out$info$scanTbl$left[out$info$scanTbl$accepted], c(9, 6))
+  expect_equal(out$info$scanTbl$left[out$info$scanTbl$retained], 9)
+})
+
+test_that("non-positive marginal spans can all be trimmed to the start", {
+  dm <- .marginalModel(c(1.5, 3.5, 5.5, 6.5, 8.5, 9.5), c(0, 0, 0, 1, 0, 1))
+  stim <- .marginalExpression(c(dm$marker, rep(0, 100)))
+  for (uns in list(.marginalExpression(c(6.5, 8.5, 9.5)), stim)) {
+    out <- .getCpUnsLocFilterMarginalBins(
+      dm, list(), "pred", startX = 10,
+      exTblStimOrig = stim, exTblUnsOrig = uns
+    )
+    expect_equal(out$info$finalStartX, 10)
+    expect_equal(out$dataMod$marker, seq(10.5, 48.5, by = 1))
+    expect_equal(out$info$nStepsTrimmed, 2L)
+    expect_equal(out$info$trimReason, "trimmed_all_steps")
+    expect_true(all(out$info$trimTbl$contribution <= 0))
+    expect_false(any(out$info$trimTbl$kept))
+    expect_false(any(out$info$scanTbl$retained))
+  }
+})
+
+test_that("unavailable unstimulated expression skips trim but preserves scan steps", {
+  dm <- .marginalModel(c(1.5, 3.5, 5.5, 6.5, 8.5, 9.5), c(0, 0, 0, 1, 0, 1))
+  out <- .getCpUnsLocFilterMarginalBins(
+    dm, list(), "pred", startX = 10,
+    exTblStimOrig = dm, exTblUnsOrig = NULL
+  )
+  expect_equal(out$info$finalStartX, 6)
+  expect_equal(out$info$nStepsTrimmed, 0L)
+  expect_equal(out$info$trimReason, "unstimulated_expression_unavailable")
+  expect_true(all(out$info$trimTbl$kept))
+  expect_equal(out$info$trimTbl$nStim, c(1, 2))
+  expect_true(all(is.na(out$info$trimTbl$nUns)))
+  expect_true(all(is.na(out$info$trimTbl$contribution)))
+  # The rejected bin at 8 and empty bin at 7 were pulled in by acceptance at 6.
+  expect_true(all(out$info$scanTbl$retained[out$info$scanTbl$left %in% 6:9]))
+})
+
+
+test_that("acceptance retains two rejected non-empty bins between steps", {
+  dm <- .marginalModel(c(1.5, 3.5, 5.5, 6.5, 7.5, 8.5, 9.5), c(0, 0, 0, 1, 0, 0, 1))
+  out <- .getCpUnsLocFilterMarginalBins(dm, list(), "pred", startX = 10)
+  expect_equal(out$info$finalStartX, 6)
+  expect_equal(out$dataMod$marker, c(6.5, 7.5, 8.5, 9.5, seq(10.5, 48.5, by = 1)))
+  scan <- out$info$scanTbl
+  expect_false(any(scan$accepted[scan$left %in% 7:8]))
+  expect_true(all(scan$retained[scan$left %in% 7:8]))
+})
+
+test_that("the shape-route marginal helper uses the same raw-span trim", {
+  dm <- .marginalModel(c(1.5, 3.5, 5.5, 6.5, 8.5, 9.5), c(0, 0, 0, 1, 0, 1))
+  out <- pkg_ns$.getCpUnsLocFilterMarginal(
+    dataMod = dm, chnlSettings = list(), probCol = "pred",
+    threshold = list(thresholdX = 10, info = list()),
+    dominance = list(startX = NA_real_, info = list()),
+    exTblStimOrig = dm, exTblUnsOrig = dm
+  )
+  expect_equal(out$info$finalStartX, 10)
+  expect_equal(out$info$nStepsTrimmed, 2L)
+  expect_equal(out$info$trimReason, "trimmed_all_steps")
 })

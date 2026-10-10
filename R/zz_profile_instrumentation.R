@@ -488,7 +488,9 @@
   threshold = NULL,
   dominance = NULL,
   globalLowerBoundX = NA_real_,
-  shapeLowerBoundX = NA_real_
+  shapeLowerBoundX = NA_real_,
+  exTblStimOrig = NULL,
+  exTblUnsOrig = NULL
 ) {
   if (!.profileEnabled() || !.profileInitialSampleActive()) {
     return(.profileOriginalGetCpUnsLocFilterMarginal(
@@ -499,7 +501,9 @@
       threshold = threshold,
       dominance = dominance,
       globalLowerBoundX = globalLowerBoundX,
-      shapeLowerBoundX = shapeLowerBoundX
+      shapeLowerBoundX = shapeLowerBoundX,
+      exTblStimOrig = exTblStimOrig,
+      exTblUnsOrig = exTblUnsOrig
     ))
   }
 
@@ -512,7 +516,9 @@
       threshold = threshold,
       dominance = dominance,
       globalLowerBoundX = globalLowerBoundX,
-      shapeLowerBoundX = shapeLowerBoundX
+      shapeLowerBoundX = shapeLowerBoundX,
+      exTblStimOrig = exTblStimOrig,
+      exTblUnsOrig = exTblUnsOrig
     ),
     level = "sample_detail",
     major = "initial_gating",

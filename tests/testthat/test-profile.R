@@ -113,6 +113,10 @@ test_that("profiling records explicit hierarchy and sample context", {
 
 test_that("profiling instrumentation preserves wrapped function arguments", {
   expect_identical(
+    formals(.getCpUnsLocFilterMarginal),
+    formals(.profileOriginalGetCpUnsLocFilterMarginal)
+  )
+  expect_identical(
     formals(.gateInit),
     formals(.profileOriginalGateInit)
   )

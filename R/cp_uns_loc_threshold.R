@@ -6,6 +6,11 @@
 # the sum of fitted response probabilities ("match"), or at the region boundary
 # unless its frequency exceeds that sum by more than a factor ("cap").
 
+#' Filter and select the sample's local-FDR threshold
+#'
+#' Marginal boundary extensions use exTblStimOrig and unbiased exTblUnsOrig,
+#' with complete original-tube denominators, before threshold selection.
+#' @keywords internal
 .getCpUnsLocGetCp <- function(
   dataMod,
   exTblStimOrig,
@@ -56,7 +61,9 @@
       exTblUnsBias = exTblUnsBias,
       cpMin = cpMin,
       stage = stage,
-      chnlSettings = chnlSettings
+      chnlSettings = chnlSettings,
+      exTblStimOrig = exTblStimOrig,
+      exTblUnsOrig = exTblUnsOrig
     )
     .intSaveNm("dataModTrimInfo", trimObj$info, ind, stageChnl, pathProject)
     .intSaveNm("dataModTrim", trimObj$dataMod, ind, stageChnl, pathProject)
