@@ -1,0 +1,332 @@
+---
+title: A co-expression score for ACS CyTOF cells
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: false
+  run_plots: true
+---
+
+## What this document is
+
+Analysis 16 showed that a cytokine's gate set on all cells can sit too high
+for cells that also make another cytokine (TNF among IFNγ+ CD4 cells), and that
+in NK cells the unstimulated tube co-expresses too. This document explores a
+co-expression score that judges several markers together.
+
+For a set of markers A, each cell gets
+
+  score = −log10 ∏ S_j(x_j), with S_j(x) = P(control cell ≥ x on marker j).
+
+Each S_j is a tail p-value against the cell's own control (unstimulated)
+tube: (control cells ≥ x + 1) / (control cells + 1) for stimulated cells, and
+control cells ≥ x / control cells for the control cells themselves. Exact zeros
+get S_j = 1. A high score means a cell is jointly unusual for every marker in
+A, even when it clears no single gate. The product would be the probability of
+such a cell at baseline only if the markers were independent there; they need
+not be (NK cells), so the score is not read as a probability. Instead the
+control tube's own scores are the reference: where the control tube's score
+distribution runs out is where co-expression becomes very unlikely at baseline.
+
+The populations, stimulations and markers are:
+
+- CD4 T cells, p1 and mtb;
+- NK cells, ebv and p1 (their strongest manual IFNγ and TNF responses);
+- each pair of IFNγ, TNF and IL-2.
+
+For each, per manually gated donor (12):
+
+1. the score histogram of both tubes (fraction of each tube's cells per bin,
+   log scale; cells scoring 0 are omitted from the plot but counted);
+2. the fraction of cells at or above each score in both tubes (log scale);
+3. the net (stimulated minus control) frequency at or above each score, with
+   the net frequency of cells above both ordinary gates (orange dashed line);
+4. hexagon plots with the score's contours at 2, 3 and 4 (products of 10⁻²,
+   10⁻³, 10⁻⁴; white) and StimGate's ordinary gates (orange).
+
+For IFNγ and TNF, a second view asks where the two markers co-occur more than
+their marginals explain. In each tube, on bins 0.2 wide, two Poisson GAMs of
+the bin counts are fitted: an independence model, log rate = s(IFNγ) +
+s(TNF) (the product of non-linear marginals), and an interaction model that
+adds ti(IFNγ, TNF). Their difference is the co-expression beyond
+independence. Only bins where cells are positive for at least one marker by
+its ordinary gate are considered, so the question is which single-positive
+cells also carry the other marker. Per donor this section shows:
+
+5. the Pearson residuals (O − E) / √E of each tube against independence
+   (E from that tube's own marginals; red = more cells than independence
+   predicts), as a raw view;
+6. log2(interaction / independence) in the single-positive region of both
+   tubes, with the ordinary gates;
+7. the difference between the tubes: stimulated minus control excess over
+   independence per bin (percentage points), the co-expression the
+   stimulation adds;
+8. a table with the net (stimulated minus control) excess over independence
+   in the single-positive region and the cells called co-expressing
+   (single-positive cells in bins where the stimulated tube has at least twice
+   the independence expectation and more excess than the control tube);
+9. the co-expression region grown from the rectangle (next section) and the
+   F-beta cytokine-positive gates, drawn on the hexagon plots, with tables of
+   the net double-positive frequencies.
+
+## Growing the co-expression region
+
+The rectangle of the two ordinary gates misses co-expressing responders that
+sit below one gate, such as the diagonal IFNγ/TNF band in CD4 cells. The
+region is grown from the rectangle, bin by bin, wherever the data show
+co-expression the stimulation adds, with no assumed direction:
+
+1. The two markers are binned in squares 0.2 wide. Bins above both ordinary
+   gates (the rectangle) start the region.
+2. Candidate bins lie above both markers' floors (each marker's main negative
+   peak in the control tube plus 1.5 robust SDs, the peak's left half-width at
+   half maximum / 1.177) and above at least one ordinary gate, so the region
+   never grows into the bulk of the negatives.
+3. A candidate bin is acceptable when
+   - (departure from independence) the stimulated tube holds clearly more
+     cells there than independence of the two markers predicts:
+     (observed − expected) / √expected ≥ 2, with expected from the stimulated
+     tube's own marginals; and
+   - (low background) the stimulated tube's share of cells there is at least
+     twice the control tube's ((control count + 0.5) / control tube size), and
+     the bin holds at most two control cells.
+4. An acceptable bin joins the region only if it can be reached from the
+   rectangle through neighbouring bins (including diagonal neighbours)
+   crossing at most two rejected bins. Empty bins and acceptable bins cost
+   nothing to cross, so a sparse band of responders stays connected, but an
+   island cut off by bins that fail the checks is not added.
+5. Cells in the rectangle and in the added bins are called IFNγ+TNF+, in both
+   tubes; the net frequency subtracts the control tube's.
+
+For comparison, the F-beta cytokine-positive gates lower one marker's gate for
+cells positive for the other. Taking TNF among IFNγ+ cells: every TNF
+threshold from TNF's ordinary gate down to its floor (steps of 0.05) is
+evaluated. At each, the co-expression the stimulation adds is estimated as the
+stimulated tube's IFNγ+ cells above it in excess of independence, minus the
+same excess in the control tube (scaled to the stimulated tube's size); TNF
+responders whose IFNγ is independent of their TNF add nothing. With that
+estimate as the true positives, precision is its share of the stimulated IFNγ+
+cells above the threshold and recall its share of the largest estimate. The
+threshold with the largest F1 is chosen (the highest on ties) and kept only if
+the estimate there is clear (z > 2); otherwise TNF's ordinary gate is kept.
+The same is done for IFNγ among TNF+ cells. A cell is then TNF+ if above TNF's
+ordinary gate, or IFNγ+ and above the lowered gate.
+
+On the hexagon plots the added bins are outlined in black and the F-beta
+gates are grey dashed lines, drawn only where they apply. CSV tables (paths printed under each heading) give the
+floors, bins added and cells called by region growing, the F-beta gates with
+their z, and both net IFNγ+TNF+ frequencies against the rectangle. A donor
+without a response can still gain an isolated bin of a few cells (two
+stimulated, one control for CD4 p1 030697_D0).
+
+A CSV gives each donor's KL divergence of the stimulated from the control
+score distribution (bits; bins 0.25 wide, add-half smoothing), a summary of
+how differently the two tubes score, not a gate.
+
+Everything is read from Analysis 9's most recent run; nothing is gated again.
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+fig_key <- .analysis_mode_key("17-explore-acs-cytof-coexpression", sized = FALSE)
+for (fn in c(
+  "acs_cytof-helper.R", "acs_cytof-gate.R", "acs_cytof-methods.R",
+  "acs_cytof-debug.R", "acs_cytof-explore-cytpos.R", "acs_cytof-explore-score.R"
+)) {
+  source(file.path(scripts_r_dir, fn))
+}
+run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
+```
+
+```{r}
+#| label: paths
+#| include: false
+# Analysis 9's caches are only read: never create or change them here.
+path_gs_base <- projr::projr_path_get(
+  "cache", "acs_cytof", "gs",
+  create = FALSE, format = "absolute"
+)
+path_scratch_base <- projr::projr_path_get(
+  "cache", "acs_cytof", "scratch",
+  create = FALSE, format = "absolute"
+)
+path_comparison <- projr::projr_path_get(
+  "cache", "acs_cytof", "manual-comparison", "manual-comparison.rds",
+  create = FALSE, format = "absolute"
+)
+if (!file.exists(path_comparison)) {
+  stop("Analysis 9's manual comparison is missing; render Analysis 9 first.")
+}
+manual_donors <- sort(unique(as.character(readRDS(path_comparison)$SampleID)))
+channel_map <- .acsCytofChannelMap()
+selection <- list(cd4 = c("p1", "mtb"), nk = c("ebv", "p1"))
+pairs <- list(c("IFNg", "TNF"), c("IFNg", "IL2"), c("TNF", "IL2"))
+```
+
+```{r}
+#| label: plots
+#| results: asis
+#| fig-width: 14
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  kl_all <- list()
+  mono_all <- list()
+  just_all <- list()
+  for (pop in names(selection)) {
+    paths <- .acsCytofPopulationPaths(pop, "unused", path_gs_base, path_scratch_base)
+    gs <- flowWorkspace::load_gs(paths$gs, backend_readonly = TRUE)
+    sample_map <- .acsCytofReadPreprocessing(paths$gs, gs)$sampleMap
+    gates <- stimgate::getStimGates(paths$stimgate)
+    fig_dir <- .analysis_fig_dir(c(fig_key, pop), root_dir)
+    cat("\n\n## ", pop, "\n\n", sep = "")
+    for (stim in selection[[pop]]) {
+      donors <- intersect(manual_donors, sample_map$SampleID[sample_map$stim == stim])
+      dat <- stats::setNames(lapply(donors, function(donor) {
+        .acsCytposTubeData(gs, sample_map, gates, donor, stim, channel_map)
+      }), donors)
+      donor_gates <- lapply(dat, `[[`, "gate")
+      for (pair in pairs) {
+        pair_key <- paste(pair, collapse = "-")
+        cat("\n\n### ", pop, ", ", stim, ": ", pair[[1]], " and ", pair[[2]], "\n\n", sep = "")
+        score_tbl <- do.call(rbind, lapply(donors, function(d) .acsScoreTbl(dat[[d]], pair, d)))
+        tail <- .acsScoreTail(score_tbl)
+        rect <- do.call(rbind, lapply(donors, function(d) .acsScoreRectNet(dat[[d]], pair, d)))
+        kl_all[[length(kl_all) + 1L]] <- cbind(
+          pop = pop, stim = stim, markers = pair_key, .acsScoreKl(score_tbl)
+        )
+
+        cat("\n\n#### Score histograms\n\n")
+        .analysis_print_save_fig(.acsScoreHistPlot(score_tbl),
+          file.path(fig_dir, paste0(stim, "-", pair_key, "-hist.png")), width = 30, height = 22)
+        cat("\n\n#### Cells at or above each score\n\n")
+        .analysis_print_save_fig(.acsScoreTailPlot(tail),
+          file.path(fig_dir, paste0(stim, "-", pair_key, "-tail.png")), width = 30, height = 22)
+        cat("\n\n#### Net frequency at or above each score\n\n")
+        .analysis_print_save_fig(.acsScoreNetPlot(tail, rect),
+          file.path(fig_dir, paste0(stim, "-", pair_key, "-net.png")), width = 30, height = 22)
+        cat("\n\n#### ", pair[[1]], " against ", pair[[2]], " with score contours\n\n", sep = "")
+        hex_tbl <- do.call(rbind, lapply(donors, function(d) {
+          .acsCytposHexTbl(dat[[d]], d, x = pair[[1]], y = pair[[2]])
+        }))
+        grid <- do.call(rbind, lapply(donors, function(d) {
+          .acsScoreGrid(dat[[d]], pair[[1]], pair[[2]], d)
+        }))
+        .analysis_print_save_fig(
+          .acsScoreHexPlot(hex_tbl, grid, donor_gates, pair[[1]], pair[[2]]),
+          file.path(fig_dir, paste0(stim, "-", pair_key, "-hex.png")), width = 36, height = 26
+        )
+        if (identical(pair_key, "IFNg-TNF")) {
+          cat("\n\n#### Departure from independence\n\n")
+          res <- do.call(rbind, lapply(donors, function(d) {
+            .acsCoexResiduals(.acsCoexBins(dat[[d]], pair[[1]], pair[[2]], d, width = 0.25))
+          }))
+          .analysis_print_save_fig(.acsCoexResidualPlot(res, donor_gates, pair[[1]], pair[[2]]),
+            file.path(fig_dir, paste0(stim, "-", pair_key, "-residuals.png")), width = 36, height = 26)
+          indep <- lapply(donors, function(d) .acsCoexIndependence(dat[[d]], pair[[1]], pair[[2]], d))
+          cat("\n\n#### Co-expression beyond independence\n\n")
+          .analysis_print_save_fig(
+            .acsCoexIndependencePlot(do.call(rbind, indep), donor_gates, pair[[1]], pair[[2]]),
+            file.path(fig_dir, paste0(stim, "-", pair_key, "-interaction.png")), width = 36, height = 26
+          )
+          cat("\n\n#### Stimulated minus control departure from independence\n\n")
+          diff_tbl <- do.call(rbind, lapply(indep, .acsCoexDifference))
+          .analysis_print_save_fig(
+            .acsCoexDifferencePlot(diff_tbl, donor_gates, pair[[1]], pair[[2]]),
+            file.path(fig_dir, paste0(stim, "-", pair_key, "-interaction-difference.png")), width = 30, height = 22
+          )
+          mono_tbl <- do.call(rbind, lapply(seq_along(donors), function(i) {
+            .acsCoexIndependenceSummary(indep[[i]], dat[[donors[[i]]]], pair[[1]], pair[[2]])
+          }))
+          is_num <- vapply(mono_tbl, is.numeric, logical(1))
+          mono_tbl[is_num] <- lapply(mono_tbl[is_num], round, 3)
+          mono_all[[length(mono_all) + 1L]] <- cbind(pop = pop, stim = stim, mono_tbl)
+          cat("\n\n#### Co-expression beyond independence against the rectangle\n\n")
+          .analysis_report_table(mono_tbl,
+            c(fig_key, paste0(pop, "-", stim, "-coexpression-beyond-independence.csv")),
+            "Net excess over independence and cells called, against the rectangle.", root_dir)
+
+          grow <- lapply(donors, function(d) .acsCoexGrow(dat[[d]], pair[[1]], pair[[2]], d))
+          fbeta_tbl <- do.call(rbind, lapply(donors, function(d) {
+            .acsCoexFbetaSummary(dat[[d]], pair[[1]], pair[[2]], d)
+          }))
+          cat("\n\n#### Grown co-expression region and F-beta gates\n\n")
+          .analysis_print_save_fig(
+            .acsCoexGrowHexPlot(hex_tbl, grow, donor_gates, fbeta_tbl, pair[[1]], pair[[2]]),
+            file.path(fig_dir, paste0(stim, "-", pair_key, "-grown-region-hex.png")), width = 36, height = 26
+          )
+          grow_tbl <- do.call(rbind, lapply(grow, `[[`, "summary"))
+          just_tbl <- data.frame(
+            grow_tbl[c("donor", "floorX", "floorY", "binsAdded")],
+            grownStim = grow_tbl$stimCalled, grownControl = grow_tbl$controlCalled,
+            grownNetPct = grow_tbl$netCalledPct,
+            fbetaGateX = fbeta_tbl$gateCytX, fbetaZX = fbeta_tbl$zX,
+            fbetaGateY = fbeta_tbl$gateCytY, fbetaZY = fbeta_tbl$zY,
+            fbetaStim = fbeta_tbl$stimCalled, fbetaControl = fbeta_tbl$controlCalled,
+            fbetaNetPct = fbeta_tbl$netCalledPct,
+            gateX = fbeta_tbl$gateX, gateY = fbeta_tbl$gateY,
+            rectangleNetPct = grow_tbl$netRectanglePct
+          )
+          just_show <- just_tbl
+          is_num <- vapply(just_show, is.numeric, logical(1))
+          just_show[is_num] <- lapply(just_show[is_num], round, 3)
+          just_all[[length(just_all) + 1L]] <- cbind(pop = pop, stim = stim, just_tbl)
+          .analysis_report_table(just_show,
+            c(fig_key, paste0(pop, "-", stim, "-grown-region-and-fbeta.csv")),
+            "Grown co-expression region and F-beta gates per donor.", root_dir)
+        }
+      }
+    }
+  }
+  .analysis_report_table(do.call(rbind, mono_all),
+    c(fig_key, "coexpression-beyond-independence.csv"),
+    "IFNg-TNF co-expression beyond independence against the rectangle of ordinary gates.",
+    root_dir, quiet = TRUE)
+  just_all <- do.call(rbind, just_all)
+  .analysis_report_table(just_all, c(fig_key, "grown-region-and-fbeta.csv"),
+    "Grown IFNg-TNF co-expression region and F-beta gates per donor.", root_dir, quiet = TRUE)
+  cat("\n\n## Grown region and F-beta gates: summary\n\n")
+  cat("Per population and stimulation (12 donors): median bins added by region growing,",
+    "donors whose F-beta TNF gate (for IFNγ+ cells) and IFNγ gate (for TNF+ cells) were",
+    "lowered, and the median net IFNγ+TNF+ frequency (%) and control cells called by each",
+    "rule, against the rectangle of ordinary gates.\n\n")
+  just_summary <- do.call(rbind, lapply(split(just_all, list(just_all$pop, just_all$stim), drop = TRUE), function(d) {
+    data.frame(pop = d$pop[[1]], stim = d$stim[[1]],
+      medianBinsAdded = stats::median(d$binsAdded),
+      fbetaTnfLowered = sum(d$fbetaGateY < d$gateY - 1e-9),
+      fbetaIfngLowered = sum(d$fbetaGateX < d$gateX - 1e-9),
+      medianNetGrown = round(stats::median(d$grownNetPct), 3),
+      medianNetFbeta = round(stats::median(d$fbetaNetPct), 3),
+      medianNetRectangle = round(stats::median(d$rectangleNetPct), 3),
+      medianControlGrown = stats::median(d$grownControl),
+      medianControlFbeta = stats::median(d$fbetaControl))
+  }))
+  print(knitr::kable(just_summary, row.names = FALSE))
+  kl_tbl <- do.call(rbind, kl_all)
+  kl_tbl$klBits <- round(kl_tbl$klBits, 3)
+  cat("\n\n## KL divergence of stimulated from control scores\n\n")
+  .analysis_report_table(kl_tbl, c(fig_key, "kl-divergence.csv"),
+    "KL divergence (bits) of each donor's stimulated from control score distribution.",
+    root_dir)
+
+}
+```
+
+```{r}
+```
