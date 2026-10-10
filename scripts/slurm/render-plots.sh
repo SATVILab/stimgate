@@ -27,6 +27,10 @@ export RUN_PREPROCESSING=false
 export RUN_STIMGATE=false
 export RUN_COMPARATORS=false
 export RUN_METHODS=false
+# Match the simulation launchers: single-threaded BLAS keeps reruns (e.g. the
+# OMIP-111 diagnostic pages) bit-identical to the saved results.
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 # Empty for manual renders; submitted reports must use this submission's run.
 export ANALYSIS_EXPECTED_RUN_ID="${ANALYSIS_RUN_ID:-}"
 

@@ -2,8 +2,10 @@
 
 OMIP-111 per-mouse diagnostic pages in Analysis 14 reuse `.simDebugLocPlots()`
 and the Analysis 13 recorder. Rerun each complete strain/population with the
-comparison seed and controls, and require exact parity of final base and
-conditional gates before publishing. Overlay the actual projected author raw
+comparison seed and controls. Before publishing, require final base and
+conditional gates to agree to 1e-10 and every final combination count to be
+identical: a different OpenBLAS thread count changes gates in the last bits,
+so launchers, including `render-plots.sh`, set `OPENBLAS_NUM_THREADS=1`. Overlay the actual projected author raw
 cutoffs on the common asinh scale; use saved combination-count frequencies for
 the final result block rather than recomputing StimGate from its base gate alone.
 
