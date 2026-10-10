@@ -1,3 +1,32 @@
+# stimgate 0.99.34
+
+## Bug fixes
+
+- The width of the negative population, which sets where `gateStim()` starts
+  looking for responding cells, is now measured from the main negative peak
+  to its half-height point or to the first clear dip, so skewed or multi-mode
+  negatives no longer push the search, and gates, far to the right.
+
+# stimgate 0.99.33
+
+## Bug fixes
+
+- Local-FDR region boundaries no longer extend across an empty gap below a
+  response unless responding cells are found beyond it, and are pulled back
+  where the added stretch does not raise the background-subtracted frequency.
+  This can raise some gates from `gateStim()` in sparse markers so that
+  control-tube tail cells are no longer counted above them.
+
+# stimgate 0.99.32
+
+## Bug fixes
+
+- The local-FDR response estimate no longer discards a long stretch of
+  responding cells where the smoothed probability is only slightly below
+  the monotone fit. The discount is now proportional to the disagreement
+  and limited to half a bandwidth. This can lower some gates chosen by
+  `gateStim()`, calling more cells positive where the threshold cap was binding.
+
 # stimgate 0.99.31
 
 ## New features

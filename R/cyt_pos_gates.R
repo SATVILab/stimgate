@@ -156,6 +156,10 @@
   )
 }
 
+#' Refine one channel using its marginal negative-width boundary
+#'
+#' Retain the marginal width diagnostics in both saved reference and
+#' taut-string refinement info.
 #' @keywords internal
 .getCpPosGatesChnl <- function(
   chnlCurr,
@@ -217,7 +221,8 @@
     cpOrig = cpOrig,
     peakX = shapeRef$peakX,
     windowWidth = shapeRef$windowWidth,
-    lower = shapeRef$lowerX
+    lower = shapeRef$lowerX,
+    windowWidthInfo = shapeRef$windowWidthInfo
   )
   .intSaveNm(
     paste0(chnlCurr, "_cpTaut"),

@@ -19,6 +19,6 @@ only the half-gap limit.}
 numeric Gate strictly below \code{cp} and above every lower value of \code{x}.
 }
 \description{
-Place a gate in the gap below a selected cell value
+Bandwidth resolution is shared with the leading-run response discount.
 }
 \keyword{internal}

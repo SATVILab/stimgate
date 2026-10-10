@@ -95,6 +95,38 @@
   invisible(NULL)
 }
 
+# The rerun must reproduce the saved gating. Gates may differ in the last bits
+# when OpenBLAS uses a different thread count, so they must agree to `tol`,
+# and every final combination count must be identical: the same cells are
+# then positive under the base and conditional gates.
+.omip111DebugCheckParity <- function(gates, saved, stats, savedStats, label, tol = 1e-10) {
+  final <- function(x) x[x$gateName == "loc_minClust", , drop = FALSE]
+  gates <- final(gates)
+  saved <- final(saved)
+  nSaved <- nrow(saved)
+  key <- function(x) paste(x$ind, x$marker)
+  saved <- saved[match(key(gates), key(saved)), , drop = FALSE]
+  close <- function(a, b) {
+    identical(is.na(a), is.na(b)) &&
+      all(abs(a - b)[!is.na(a)] <= tol * pmax(1, abs(b[!is.na(b)])))
+  }
+  if (nrow(gates) == 0L || nrow(gates) != nSaved || anyNA(saved$ind) ||
+    !close(gates$gate, saved$gate) || !close(gates$gateCyt, saved$gateCyt)) {
+    stop("Diagnostic rerun differs from saved Analysis 14 gates: ", label)
+  }
+  countKey <- c("ind", "cytCombn")
+  stats <- final(stats)[c(countKey, "countStim", "countUns")]
+  savedStats <- final(savedStats)[c(countKey, "countStim", "countUns")]
+  sortCounts <- function(x) x[do.call(order, unname(as.list(x[countKey]))), , drop = FALSE]
+  stats <- sortCounts(stats)
+  savedStats <- sortCounts(savedStats)
+  rownames(stats) <- rownames(savedStats) <- NULL
+  if (!isTRUE(all.equal(stats, savedStats, check.attributes = FALSE, tolerance = 0))) {
+    stop("Diagnostic rerun changes saved Analysis 14 combination counts: ", label)
+  }
+  invisible(TRUE)
+}
+
 .omip111DebugRun <- function(prepared, comparison, settings, pathDebug, pathResults) {
   if (!"package:ggplot2" %in% search()) {
     suppressPackageStartupMessages(attachNamespace("ggplot2"))
@@ -127,15 +159,12 @@
             NULL
           }
         ))
-        gates <- stimgate::getStimGates(project)
-        gates <- gates[gates$gateName == "loc_minClust", ]
-        saved <- stimgate::getStimGates(file.path(pathResults, strain, population, "stimgate"))
-        saved <- saved[saved$gateName == "loc_minClust", ]
-        key <- function(x) paste(x$ind, x$marker)
-        saved <- saved[match(key(gates), key(saved)), ]
-        if (anyNA(saved$ind) || !identical(gates$gate, saved$gate) || !identical(gates$gateCyt, saved$gateCyt)) {
-          stop("Diagnostic rerun differs from saved Analysis 14 gates: ", strain, " ", population)
-        }
+        pathSaved <- file.path(pathResults, strain, population, "stimgate")
+        .omip111DebugCheckParity(
+          stimgate::getStimGates(project), stimgate::getStimGates(pathSaved),
+          stimgate::getStimStats(project), stimgate::getStimStats(pathSaved),
+          paste(strain, population)
+        )
         for (marker in markers) {
           relPdf <- file.path(strain, population, paste0(marker, ".pdf"))
           grDevices::pdf(file.path(pathTmp, relPdf), width = 36 / 2.54, height = 48 / 2.54)

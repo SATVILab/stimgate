@@ -4,7 +4,8 @@ test_that("refinement preserves marginal validity and interval diagnostics", {
       ex = data.frame(A = 1:5), inc = rep(TRUE, 5), chnl = "A",
       cpOrig = gate,
       peakX = if (is.finite(lower)) 1 else NA_real_,
-      windowWidth = if (is.finite(lower)) 3 else NA_real_, lower = lower
+      # A width of two now gives a half-width offset of one above peak = 1.
+      windowWidth = if (is.finite(lower)) 2 else NA_real_, lower = lower
     )
   }
   invalid <- refine(NA_real_, 4)

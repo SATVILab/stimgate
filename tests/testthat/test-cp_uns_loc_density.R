@@ -141,6 +141,9 @@ test_that("ordinary fixed-bandwidth fit preserves the density metadata and smoot
   expect_true(all(c("all", "pos", "densityBw", "peakX", "windowWidth") %in% names(probTblList)))
   expect_true(is.finite(probTblList[["peakX"]]))
   expect_true(is.finite(probTblList[["windowWidth"]]) && probTblList[["windowWidth"]] > 0)
+  expect_equal(
+    attr(dataMod, "locWindowWidthInfo"), probTblList$windowWidthInfo
+  )
 })
 
 # A narrow negative peak with a small bandwidth: when the stimulated negatives
@@ -184,6 +187,10 @@ test_that("the unstimulated peak is found when it lies below every stimulated ce
     exVecUnsThreshold = exUns
   )
   expect_lt(min(probTbl$pos$xStim), 1.5)
+  # The unstimulated width must use its full peak-search density, too.
+  expect_identical(probTbl$windowWidthInfo$uns$source, "half_height")
+  expect_equal(probTbl$windowWidthInfo$uns$peakX, peakX[["uns"]])
+  expect_lt(probTbl$windowWidthInfo$uns$width, 0.06)
 })
 
 # When the unstimulated cells lie within the stimulated range, the joint range

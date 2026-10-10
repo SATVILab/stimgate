@@ -84,6 +84,7 @@
     "locDensityComparison",
     "locPeakX",
     "locWindowWidth",
+    "locWindowWidthInfo",
     "locShapeThresholdRequested",
     "locShapeThresholdApplied",
     "locShapeThresholdX",

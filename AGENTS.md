@@ -1070,6 +1070,10 @@ rows before drawing reference lines.
      top under its new version.
 
 16. **Local-FDR threshold method (`locThresholdMethod`)**:
+   Marginal scans leave empty bins pending until a non-empty acceptance and
+   trim acceptance spans [new cut, previous cut) from the left while their raw
+   stim fraction minus raw unstim fraction is non-positive (skip trimming when
+   unstim expression is unavailable).
    `stimControl(locThresholdMethod = "cap")` (default) uses the `"region"`
    gate unless the frequency above it exceeds `locThresholdCap` (1.3) times
    the probability-sum estimate, then moves up to the lowest candidate
@@ -1078,9 +1082,13 @@ rows before drawing reference lines.
    condition-level gate at the lower boundary of the region kept by
    post-smoothing filtering (`xSum`). For the shape-enforced route this is the
    largest applied pre-fit, global or marginal cut
-   (`.getCpUnsLocShapeRegionBoundary()`). `"match"` keeps the previous
-   probability-sum matching, including the gate below the selected cell, and
-   must reproduce previous gates exactly. Keep the reasons distinct
+   (`.getCpUnsLocShapeRegionBoundary()`). `"match"` matches the updated
+   probability-sum estimate and places the gate below the selected cell; it
+   need not reproduce previous gates exactly. For all methods, discount the
+   initial `pred > probSmooth` run linearly from weight zero at ratio 0.75 to
+   one at ratio 1, only within half a density bandwidth of the lowest estimate
+   value; remove only zero-weight candidates there, with full weights and no
+   leading-run removal when bandwidth is unavailable. Keep the reasons distinct
    (`local_fdr_region_boundary_selected` versus `local_fdr_threshold_selected`)
    and keep no-response/non-finite cases labelled as fallbacks. Under
    `"region"`, condition diagnostics count frequencies at the applied gate;
@@ -1105,7 +1113,12 @@ rows before drawing reference lines.
    When on, and the stimulated main peak exceeds the unstimulated main peak
    by more than `locShiftedPeakBwMult` (2) reference bandwidths,
    `.getCpUnsLocProbTblFilter()` starts the response search at the
-   unstimulated peak plus a third of the unstimulated left window only.
+   unstimulated peak plus half its negative-population width, with a minimum
+   offset of one actual local-FDR density bandwidth at that peak.
+   Negative-population width is the distance left from the main peak to the
+   closer of the first interpolated half-height crossing and the first dip
+   at most 75% of peak height and at least one density bandwidth away, falling
+   back to the tube's data minimum only when neither exists.
    The reference bandwidth is the unscaled shared bandwidth (no small-tube
    widening), else the fixed `bw`, the per-sample bandwidth
    (`bwScope = "sample"`) or the adaptive curve at the unstimulated peak
