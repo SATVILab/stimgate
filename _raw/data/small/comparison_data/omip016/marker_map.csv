@@ -1,0 +1,19 @@
+channel,marker,fluorochrome,role,response,manual_gate,bead_file,note
+FSC-A,FSC-A,,scatter,FALSE,,,
+FSC-H,FSC-H,,scatter,FALSE,,,
+FSC-W,FSC-W,,scatter,FALSE,,,
+SSC-A,SSC-A,,scatter,FALSE,,,
+SSC-H,SSC-H,,scatter,FALSE,,,
+SSC-W,SSC-W,,scatter,FALSE,,,
+FITC-A,CD154,FITC,activation,TRUE,CD154+,BEADS_CD154 FITC_H02.fcs,
+PE-A,MIP1b,PE,cytokine,TRUE,MIP1b,BEADS_MIP1b PE_H03.fcs,
+PerCP-Cy5-5-A,CD4,PerCP-Cy5.5,lineage,FALSE,,BEADS_CD4 PerCPCy55_H04.fcs,
+PE-Cy7-A,CD45RA,PE-Cy7,phenotype,FALSE,,BEADS_CD45RA PECy7_H05.fcs,
+Horizon V450-A,IFNg,V450,cytokine,TRUE,IFNg+,BEADS_IFNg V450_H06.fcs,
+AmCyan-A,CD8,V500,lineage,FALSE,,BEADS_CD8 V500_H07.fcs,
+Blue Vid-A,Viability,LIVE/DEAD Blue/Violet,viability,FALSE,,,No bead control; workspace control CTRL_BLUEVID_G02.fcs not deposited
+APC-A,IL2,APC,cytokine,TRUE,IL2+,BEADS_CD8 APC_H08.fcs,APC bead stained with CD8 APC; acquired 19-JAN-2011
+Alexa Fluor 700-A,TNFa,Alexa Fluor 700,cytokine,TRUE,TNFa,BEADS_TNFa A700_H09.fcs,
+APC-Cy7-A,CD3,APC-Cy7,lineage,FALSE,,BEADS_CD3 APCCy7_H10.fcs,
+PE-Texas Red-A,unused,,unused,FALSE,,,No stain; not in the workspace compensation matrix
+Time,Time,,time,FALSE,,,

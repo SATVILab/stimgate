@@ -1,0 +1,474 @@
+---
+title: Compare StimGate, Tailgate and F-beta on OMIP-016
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: true
+  run_preprocessing: null
+  run_stimgate: null
+  run_comparators: null
+  run_plots: false
+---
+
+Validate StimGate on the OMIP-016 intracellular cytokine staining data
+(FlowRepository FR-FCM-ZZ2T; one donor, unstimulated, Gag-peptide and SEB
+tubes acquired on an LSRII) and compare its gates with Tailgate, F-beta and
+the authors' manual gates in CD4 T cells.
+
+## Set-up
+
+`RUN_SIMULATIONS=true` prepares the data and runs all three methods;
+`RUN_SIMULATIONS=false RUN_PLOTS=true` reads the saved results. The
+individual `RUN_PREPROCESSING`, `RUN_STIMGATE` and `RUN_COMPARATORS`
+controls override those stages when supplied. Preparation needs the
+FlowRepository files under the `raw-data-large` projr path `OMIP-016`
+(only read), `python3` for the workspace decoder, and the curated maps
+under `raw-data-small/comparison_data/omip016`. Prepared data are written to
+the `cache` projr path `omip016/prepared` and method results to
+`omip016/methods`.
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+fig_key <- .analysis_mode_key("15-real-compare-omip016", sized = FALSE)
+source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
+source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
+source(file.path(scripts_r_dir, "sim-misc.R"))
+source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
+source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
+source(file.path(scripts_r_dir, "omip016-prepare.R"))
+source(file.path(scripts_r_dir, "omip016-methods.R"))
+
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations", "RUN_SIMULATIONS", FALSE
+))
+run_preprocessing <- .as_flag(.get_qmd_param_env(
+  "run_preprocessing", "RUN_PREPROCESSING", run_simulations
+))
+run_stimgate <- .as_flag(.get_qmd_param_env(
+  "run_stimgate", "RUN_STIMGATE", run_simulations
+))
+run_comparators <- .as_flag(.get_qmd_param_env(
+  "run_comparators", "RUN_COMPARATORS", run_simulations
+))
+run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
+
+.acsCytofEnsureCurrentCheckout(root_dir)
+
+# Setup starts in the QMD directory; keep configured paths absolute.
+path_raw <- projr::projr_path_get("raw-data-large", "OMIP-016", format = "absolute")
+path_small <- projr::projr_path_get(
+  "raw-data-small", "comparison_data", "omip016", format = "absolute"
+)
+path_prepared <- projr::projr_path_get("cache", "omip016", "prepared", format = "absolute")
+path_methods <- projr::projr_path_get("cache", "omip016", "methods", format = "absolute")
+path_fbeta <- file.path(root_dir, "scripts", "python", "fbeta.py")
+if (isTRUE(run_preprocessing) && !dir.exists(path_raw)) {
+  stop("OMIP-016 raw directory does not exist: ", path_raw)
+}
+if (isTRUE(run_comparators)) {
+  if (!requireNamespace("cytoUtils", quietly = TRUE) ||
+      !requireNamespace("reticulate", quietly = TRUE) || !file.exists(path_fbeta)) {
+    stop("OMIP-016 comparisons require cytoUtils, reticulate and scripts/python/fbeta.py.")
+  }
+  if (!reticulate::py_module_available("numpy")) {
+    stop("F-beta requires numpy in the Python environment selected by reticulate.")
+  }
+}
+```
+
+## Scientific settings
+
+StimGate uses Analysis 9's settings: `bwMtd = "nrd0"` with
+`bwNcellMax = 1e4`, shared per-marker bandwidths, `gateCombn = "min"`,
+`minCell = 100`, threshold clustering and cytokine-positive refinement on,
+`locThresholdMethod = "cap"` and `biasUns` equal to the shared bandwidth. The
+comparison scores the final `loc_minClust` gates. Tailgate (stimulated tube,
+automatic tolerance) and F-beta (`beta = 0.8`, `theta = 2`, `width = 10`)
+keep their published defaults: these are conventional flow data without the
+CyTOF zero spike that motivated Analysis 9's tuned versions, and tuning them
+against these manual gates would make the comparison circular.
+
+```{r}
+#| label: scientific-settings
+analysis_seed <- 20261009L
+stimgate_settings <- .omip016StimGateSettings(
+  locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = TRUE
+)
+```
+
+## Data preparation
+
+The FCS files are uncompensated (`$SPILL` is the identity). The authors'
+legacy binary FlowJo for Mac workspace holds the compensation matrix
+(`mtx 20110118 PYY1002 SG`) and the gating tree; neither CytoML nor FlowKit
+reads this format, so `scripts/python/omip016_flowjo_jo.py` decodes them and
+the gates are re-applied to the raw events. Everything is rebuilt in a
+temporary sibling and swapped in only on success.
+
+```{r}
+#| label: prepare
+#| include: false
+if (isTRUE(run_preprocessing)) {
+  .omip016Prepare(
+    pathRaw = path_raw, pathSmall = path_small,
+    pathOut = path_prepared, pathRoot = root_dir
+  )
+}
+prepared_paths <- .omip016Paths(path_prepared)
+if (!file.exists(prepared_paths$manifest)) {
+  stop("Prepared OMIP-016 data not found at ", path_prepared,
+       "; render with RUN_PREPROCESSING=true.")
+}
+prepared_manifest <- readRDS(prepared_paths$manifest)
+read_qc <- function(...) utils::read.csv(file.path(path_prepared, ...), check.names = FALSE)
+raw_validation <- read_qc("qc", "raw_validation.csv")
+population_counts <- read_qc("qc", "population_counts.csv")
+convention_sensitivity <- read_qc("qc", "convention_sensitivity.csv")
+gate_vs_threshold <- read_qc("qc", "manual_gate_vs_threshold.csv")
+bead_spill <- read_qc("qc", "compensation_beads_vs_workspace.csv")
+manual_thresholds <- read_qc("reference", "manual_thresholds.csv")
+manual_frequencies <- read_qc("reference", "manual_frequencies.csv")
+sample_map <- .omip016SampleMap(path_small)
+```
+
+### Files
+
+All `r nrow(raw_validation)` deposited files match the recorded sizes and MD5
+checksums (`r sum(raw_validation$md5_ok)` of `r nrow(raw_validation)`). Cell
+tubes and controls:
+
+```{r}
+#| label: sample-map
+knitr::kable(sample_map[, c("file", "role", "SampleID", "stim", "well_id", "acquired")])
+```
+
+The workspace also lists `CTRL_CELL SEULES_G01.fcs`, `CTRL_BLUEVID_G02.fcs`
+and `13170 17012011_NS_A01.fcs`, which were not deposited; none is needed
+to re-apply the gates. The viability dye (Blue Vid) has no deposited single-stain
+control, and the IL-2 (APC) channel's control is a CD8-APC bead acquired the
+next day.
+
+### Compensation
+
+The bead single stains give an independent estimate of the spillover matrix.
+Agreement with the decoded workspace matrix (off-diagonal entries):
+
+```{r}
+#| label: compensation
+off <- bead_spill[bead_spill$fluorochrome_channel != bead_spill$detector, ]
+off$difference <- off$spill_beads - off$spill_workspace
+knitr::kable(data.frame(
+  entries = nrow(off),
+  max_abs_difference = max(abs(off$difference)),
+  largest_entry = with(off[which.max(abs(off$difference)), ],
+                       paste0(fluorochrome_channel, " -> ", detector, ": ",
+                              signif(spill_beads, 3), " (beads) vs ",
+                              signif(spill_workspace, 3), " (workspace)"))
+), digits = 3)
+```
+
+### Re-applied manual gating
+
+Counts for the populations leading to CD4 T cells and their response gates:
+
+```{r}
+#| label: population-counts
+main_paths <- c(
+  "Single cells", "Single cells/Lymphocytes", "Single cells/Lymphocytes/Lives",
+  "Single cells/Lymphocytes/Lives/CD3+", "Single cells/Lymphocytes/Lives/CD3+/CD4+"
+)
+pc <- population_counts[population_counts$path %in% main_paths, ]
+pc$stim <- sample_map$stim[match(pc$file, sample_map$file)]
+pc$population <- basename(pc$path)
+knitr::kable(
+  stats::reshape(pc[, c("population", "stim", "pct_parent")], idvar = "population",
+                 timevar = "stim", direction = "wide"),
+  digits = 1, row.names = FALSE, col.names = c("Population", paste0("% parent, ", unique(pc$stim)))
+)
+```
+
+The workspace stores no statistics, so the reconstruction cannot be checked
+against FlowJo's own counts. Two FlowJo conventions were assumed. Extending
+gate vertices drawn below zero on compensated axes to the bottom of the data
+(CytoML's default) changes the CD4 population by at most
+`r max(abs(with(convention_sensitivity[convention_sensitivity$variant == "no_edge_extension" & convention_sensitivity$path == main_paths[5], ], count_variant - count_primary)))`
+cells per tube. The CD4 gate is the Boolean `G1 | G4 | G5 | G2 | G3 & ! G0`
+(the union of five CD4 gates drawn against each response marker, excluding
+`CD8+ (to excl)`); it is evaluated from left to right, so the CD8 exclusion
+applies to the whole union, as its name intends. Binding `&` before `|`
+instead would exclude CD8 cells only from the TNF-alpha CD4 gate:
+
+```{r}
+#| label: boolean-sensitivity
+bs <- convention_sensitivity[convention_sensitivity$variant == "boolean_precedence" &
+  startsWith(convention_sensitivity$path, main_paths[5]), ]
+bs$stim <- sample_map$stim[match(bs$file, sample_map$file)]
+bs$population <- sub(paste0(main_paths[5], "/?"), "CD4+ ", bs$path)
+bs <- bs[!grepl("CD45RA", bs$path), ]
+knitr::kable(bs[, c("stim", "population", "count_primary", "count_variant")],
+             row.names = FALSE,
+             col.names = c("Tube", "Population", "Left to right", "& before |"))
+```
+
+The difference is small for the unstimulated and Gag tubes but large for SEB,
+where cytokine-bright CD8 T cells fall inside the CD4 gates' sloped lower
+boundaries. The left-to-right reading is used throughout.
+
+### Manual reference
+
+Each manual response gate is a rectangle on the response marker against a
+second parameter, used identically in all three tubes. Its lower bound on the
+response marker is the manual threshold; on the GatingSet scale
+(`asinh(x / 150)` of compensated values):
+
+```{r}
+#| label: manual-thresholds
+knitr::kable(manual_thresholds[, c("marker", "channel", "threshold_raw", "threshold_trans", "y_param")],
+             digits = 3, row.names = FALSE)
+```
+
+The rectangle's other bounds exclude at most
+`r max(gate_vs_threshold$n_disagree)` CD4 T cells above a threshold in any
+tube. The reference labels are the rectangles themselves. Manual frequencies
+in CD4 T cells (%; background-subtracted values are clipped at zero, as in
+Analysis 9):
+
+```{r}
+#| label: manual-frequencies
+knitr::kable(manual_frequencies[, c("stim", "cyt", "n_cell", "count_man",
+                                    "freq_stim_man", "freq_bs_man")],
+             digits = 3, row.names = FALSE)
+```
+
+Histograms of every response channel in CD4 T cells, with the manual
+thresholds, are saved with the prepared data as
+`omip016/prepared/qc/cd4_response_channels.png` in the projr cache.
+
+## Methods
+
+```{r}
+#| label: run-stimgate
+#| include: false
+prep <- .omip016ReadPrepared(path_prepared)
+path_stimgate <- file.path(path_methods, "stimgate")
+if (isTRUE(run_stimgate)) {
+  set.seed(analysis_seed)
+  dir.create(path_methods, recursive = TRUE, showWarnings = FALSE)
+  .acsCytofReplaceDir(path_stimgate, function(path_tmp) {
+    .omip016RunStimGate(prep, path_tmp, stimgate_settings)
+  })
+}
+```
+
+```{r}
+#| label: run-comparators
+#| include: false
+path_comparators <- file.path(path_methods, "comparators.rds")
+if (isTRUE(run_comparators)) {
+  comparator_results <- lapply(c("tailgate", "fbeta"), function(method) {
+    .omip016RunComparator(prep, method, pathFbeta = path_fbeta)
+  })
+  names(comparator_results) <- c("tailgate", "fbeta")
+  comparator_results$preprocessing <- prep$pre[c("version", "inputContentHash", "settings")]
+  .write_rds_atomic(comparator_results, path_comparators)
+}
+```
+
+```{r}
+#| label: collate
+#| include: false
+if (!dir.exists(path_stimgate) || !file.exists(path_comparators)) {
+  stop("OMIP-016 method results are missing; render with RUN_SIMULATIONS=true.")
+}
+stimgate_manifest <- readRDS(file.path(path_stimgate, "omip016-manifest.rds"))
+comparator_results <- readRDS(path_comparators)
+current_pre <- prep$pre[c("version", "inputContentHash", "settings")]
+if (!identical(stimgate_manifest$preprocessing, current_pre) ||
+    !identical(comparator_results$preprocessing, current_pre)) {
+  stop("OMIP-016 method results were made from other prepared data; re-run all methods.")
+}
+if (!identical(stimgate_manifest$settings, stimgate_settings)) {
+  stop("Saved StimGate result used other settings; re-run with RUN_STIMGATE=true.")
+}
+for (method in c("tailgate", "fbeta")) {
+  if (!identical(comparator_results[[method]]$settings, .omip016ComparatorSettings(method))) {
+    stop("Saved ", method, " result used other settings; re-run with RUN_COMPARATORS=true.")
+  }
+}
+gates <- rbind(
+  .omip016StimGateGates(prep, path_stimgate),
+  comparator_results$tailgate$gates,
+  comparator_results$fbeta$gates,
+  .omip016ManualGates(prep, manual_thresholds)
+)
+scored <- .omip016Score(prep, gates)
+.omip016CheckStimGateCounts(prep, path_stimgate, scored)
+scored$method <- factor(scored$method, levels = c("manual", .omip016Methods()))
+scored$stim <- factor(scored$stim, levels = c("gag", "seb"))
+scored$cyt <- factor(scored$cyt, levels = unname(prep$pre$responseChannels))
+scored <- scored[order(scored$stim, scored$cyt, scored$method), ]
+```
+
+Cells are called positive as the package calls them: above the gate
+(strict `x > gate`), or, for StimGate, above its lower cytokine-positive gate
+(`gateCyt`) when ordinarily positive for another response marker. The
+unstimulated tube is classified with the stimulated tube's gates. StimGate's
+counts from `getStimStats()` equal these recomputed counts. Gates that are not
+a method's own direct estimate:
+
+```{r}
+#| label: provenance
+prov <- scored[scored$method != "manual", c("method", "stim", "cyt", "thresholdOrigin", "thresholdFallbackUsed")]
+knitr::kable(as.data.frame(table(
+  method = droplevels(prov$method), origin = prov$thresholdOrigin,
+  fallback = prov$thresholdFallbackUsed
+)) |> subset(Freq > 0), row.names = FALSE)
+```
+
+## Results
+
+With one donor and two stimulated tubes, these are case-level comparisons,
+not estimates of average performance; no intervals are reported.
+
+### Gates
+
+Gates on the GatingSet scale, `asinh(x / 150)`:
+
+```{r}
+#| label: gates
+gate_wide <- stats::reshape(
+  scored[, c("stim", "cyt", "method", "gate")],
+  idvar = c("stim", "cyt"), timevar = "method", direction = "wide"
+)
+names(gate_wide) <- sub("^gate\\.", "", names(gate_wide))
+knitr::kable(gate_wide, digits = 2, row.names = FALSE)
+```
+
+### Response frequencies
+
+Background-subtracted frequencies (%, clipped at zero), each method's gate
+applied to its stimulated tube and to the unstimulated tube:
+
+```{r}
+#| label: frequencies
+freq_tbl <- scored[, c("method", "stim", "cyt", "freq_stim", "freq_uns", "freq_bs",
+                       "freq_bs_man")]
+freq_tbl$error_bs <- freq_tbl$freq_bs - freq_tbl$freq_bs_man
+if (isTRUE(run_plots)) {
+  .analysis_report_table(freq_tbl, c(fig_key, "frequencies.csv"),
+                         "Frequencies by method, tube and marker.")
+}
+freq_wide <- stats::reshape(
+  freq_tbl[freq_tbl$method != "manual", c("stim", "cyt", "method", "freq_bs")],
+  idvar = c("stim", "cyt"), timevar = "method", direction = "wide"
+)
+names(freq_wide) <- sub("^freq_bs\\.", "", names(freq_wide))
+freq_wide$manual <- freq_tbl$freq_bs_man[match(
+  paste(freq_wide$stim, freq_wide$cyt),
+  paste(freq_tbl$stim, freq_tbl$cyt)
+)]
+knitr::kable(freq_wide, digits = 3, row.names = FALSE)
+```
+
+```{r}
+#| label: fig-frequencies
+#| results: asis
+if (isTRUE(run_plots)) {
+  plot_tbl <- freq_tbl[freq_tbl$method != "manual", ]
+  p <- ggplot(plot_tbl, aes(x = freq_bs_man, y = freq_bs, colour = method, shape = method)) +
+    geom_abline(slope = 1, intercept = 0, colour = "grey50", linetype = "dashed") +
+    geom_point(size = 2.5) +
+    facet_wrap(~stim, scales = "free") +
+    .analysis_theme() +
+    labs(x = "Manual background-subtracted frequency (%)",
+         y = "Method background-subtracted frequency (%)",
+         colour = "Method", shape = "Method")
+  .analysis_print_save_fig(p, file.path(.analysis_fig_dir(c(fig_key, "frequency")),
+                                        "freq_bs-vs-manual.png"))
+}
+```
+
+### Agreement with the manual labels
+
+Per-cell agreement in the stimulated tube with the manual labels: false
+discovery proportion (FDP), sensitivity and F1. Undefined proportions are
+missing.
+
+```{r}
+#| label: classification
+cls <- scored[, c("method", "stim", "cyt", "tp", "fp", "fn", "fdp", "sensitivity", "f1")]
+if (isTRUE(run_plots)) {
+  .analysis_report_table(cls, c(fig_key, "classification.csv"),
+                         "Per-cell agreement with the manual labels.")
+}
+knitr::kable(cls[cls$method != "manual", ], digits = 3, row.names = FALSE)
+```
+
+The manual threshold rows (`method = "manual"`) differ from perfect agreement
+only through the rectangles' other bounds.
+
+### Gates on the data
+
+```{r}
+#| label: fig-gates
+#| results: asis
+if (isTRUE(run_plots)) {
+  channels <- names(prep$pre$responseChannels)
+  ex_tbl <- do.call(rbind, lapply(seq_len(nrow(prep$pre$sampleMap)), function(ind) {
+    ex <- .omip016Expr(prep$gs, ind, channels)
+    do.call(rbind, lapply(channels, function(chnl) data.frame(
+      tube = prep$pre$sampleMap$stim[[ind]],
+      cyt = prep$pre$responseChannels[[chnl]],
+      x = ex[, chnl]
+    )))
+  }))
+  ex_tbl$cyt <- factor(ex_tbl$cyt, levels = levels(scored$cyt))
+  for (st in levels(scored$stim)) {
+    cat("\n\n#### ", toupper(st), " and unstimulated tubes\n\n", sep = "")
+    g <- scored[scored$stim == st, ]
+    p <- ggplot(ex_tbl[ex_tbl$tube %in% c("uns", st), ], aes(x = x)) +
+      geom_density(aes(linetype = tube), adjust = 0.5) +
+      geom_vline(data = g, aes(xintercept = gate, colour = method, group = method)) +
+      facet_wrap(~cyt, scales = "free") +
+      scale_y_sqrt() +
+      .analysis_theme() +
+      labs(x = "asinh(x / 150), compensated", y = "Density (square-root scale)",
+           colour = "Gate", linetype = "Tube")
+    .analysis_print_save_fig(p, file.path(.analysis_fig_dir(c(fig_key, "gates")),
+                                          paste0("gates-", st, ".png")))
+  }
+}
+```
+
+## Limitations
+
+- One donor gives one unstimulated and two stimulated tubes, so StimGate's
+  shared bandwidths and threshold clusters rest on two tubes per marker, and
+  differences between methods cannot be generalised.
+- The manual reference is the authors' gating re-applied from a decoded
+  binary workspace without FlowJo-reported counts to check against. The CD4
+  definition depends on the Boolean evaluation order (see above); the SEB
+  reference changes materially under the alternative.
+- Only CD4 T cells carry manual response gates in these samples; the
+  workspace's CD8 tables refer to populations absent from the deposited
+  samples.
+- Manual gates were drawn once and applied to every tube; manual gating is an
+  imperfect reference.

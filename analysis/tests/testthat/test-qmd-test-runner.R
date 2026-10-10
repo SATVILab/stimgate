@@ -8,7 +8,7 @@
 test_that("QMD registry covers all top-level documents with real test files", {
   loaded <- .load_qmd_test_targets()
   targets <- loaded$env$.qmd_test_targets(loaded$root_dir)
-  expect_length(targets, 15L)
+  expect_length(targets, 16L)
   expect_setequal(names(targets), list.files(
     file.path(loaded$root_dir, "analysis"), pattern = "[.]qmd$"
   ))
@@ -57,7 +57,7 @@ test_that("QMD selection rejects explicit empty and unknown requests", {
   for (selection in list("", "  ", ",,,", c("1", ""))) {
     expect_error(select(selection, targets), "must not be empty")
   }
-  for (selection in list("14", "missing.qmd", c("all", "1"), c("--list", "1"))) {
+  for (selection in list("99", "missing.qmd", c("all", "1"), c("--list", "1"))) {
     expect_error(select(selection, targets), "Unknown QMD selection")
   }
 })

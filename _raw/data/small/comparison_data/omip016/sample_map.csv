@@ -1,0 +1,15 @@
+file,role,SampleID,stim,tube_name,well_id,acquired
+"13523 17012011_NS_F01.fcs",cells,13523,uns,NS,F01,18-JAN-2011 17:43:47
+"13523 17012011_GAG P15_F03.fcs",cells,13523,gag,GAG P15,F03,18-JAN-2011 17:46:22
+"13523 17012011_SEB_F06.fcs",cells,13523,seb,SEB,F06,18-JAN-2011 17:50:14
+"BEADS_NEG_H01.fcs",bead_unstained,,,NEG,H01,18-JAN-2011 16:37:23
+"BEADS_CD154 FITC_H02.fcs",bead_single_stain,,,CD154 FITC,H02,18-JAN-2011 16:39:59
+"BEADS_MIP1b PE_H03.fcs",bead_single_stain,,,MIP1b PE,H03,18-JAN-2011 16:41:09
+"BEADS_CD4 PerCPCy55_H04.fcs",bead_single_stain,,,CD4 PerCPCy55,H04,18-JAN-2011 16:42:37
+"BEADS_CD45RA PECy7_H05.fcs",bead_single_stain,,,CD45RA PECy7,H05,18-JAN-2011 16:44:16
+"BEADS_IFNg V450_H06.fcs",bead_single_stain,,,IFNg V450,H06,18-JAN-2011 16:44:53
+"BEADS_CD8 V500_H07.fcs",bead_single_stain,,,CD8 V500,H07,18-JAN-2011 16:45:34
+"BEADS_CD8 APC_H08.fcs",bead_single_stain,,,CD8 APC,H08,19-JAN-2011 10:46:30
+"BEADS_TNFa A700_H09.fcs",bead_single_stain,,,TNFa A700,H09,18-JAN-2011 16:46:55
+"BEADS_CD3 APCCy7_H10.fcs",bead_single_stain,,,CD3 APCCy7,H10,18-JAN-2011 16:47:35
+"PHY1002_20110118_ICS_SG_OMIP.jo",workspace,,,,,

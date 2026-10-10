@@ -61,7 +61,8 @@
     "12-sim-cluster-gates.qmd" = c("test-sim-cluster-lab.R", "test-sim-cluster-weak.R"),
     "13-real-debug-acs-cytof.qmd" = c(
       "test-acs-cytof-debug.R", "test-sim-debug-loc.R", "test-acs-cytof-gate.R"
-    )
+    ),
+    "15-real-compare-omip016.qmd" = "test-omip016.R"
   )
   documents <- list.files(file.path(root_dir, "analysis"), pattern = "[.]qmd$")
   if (!setequal(documents, names(targets))) {
