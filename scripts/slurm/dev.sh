@@ -21,6 +21,10 @@ scripts=(
   "dev-11-sim-low-separation-cyt-pos.sh"
   "dev-12-sim-cluster-gates.sh"
   "dev-13-real-debug-acs-cytof.sh"
+  "dev-14-real-compare-omip111.sh"
+  "dev-14b-real-compare-omip111-shifted-peak.sh"
+  "dev-15-real-compare-omip016.sh"
+  "dev-15b-real-compare-omip016-shifted-peak.sh"
 )
 
 # With arguments, submit only those analysis IDs or launcher filenames.
@@ -67,18 +71,23 @@ if (( $# > 0 )); then
   done
 fi
 
-# Analysis 13 reads Analysis 9's results, so submit 9 first when both run.
-idx_9=-1
-idx_13=-1
-for i in "${!scripts[@]}"; do
-  [[ "${scripts[$i]}" == dev-9-* ]] && idx_9=$i
-  [[ "${scripts[$i]}" == dev-13-* ]] && idx_13=$i
-done
-if (( idx_9 >= 0 && idx_13 >= 0 && idx_13 < idx_9 )); then
-  script_13="${scripts[$idx_13]}"
-  unset 'scripts[idx_13]'
-  scripts=("${scripts[@]}" "$script_13")
-fi
+# Some analyses read another's results, so submit the one they read first
+# when both run: 13 reads 9, 14b reads 14 and 15b reads 15.
+move_after() {
+  local first="$1" second="$2" idx_first=-1 idx_second=-1 i moved
+  for i in "${!scripts[@]}"; do
+    [[ "${scripts[$i]}" == "$first" ]] && idx_first=$i
+    [[ "${scripts[$i]}" == "$second" ]] && idx_second=$i
+  done
+  if (( idx_first >= 0 && idx_second >= 0 && idx_second < idx_first )); then
+    moved="${scripts[$idx_second]}"
+    unset 'scripts[idx_second]'
+    scripts=("${scripts[@]}" "$moved")
+  fi
+}
+move_after dev-9-real-compare-acs-cytof.sh dev-13-real-debug-acs-cytof.sh
+move_after dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh
+move_after dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh
 
 poll_seconds="${POLL_SECONDS:-5}"
 sim_grid_n_chunks="${SIM_GRID_N_CHUNKS:-4}"
@@ -145,6 +154,14 @@ plot_qmds_for_script() {
     dev-13-real-debug-acs-cytof.sh)
       echo "analysis/13-real-debug-acs-cytof.qmd"
       ;;
+    dev-14-real-compare-omip111.sh) echo "analysis/14-real-compare-omip111.qmd" ;;
+    dev-14b-real-compare-omip111-shifted-peak.sh)
+      echo "analysis/14b-real-compare-omip111-shifted-peak.qmd"
+      ;;
+    dev-15-real-compare-omip016.sh) echo "analysis/15-real-compare-omip016.qmd" ;;
+    dev-15b-real-compare-omip016-shifted-peak.sh)
+      echo "analysis/15b-real-compare-omip016-shifted-peak.qmd"
+      ;;
     *)
       qmd_stem="$(chunked_qmd_stem_for_script "$1")"
       if [[ -n "$qmd_stem" ]]; then
@@ -156,11 +173,18 @@ plot_qmds_for_script() {
 
 # Simulation jobs that must wait for another launcher's jobs to succeed, as
 # ':'-prefixed job IDs (empty when that launcher is not in this submission).
-# Analysis 13 re-gates from Analysis 9's caches and reads its results.
+# Analysis 13 re-gates from Analysis 9's caches and reads its results; 14b
+# and 15b compare against Analysis 14's and 15's saved results.
 sim_dependency_for_script() {
   case "$1" in
     dev-13-real-debug-acs-cytof.sh)
       echo "${script_job_ids[dev-9-real-compare-acs-cytof.sh]:-}"
+      ;;
+    dev-14b-real-compare-omip111-shifted-peak.sh)
+      echo "${script_job_ids[dev-14-real-compare-omip111.sh]:-}"
+      ;;
+    dev-15b-real-compare-omip016-shifted-peak.sh)
+      echo "${script_job_ids[dev-15-real-compare-omip016.sh]:-}"
       ;;
     *) echo "" ;;
   esac

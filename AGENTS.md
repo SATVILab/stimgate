@@ -391,9 +391,12 @@ the QMDs end to end in quick mode instead (simulate, then plot; one job per QMD)
 `analysis/tests/README.md` for commands and coverage limits.
 
 The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked runs,
-Analyses 11 and 12 as serial non-chunked simulations, and Analysis 13
-after Analysis 9: `sim_dependency_for_script()` makes 13's job wait `afterok` on 9's
-when both are submitted, and `dev.sh` submits 9 first whatever the order requested. Keep enabled
+Analyses 11 and 12 as serial non-chunked simulations, Analysis 13
+after Analysis 9, and the OMIP analyses 14, 14b, 15 and 15b. `sim_dependency_for_script()`
+makes 13's job wait `afterok` on 9's (and 14b on 14, 15b on 15) when both are
+submitted, and `dev.sh` (`move_after()`) submits the analysis that is read first
+whatever the order requested. OMIP launchers reuse prepared data unless
+`RUN_PREPROCESSING=true`; plot jobs also set `RUN_METHODS=false`. Keep enabled
 chunked analyses in the `scripts` list and `chunked_qmd_stem_for_script()`
 mapping, sharing run ID, chunk count and shuffle seed across each run.
 Every simulation launcher must propagate render failures. Plot jobs receive the

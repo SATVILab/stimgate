@@ -116,7 +116,7 @@ the bandwidth and `biasUns` actually used.
 test_grid <- tidyr::expand_grid(
   # simulated data
   transformation = "gamma", # "gaussian", "skew" or "gamma"
-  prob_response = 0.2,
+  prob_response = 0.2, # 0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.5
   n_cell = 5e3,
   mean_pos_setting = "high", # "low" or "high"
   sample_perturbation_sd = 0,
@@ -130,8 +130,8 @@ test_grid <- tidyr::expand_grid(
   stim_sd_multiplier_clusters = "gn",
   sim_seed = 12345L,
   # StimGate tuning; NA chooses automatically (see above)
-  bw = 0.25, # e.g. c(0.25, NA)
-  bias_uns = 0.25 # e.g. c(0.25, NA)
+  bw = NA, # e.g. c(0.25, NA)
+  bias_uns = NA # e.g. c(0.25, NA)
 )
 
 # Settings shared by every row, as in 2a. Add any other
@@ -150,7 +150,7 @@ test_settings <- list(
   probExact = TRUE,
   covEvMin = 1.5,
   covEvMax = 1.5,
-  clusterGates = FALSE,
+  clusterGates = TRUE,
   locEnforceShapeThreshold = FALSE,
   calcCytPosGates = FALSE,
   locThresholdMethod = "region"
@@ -312,4 +312,8 @@ if (isTRUE(run_plots) && length(test_results) > 0L) {
     print(p_test)
   }
 }
+```
+
+```{r}
+
 ```
