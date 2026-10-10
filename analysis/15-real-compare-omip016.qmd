@@ -443,6 +443,12 @@ correlations and intended and finite pair counts. Fewer than three finite
 pairs or zero variance gives missing correlations; a stratum with only one
 tube therefore has no defined correlation.
 
+**Summary by method.** Counts are summed over stimulations and cytokines
+before the proportions are calculated; Pearson and concordance correlations
+(CCC) are the pooled rows of the CSV. `n_defined` counts outcomes with a usable
+gate, and `n_pairs` the finite frequency pairs.
+The summary table follows the link to the full CSV.
+
 ```{r}
 #| label: frequency-correlations
 #| results: asis
@@ -452,6 +458,7 @@ if (isTRUE(run_plots) && exists("scored") && nrow(scored) > 0L) {
     c("stim", "cyt"), "freq_bs", "freq_bs_man")
   .analysis_report_table(correlations, c(fig_key, "frequency-correlations.csv"),
     "Frequency association and population-moment Lin concordance against the manual reference.")
+  .omipAgreementKable(.omipAgreementOverview(report_scored, correlations, character()))
 }
 ```
 

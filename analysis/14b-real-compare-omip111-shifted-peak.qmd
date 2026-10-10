@@ -176,6 +176,12 @@ The pooled rows combine different markers and strains and are descriptive.
 The table records intended and finite pairs; correlations are missing with
 fewer than three finite pairs or zero variance in either frequency.
 
+**Summary by population.** Counts are summed over strains, markers and mice
+within each population before the proportions are calculated; Pearson and
+concordance correlations (CCC) are the pooled rows of the CSV. `n_defined`
+counts outcomes with a usable gate, and `n_pairs` the finite frequency pairs.
+The summary table follows the link to the full CSV.
+
 ```{r}
 #| label: frequency-correlations
 #| results: asis
@@ -184,6 +190,7 @@ if (isTRUE(run_plots) && exists("report_results") && nrow(report_results) > 0L) 
     c("strain", "population", "marker"), "propBs", "manualBs", "population")
   .analysis_report_table(correlations, c(fig_key, "frequency-correlations.csv"),
     "Pearson and population-moment Lin concordance correlations against manual net frequencies.", root_dir)
+  .omipAgreementKable(.omipAgreementOverview(classification, correlations, "population"))
 }
 ```
 

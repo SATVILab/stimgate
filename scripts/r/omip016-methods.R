@@ -350,3 +350,37 @@
   }
   dplyr::bind_rows(summarise(groups, "stratum"), summarise(pooledGroups, "pooled"))
 }
+
+# Compact HTML overview: stimulated-cell counts summed within `groups` and
+# method (failed comparator gates excluded and counted), with the pooled
+# frequency correlations from `.omipFrequencyCorrelationTable()`.
+.omipAgreementOverview <- function(counts, correlations, groups = character()) {
+  keys <- c(groups, "method")
+  defined <- function(d) is.finite(d$tp + d$fp + d$fn + d$tn)
+  cls <- counts |>
+    dplyr::mutate(defined = defined(counts)) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(keys))) |>
+    dplyr::summarise(
+      n_outcomes = dplyr::n(), n_defined = sum(.data$defined),
+      dplyr::across(c("tp", "fp", "fn", "tn"), ~ sum(.x[.data$defined])),
+      .groups = "drop"
+    )
+  cls <- dplyr::bind_cols(
+    cls, .omipClassificationMetrics(cls)[c("sensitivity", "precision", "specificity", "f1")]
+  )
+  cor <- correlations[correlations$scope == "pooled", c(keys, "n", "pearson", "ccc")]
+  names(cor)[names(cor) == "n"] <- "n_pairs"
+  dplyr::left_join(cls, cor, by = keys)
+}
+
+.omipAgreementKable <- function(overview) {
+  pct <- function(x) ifelse(is.finite(x), sprintf("%.1f%%", 100 * x), "NA")
+  num <- function(x) ifelse(is.finite(x), sprintf("%.3f", x), "NA")
+  shown <- overview
+  for (col in c("sensitivity", "precision", "specificity", "f1")) shown[[col]] <- pct(shown[[col]])
+  for (col in c("pearson", "ccc")) shown[[col]] <- num(shown[[col]])
+  shown <- shown[setdiff(names(shown), c("tp", "fp", "fn", "tn"))]
+  names(shown) <- sub("^f1$", "F1", sub("^ccc$", "CCC", sub("^pearson$", "Pearson", names(shown))))
+  print(knitr::kable(shown, row.names = FALSE))
+  invisible(overview)
+}

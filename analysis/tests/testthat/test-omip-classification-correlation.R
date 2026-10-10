@@ -192,3 +192,29 @@ test_that("new OMIP report chunks guard plotting and missing results", {
     }
   }
 })
+
+test_that("agreement overview pools counts before proportions and keeps failed gates out", {
+  env <- .omipReportTestEnv()
+  counts <- data.frame(
+    population = "CD4", method = c("A", "A", "B"),
+    tp = c(1, 3, NA), fp = c(1, 0, NA), fn = c(0, 1, NA), tn = c(8, 6, NA)
+  )
+  correlations <- data.frame(
+    population = "CD4", method = c("A", "B", "A"), scope = c("pooled", "pooled", "stratum"),
+    n = c(4, 0, 2), pearson = c(0.5, NA, 0.9), ccc = c(0.4, NA, 0.8)
+  )
+  out <- env$.omipAgreementOverview(counts, correlations, "population")
+  a <- out[out$method == "A", ]
+  expect_equal(c(a$n_outcomes, a$n_defined, a$tp, a$fp), c(2, 2, 4, 1))
+  expect_equal(a$sensitivity, 4 / 5)
+  expect_equal(a$precision, 4 / 5)
+  expect_equal(a$specificity, 14 / 15)
+  expect_equal(a$f1, 8 / 10)
+  expect_equal(c(a$n_pairs, a$pearson), c(4, 0.5))
+  b <- out[out$method == "B", ]
+  expect_equal(b$n_defined, 0)
+  expect_true(is.na(b$sensitivity) && is.na(b$precision) && is.na(b$pearson))
+  printed <- capture.output(env$.omipAgreementKable(out))
+  expect_true(any(grepl("80.0%", printed, fixed = TRUE)))
+  expect_false(any(grepl("^\\|.*\\btp\\b", printed)))
+})
