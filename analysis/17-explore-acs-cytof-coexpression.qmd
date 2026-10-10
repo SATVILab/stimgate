@@ -73,59 +73,57 @@ cells also carry the other marker. Per donor this section shows:
    in the single-positive region and the cells called co-expressing
    (single-positive cells in bins where the stimulated tube has at least twice
    the independence expectation and more excess than the control tube);
-9. the co-expression region grown from the rectangle (next section) and the
-   F-beta cytokine-positive gates, drawn on the hexagon plots, with tables of
+9. lowered cytokine-positive gates (next section) on the hexagon plots, with
+   histograms of each marker among cells positive for the other and a table of
    the net double-positive frequencies.
 
-## Growing the co-expression region
+## Lowering a gate for cells positive for the other cytokine
 
 The rectangle of the two ordinary gates misses co-expressing responders that
-sit below one gate, such as the diagonal IFNγ/TNF band in CD4 cells. The
-region is grown from the rectangle, bin by bin, wherever the data show
-co-expression the stimulation adds, with no assumed direction:
+sit below one gate, such as the diagonal IFNγ/TNF band in CD4 cells. Taking
+TNF among IFNγ+ cells (cells above IFNγ's ordinary gate):
 
-1. The two markers are binned in squares 0.2 wide. Bins above both ordinary
-   gates (the rectangle) start the region.
-2. Candidate bins lie above both markers' floors (each marker's main negative
-   peak in the control tube plus 1.5 robust SDs, the peak's left half-width at
-   half maximum / 1.177) and above at least one ordinary gate, so the region
-   never grows into the bulk of the negatives.
-3. A candidate bin is acceptable when
-   - (departure from independence) the stimulated tube holds clearly more
-     cells there than independence of the two markers predicts:
-     (observed − expected) / √expected ≥ 2, with expected from the stimulated
-     tube's own marginals; and
-   - (low background) the stimulated tube's share of cells there is at least
-     twice the control tube's ((control count + 0.5) / control tube size), and
-     the bin holds at most two control cells.
-4. An acceptable bin joins the region only if it can be reached from the
-   rectangle through neighbouring bins (including diagonal neighbours)
-   crossing at most two rejected bins. Empty bins and acceptable bins cost
-   nothing to cross, so a sparse band of responders stays connected, but an
-   island cut off by bins that fail the checks is not added.
-5. Cells in the rectangle and in the added bins are called IFNγ+TNF+, in both
-   tubes; the net frequency subtracts the control tube's.
+1. **Is there a double-positive response?** Nothing moves unless the cells
+   above both ordinary gates show one: z = (s − u·nS/nU) / √(s + u·(nS/nU)²) > 2,
+   with s and u the stimulated and control double positives and nS, nU the tube
+   sizes.
+2. **Candidate bins.** The distance from TNF's ordinary gate down to its floor
+   is cut into 20 bins. The floor is the control tube's main negative TNF peak
+   plus 1.5 robust SDs (the peak's left half-width at half maximum / 1.177),
+   from the non-zero values only: exact zeros are a spike, not part of the
+   negative peak's shape.
+3. **When a set of bins passes.** Its IFNγ+ stimulated cells must
+   - depart from independence: (observed − expected) / √expected ≥ 3.5, with
+     expected = stimulated tube size × IFNγ+ share × share of cells in the
+     bins (both shares over all the tube's cells, zeros included); and
+   - be pure enough: purity = 1 − (control share) / (stimulated share), the
+     estimated fraction of responders, at least 0.75 times the double
+     positives' purity. Shares are over each tube's cells, zeros included.
+4. **The lowered gate.** Working back from the floor, the gate is the first bin
+   edge where that bin passes on its own and all the bins from the ordinary
+   gate down to it pass together. Bins that fail can lie in between, as long
+   as the whole set still passes.
+5. **Trim of the added band.** IFNγ+ cells only just above IFNγ's gate may be
+   background. The distance from IFNγ's gate down to its floor, in 20 steps,
+   sets slices above IFNγ's gate. Working up from the gate, IFNγ's cut for the
+   added band is the first slice edge where that slice passes on purity alone
+   and the band above it does too. If the band runs out, TNF's gate is not
+   lowered.
 
-For comparison, the F-beta cytokine-positive gates lower one marker's gate for
-cells positive for the other. Taking TNF among IFNγ+ cells: every TNF
-threshold from TNF's ordinary gate down to its floor (steps of 0.05) is
-evaluated. At each, the co-expression the stimulation adds is estimated as the
-stimulated tube's IFNγ+ cells above it in excess of independence, minus the
-same excess in the control tube (scaled to the stimulated tube's size); TNF
-responders whose IFNγ is independent of their TNF add nothing. With that
-estimate as the true positives, precision is its share of the stimulated IFNγ+
-cells above the threshold and recall its share of the largest estimate. The
-threshold with the largest F1 is chosen (the highest on ties) and kept only if
-the estimate there is clear (z > 2); otherwise TNF's ordinary gate is kept.
-The same is done for IFNγ among TNF+ cells. A cell is then TNF+ if above TNF's
-ordinary gate, or IFNγ+ and above the lowered gate.
+A cell is then TNF+ if above TNF's ordinary gate, or above the raised IFNγ cut
+and the lowered TNF gate. The same is done for IFNγ among TNF+ cells. Cells
+called IFNγ+TNF+ are those above both ordinary gates or added by either lowered
+gate, in both tubes; the net frequency subtracts the control tube's.
 
-On the hexagon plots the added bins are outlined in black and the F-beta
-gates are grey dashed lines, drawn only where they apply. CSV tables (paths printed under each heading) give the
-floors, bins added and cells called by region growing, the F-beta gates with
-their z, and both net IFNγ+TNF+ frequencies against the rectangle. A donor
-without a response can still gain an isolated bin of a few cells (two
-stimulated, one control for CD4 p1 030697_D0).
+On the hexagon plots the ordinary gates are orange and the lowered gates blue,
+each drawn from the raised cut on the other marker. The histograms show each
+marker among cells positive for the other, as cells per 100,000 cells of each
+tube, so the bars compare directly: where the control bar is a quarter of the
+stimulated bar, purity there is 0.75. Exact zeros are left out of the bars. The
+lines are the ordinary gate (black dashed), the lowered gate (blue) and the
+floor (grey dotted). CSV tables (paths printed under each heading) give each
+donor's z, floors, gates and cuts, and the net IFNγ+TNF+ frequencies and
+control cells called, with the lowered gates and with the rectangle.
 
 A CSV gives each donor's KL divergence of the stimulated from the control
 score distribution (bits; bins 0.25 wide, add-half smoothing), a summary of
@@ -188,7 +186,7 @@ pairs <- list(c("IFNg", "TNF"), c("IFNg", "IL2"), c("TNF", "IL2"))
 if (isTRUE(run_plots)) {
   kl_all <- list()
   mono_all <- list()
-  just_all <- list()
+  low_all <- list()
   for (pop in names(selection)) {
     paths <- .acsCytofPopulationPaths(pop, "unused", path_gs_base, path_scratch_base)
     gs <- flowWorkspace::load_gs(paths$gs, backend_readonly = TRUE)
@@ -262,34 +260,30 @@ if (isTRUE(run_plots)) {
             c(fig_key, paste0(pop, "-", stim, "-coexpression-beyond-independence.csv")),
             "Net excess over independence and cells called, against the rectangle.", root_dir)
 
-          grow <- lapply(donors, function(d) .acsCoexGrow(dat[[d]], pair[[1]], pair[[2]], d))
-          fbeta_tbl <- do.call(rbind, lapply(donors, function(d) {
-            .acsCoexFbetaSummary(dat[[d]], pair[[1]], pair[[2]], d)
-          }))
-          cat("\n\n#### Grown co-expression region and F-beta gates\n\n")
+          lower <- stats::setNames(lapply(donors, function(d) {
+            .acsCoexLowerSummary(dat[[d]], pair[[1]], pair[[2]], d)
+          }), donors)
+          cat("\n\n#### Lowered gates\n\n")
           .analysis_print_save_fig(
-            .acsCoexGrowHexPlot(hex_tbl, grow, donor_gates, fbeta_tbl, pair[[1]], pair[[2]]),
-            file.path(fig_dir, paste0(stim, "-", pair_key, "-grown-region-hex.png")), width = 36, height = 26
+            .acsCoexLowerHexPlot(hex_tbl, lower, donor_gates, pair[[1]], pair[[2]]),
+            file.path(fig_dir, paste0(stim, "-", pair_key, "-lowered-hex.png")), width = 36, height = 26
           )
-          grow_tbl <- do.call(rbind, lapply(grow, `[[`, "summary"))
-          just_tbl <- data.frame(
-            grow_tbl[c("donor", "floorX", "floorY", "binsAdded")],
-            grownStim = grow_tbl$stimCalled, grownControl = grow_tbl$controlCalled,
-            grownNetPct = grow_tbl$netCalledPct,
-            fbetaGateX = fbeta_tbl$gateCytX, fbetaZX = fbeta_tbl$zX,
-            fbetaGateY = fbeta_tbl$gateCytY, fbetaZY = fbeta_tbl$zY,
-            fbetaStim = fbeta_tbl$stimCalled, fbetaControl = fbeta_tbl$controlCalled,
-            fbetaNetPct = fbeta_tbl$netCalledPct,
-            gateX = fbeta_tbl$gateX, gateY = fbeta_tbl$gateY,
-            rectangleNetPct = grow_tbl$netRectanglePct
-          )
-          just_show <- just_tbl
-          is_num <- vapply(just_show, is.numeric, logical(1))
-          just_show[is_num] <- lapply(just_show[is_num], round, 3)
-          just_all[[length(just_all) + 1L]] <- cbind(pop = pop, stim = stim, just_tbl)
-          .analysis_report_table(just_show,
-            c(fig_key, paste0(pop, "-", stim, "-grown-region-and-fbeta.csv")),
-            "Grown co-expression region and F-beta gates per donor.", root_dir)
+          for (cond_pair in list(pair, rev(pair))) {
+            cat("\n\n#### ", cond_pair[[2]], " among ", cond_pair[[1]], "+ cells\n\n", sep = "")
+            .analysis_print_save_fig(
+              .acsCoexCondHistPlot(dat, lower, a = cond_pair[[1]], b = cond_pair[[2]]),
+              file.path(fig_dir, paste0(stim, "-", cond_pair[[2]], "-given-", cond_pair[[1]], "-hist.png")),
+              width = 30, height = 22
+            )
+          }
+          low_tbl <- do.call(rbind, lapply(lower, `[[`, "summary"))
+          low_show <- low_tbl
+          is_num <- vapply(low_show, is.numeric, logical(1))
+          low_show[is_num] <- lapply(low_show[is_num], round, 3)
+          low_all[[length(low_all) + 1L]] <- cbind(pop = pop, stim = stim, low_tbl)
+          .analysis_report_table(low_show,
+            c(fig_key, paste0(pop, "-", stim, "-lowered-gates.csv")),
+            "Lowered gates and net double-positive frequencies per donor.", root_dir)
         }
       }
     }
@@ -298,26 +292,26 @@ if (isTRUE(run_plots)) {
     c(fig_key, "coexpression-beyond-independence.csv"),
     "IFNg-TNF co-expression beyond independence against the rectangle of ordinary gates.",
     root_dir, quiet = TRUE)
-  just_all <- do.call(rbind, just_all)
-  .analysis_report_table(just_all, c(fig_key, "grown-region-and-fbeta.csv"),
-    "Grown IFNg-TNF co-expression region and F-beta gates per donor.", root_dir, quiet = TRUE)
-  cat("\n\n## Grown region and F-beta gates: summary\n\n")
-  cat("Per population and stimulation (12 donors): median bins added by region growing,",
-    "donors whose F-beta TNF gate (for IFNγ+ cells) and IFNγ gate (for TNF+ cells) were",
-    "lowered, and the median net IFNγ+TNF+ frequency (%) and control cells called by each",
-    "rule, against the rectangle of ordinary gates.\n\n")
-  just_summary <- do.call(rbind, lapply(split(just_all, list(just_all$pop, just_all$stim), drop = TRUE), function(d) {
+  low_all <- do.call(rbind, low_all)
+  .analysis_report_table(low_all, c(fig_key, "lowered-gates.csv"),
+    "Lowered IFNg and TNF gates and net double-positive frequencies per donor.", root_dir,
+    quiet = TRUE)
+  cat("\n\n## Lowered gates: summary\n\n")
+  cat("Per population and stimulation (12 donors): donors with a clear double-positive",
+    "response (z > 2), donors whose TNF gate (for IFNγ+ cells) and IFNγ gate (for TNF+",
+    "cells) were lowered, and the median net IFNγ+TNF+ frequency (%) and control cells",
+    "called, with the lowered gates and with the rectangle of ordinary gates.\n\n")
+  low_summary <- do.call(rbind, lapply(split(low_all, list(low_all$pop, low_all$stim), drop = TRUE), function(d) {
     data.frame(pop = d$pop[[1]], stim = d$stim[[1]],
-      medianBinsAdded = stats::median(d$binsAdded),
-      fbetaTnfLowered = sum(d$fbetaGateY < d$gateY - 1e-9),
-      fbetaIfngLowered = sum(d$fbetaGateX < d$gateX - 1e-9),
-      medianNetGrown = round(stats::median(d$grownNetPct), 3),
-      medianNetFbeta = round(stats::median(d$fbetaNetPct), 3),
-      medianNetRectangle = round(stats::median(d$rectangleNetPct), 3),
-      medianControlGrown = stats::median(d$grownControl),
-      medianControlFbeta = stats::median(d$fbetaControl))
+      clearResponse = sum(d$zDp > 2),
+      tnfLowered = sum(d$cutY < d$gateY - 1e-9),
+      ifngLowered = sum(d$cutX < d$gateX - 1e-9),
+      medianNetLowered = round(stats::median(d$netPct), 3),
+      medianNetRectangle = round(stats::median(d$netRectanglePct), 3),
+      medianControlLowered = stats::median(d$controlCalled),
+      medianControlRectangle = stats::median(d$controlRectangle))
   }))
-  print(knitr::kable(just_summary, row.names = FALSE))
+  print(knitr::kable(low_summary, row.names = FALSE))
   kl_tbl <- do.call(rbind, kl_all)
   kl_tbl$klBits <- round(kl_tbl$klBits, 3)
   cat("\n\n## KL divergence of stimulated from control scores\n\n")
