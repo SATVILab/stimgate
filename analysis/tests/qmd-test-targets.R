@@ -71,6 +71,9 @@
     ),
     "16-explore-acs-cytof-cytpos.qmd" = c(
       "test-acs-cytof-explore-cytpos.R", "test-acs-cytof-paths.R"
+    ),
+    "17-explore-acs-cytof-coexpression.qmd" = c(
+      "test-acs-cytof-explore-score.R", "test-acs-cytof-explore-cytpos.R"
     )
   )
   documents <- list.files(file.path(root_dir, "analysis"), pattern = "[.]qmd$")

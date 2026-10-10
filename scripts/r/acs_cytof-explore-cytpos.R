@@ -124,7 +124,7 @@
       colour = "#D55E00", linewidth = 0.4) +
     geom_hline(data = lines[is.finite(lines$gy), ], aes(yintercept = .data$gy),
       colour = "#D55E00", linewidth = 0.4) +
-    facet_wrap(~panel, ncol = 6) +
+    facet_wrap(~panel, ncol = 6, axes = "all") +
     .analysis_theme() +
     labs(x = x, y = y)
 }
@@ -187,7 +187,7 @@
       name = "Tube") +
     scale_fill_manual(values = c(stimulated = "#B2182B", unstimulated = "#2166AC"),
       name = "Tube") +
-    facet_wrap(~donor, ncol = 4, scales = "free_y",
+    facet_wrap(~donor, ncol = 4, scales = "free_y", axes = "all",
       labeller = ggplot2::as_labeller(labels)) +
     .analysis_theme() +
     theme(legend.position = "bottom") +

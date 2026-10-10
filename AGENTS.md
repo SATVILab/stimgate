@@ -616,6 +616,14 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     donors — IFNg-TNF hexagon plots and IFNg/TNF densities among cells
     positive for another cytokine (strict `x > gate`), to inform the
     cytokine-positive rule. It never re-gates or writes to Analysis 9's caches.
+  - `acs_cytof-explore-score.R`: Analysis 17
+    (`17-explore-acs-cytof-coexpression.qmd`), also read-only on Analysis 9:
+    a two-marker co-expression score from control-tube tail p-values, Poisson
+    GAM departures from independence, a co-expression region grown from the
+    rectangle of ordinary gates (stimulated residual against independence,
+    low control background, connectivity) and F-beta cytokine-positive gates
+    whose true positives are the co-expression beyond independence the
+    stimulation adds.
   - `omip016-prepare.R` / `omip016-methods.R`: Analysis 15
     (`15-real-compare-omip016.qmd`, FlowRepository FR-FCM-ZZ2T). The deposited
     FCS files are uncompensated; `scripts/python/omip016_flowjo_jo.py` decodes
