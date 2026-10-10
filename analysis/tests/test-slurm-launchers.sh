@@ -162,6 +162,39 @@ done
 run_selection
 grep -Fq -- 'dev-13-real-debug-acs-cytof.sh' "$SLURM_TEST_LOG"
 
+# OMIP analyses: 14b and 15b wait for 14 and 15 when both are submitted,
+# whatever the order requested, and run alone without a dependency.
+for pair in "14 14b real-compare-omip111" "15 15b real-compare-omip016"; do
+  read -r base variant stem <<< "$pair"
+  run_selection "$variant"
+  [[ $(wc -l < "$SLURM_TEST_LOG") -eq 2 ]]
+  sim_variant=$(grep -F "dev-${variant}-${stem}-shifted-peak.sh" "$SLURM_TEST_LOG")
+  [[ "$sim_variant" != *"--dependency"* ]]
+  grep -Fq -- "PLOT_QMD_FILES=analysis/${variant}-${stem}-shifted-peak.qmd," "$SLURM_TEST_LOG"
+  for selection in "$base $variant" "$variant $base"; do
+    # shellcheck disable=SC2086
+    run_selection $selection
+    sim_base=$(grep -F "dev-${base}-${stem}.sh" "$SLURM_TEST_LOG")
+    sim_variant=$(grep -F "dev-${variant}-${stem}-shifted-peak.sh" "$SLURM_TEST_LOG")
+    [[ "$sim_base" != *"--dependency"* ]]
+    [[ "$sim_variant" == *"|--dependency=afterok:101|"* ]]
+    grep -Fq -- "PLOT_QMD_FILES=analysis/${base}-${stem}.qmd," "$SLURM_TEST_LOG"
+  done
+  # Prepared data are reused unless preprocessing is requested.
+  : > "$SLURM_TEST_LOG"
+  bash "$project_root/scripts/slurm/dev-${base}-${stem}.sh" > "$test_dir/output" 2>&1
+  grep -Fq -- 'preprocessing=false|' "$SLURM_TEST_LOG"
+  grep -Fq -- 'simulations=true|plots=false' "$SLURM_TEST_LOG"
+  : > "$SLURM_TEST_LOG"
+  RUN_PREPROCESSING=true bash "$project_root/scripts/slurm/dev-${base}-${stem}.sh" > "$test_dir/output" 2>&1
+  grep -Fq -- 'preprocessing=true|' "$SLURM_TEST_LOG"
+done
+run_selection
+for launcher in dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh \
+  dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh; do
+  grep -Fq -- "$launcher" "$SLURM_TEST_LOG"
+done
+
 # Analyses 11/12 each submit one serial simulation and one dependent plot job.
 for stem in 11-sim-low-separation-cyt-pos 12-sim-cluster-gates; do
   run_selection "${stem%%-*}"
