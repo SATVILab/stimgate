@@ -106,6 +106,7 @@
     applyPreliminaryFilter = FALSE,
     peakX = ordinary$probTblList$peakX,
     windowWidth = ordinary$probTblList$windowWidth,
+    windowWidthInfo = ordinary$probTblList$windowWidthInfo,
     shiftedPeakRef = ordinary$probTblList$shiftedPeakRef
   )
 
@@ -123,7 +124,9 @@
 #' The ordinary fit uses the existing preliminary probability filter. The
 #' shape-restricted fit instead uses every density-grid point remaining after
 #' the shape threshold, because that threshold has already defined the
-#' admissible modelling region.
+#' admissible modelling region. It retains the ordinary negative-population
+#' width and its diagnostics rather than measuring the truncated distribution.
+#' @param windowWidthInfo list or NULL Ordinary per-tube width diagnostics.
 #' @keywords internal
 .getCpUnsLocGetProbFit <- function(
   exTblStimNoMin,
@@ -138,7 +141,8 @@
   applyPreliminaryFilter = TRUE,
   peakX = NULL,
   windowWidth = NULL,
-  shiftedPeakRef = NULL
+  shiftedPeakRef = NULL,
+  windowWidthInfo = NULL
 ) {
   ind <- .getInd(exTblStimNoMin)
   chnl <- .getCpUnsLocGetChnl(exTblStimNoMin)
@@ -180,6 +184,9 @@
         as.numeric(windowWidth)[1L]
       )
     }
+    if (!is.null(windowWidthInfo)) {
+      probTblList$windowWidthInfo <- windowWidthInfo
+    }
     # The shape-restricted refit reuses the ordinary fit's reference peak,
     # so it also reports whether the ordinary fit used the shifted-peak rule.
     if (!is.null(shiftedPeakRef)) {
@@ -219,7 +226,8 @@
 #'
 #' The shape threshold is the lower available value among the first stimulated
 #' antimode to the right of the original main negative peak and the stimulated
-#' density tailgate plus its window-width margin.
+#' density tailgate plus its negative-population-width margin. The configurable
+#' margin fraction is applied to the same width as the response-search boundary.
 #' @keywords internal
 .getCpUnsLocGetShapeThreshold <- function(
   exTblStimThreshold,
@@ -246,6 +254,7 @@
   )
   info$peakX <- peakX
   info$windowWidth <- windowWidth
+  info$windowWidthInfo <- probTblList$windowWidthInfo
 
   tailgate <- .getCpUnsLocMarginalDensityLowerBound(
     density = probTblList$stimDensity,
@@ -1046,6 +1055,10 @@
 
 # get probabilities
 # -------------------
+#' Assemble response probabilities with peak-density negative widths
+#'
+#' Widths and their per-tube diagnostics use the same density grids as the
+#' main peaks; the probability comparison retains its original grid.
 #' @keywords internal
 .getCpUnsLocGetProbTbl <- function(
   densTblRaw,
@@ -1062,11 +1075,15 @@
   densTblStim <- densTblRaw |>
     dplyr::filter(.data$stim == "yes") |>
     dplyr::arrange(.data$xStim)
-  peakX <- .getCpUnsLocGetPeakX(
+  peakDensities <- .getCpUnsLocGetPeakDensities(
     densTblRaw = densTblRaw,
     exVecStim = exVecStimThreshold,
     exVecUns = exVecUnsThreshold
   )
+
+  peakX <- vapply(peakDensities, function(dens) {
+    dens$x[.getPeakMainLeftIdx(dens$y)]
+  }, numeric(1L))
 
   probTblPosList <- .getCpUnsLocProbTblFilter(
     probTbl = probTbl,
@@ -1075,7 +1092,10 @@
     stage = stage,
     peakStimX = peakX[["stim"]],
     peakUnsX = peakX[["uns"]],
-    shiftedPeak = shiftedPeak
+    shiftedPeak = shiftedPeak,
+    densityStim = peakDensities$stim,
+    densityUns = peakDensities$uns,
+    densityBw = attr(densTblRaw, "locDensityBw")
   )
 
   list(
@@ -1095,42 +1115,50 @@
       ),
     peakX = probTblPosList[["peakX"]],
     windowWidth = probTblPosList[["windowWidth"]],
+    windowWidthInfo = probTblPosList[["windowWidthInfo"]],
     shiftedPeakRef = probTblPosList[["shiftedPeakRef"]]
   )
 }
 
-# Main left peak of each tube, searched over both tubes' range. The fixed-
-# bandwidth densities are evaluated only over the stimulated cells' range, so
-# an unstimulated peak below (or above) every stimulated cell would be cut off
-# and a small bump elsewhere taken as the peak. When the unstimulated cells
-# extend beyond that range, both densities are recomputed with the same
-# bandwidth over the joint range, for the peak search only.
+#' Find the main left peak on each tube's local-FDR density
 #' @keywords internal
 .getCpUnsLocGetPeakX <- function(densTblRaw, exVecStim, exVecUns) {
+  densities <- .getCpUnsLocGetPeakDensities(densTblRaw, exVecStim, exVecUns)
+  vapply(densities, function(dens) {
+    dens$x[.getPeakMainLeftIdx(dens$y)]
+  }, numeric(1L))
+}
+
+#' Get the density grids used for both main peaks and negative widths
+#'
+#' Fixed-bandwidth raw densities span the stimulated cells. If unstimulated
+#' cells extend beyond that grid, recompute both Gaussian kernel densities over
+#' the joint range at the same local-FDR bandwidth. Adaptive densities already
+#' span both tubes and are reused without changing their bandwidth curve.
+#' @keywords internal
+.getCpUnsLocGetPeakDensities <- function(densTblRaw, exVecStim, exVecUns) {
   bw <- attr(densTblRaw, "locDensityBw")
   exVecStim <- exVecStim[is.finite(exVecStim)]
   exVecUns <- exVecUns[is.finite(exVecUns)]
   bwOk <- is.numeric(bw) && length(bw) == 1L && is.finite(bw) && bw > 0
   if (bwOk && length(exVecStim) > 1L && length(exVecUns) > 1L) {
-    # Same arithmetic as density()'s default range (cut = 3), so the bounds
-    # equal the existing grid exactly when the unstimulated cells lie inside.
+    # Match density()'s default bounds (cut = 3).
     from <- min(exVecStim, exVecUns) - 3 * bw
     to <- max(exVecStim, exVecUns) + 3 * bw
     if (from < min(densTblRaw$xStim) || to > max(densTblRaw$xStim)) {
-      peakOne <- function(x) {
-        dens <- stats::density(x, bw = bw, from = from, to = to)
-        dens$x[.getPeakMainLeftIdx(dens$y)]
-      }
-      return(c(stim = peakOne(exVecStim), uns = peakOne(exVecUns)))
+      return(list(
+        stim = stats::density(exVecStim, bw = bw, from = from, to = to),
+        uns = stats::density(exVecUns, bw = bw, from = from, to = to)
+      ))
     }
   }
-  peakOne <- function(stimLevel) {
+  densityOne <- function(stimLevel) {
     dens <- densTblRaw |>
       dplyr::filter(.data$stim == stimLevel) |>
       dplyr::arrange(.data$xStim)
-    dens$xStim[.getPeakMainLeftIdx(dens$dens)]
+    list(x = dens$xStim, y = dens$dens)
   }
-  c(stim = peakOne("yes"), uns = peakOne("no"))
+  list(stim = densityOne("yes"), uns = densityOne("no"))
 }
 
 #' @keywords internal
@@ -1179,6 +1207,85 @@
 }
 
 
+#' Measure the left half-width of a tube's main negative peak
+#'
+#' Scan left for the first half-height crossing (linearly interpolated) and
+#' the first local minimum at least one bandwidth from the peak with height
+#' at most 75% of the peak. Use the closer candidate; ties use half-height.
+#' A flat local minimum is represented by its rightmost grid point.
+#' If neither candidate exists, use the minimum finite observed expression.
+#' @param density list Density grid with increasing `x` and corresponding `y`.
+#' @param peakX numeric Main peak location on that density grid.
+#' @param exVec numeric Tube expression values, used for the fallback only.
+#' @param bw numeric Local-FDR bandwidth at this peak (shared curve if adaptive).
+#' @return list Width, source (`half_height`, `dip`, or `fallback`), selected
+#'   boundary, both candidate locations, peak height and bandwidth.
+#' @keywords internal
+.getCpUnsLocNegWidth <- function(density, peakX, exVec, bw) {
+  .debug("Measuring negative-population width") # nolint
+  x <- density$x
+  y <- density$y
+  ok <- is.finite(x) & is.finite(y)
+  x <- x[ok]
+  y <- y[ok]
+  halfHeightX <- dipX <- NA_real_
+  peakHeight <- if (length(x) >= 2L && is.finite(peakX)) {
+    stats::approx(x, y, xout = peakX)$y
+  } else {
+    NA_real_
+  }
+  if (is.finite(peakHeight) && peakHeight > 0) {
+    left <- which(x < peakX)
+    crossing <- rev(left[y[left] <= peakHeight / 2])
+    if (length(crossing) > 0L) {
+      i <- crossing[[1L]]
+      rightX <- min(x[i + 1L], peakX)
+      rightY <- if (rightX == peakX) peakHeight else y[i + 1L]
+      halfHeightX <- x[i] + (rightX - x[i]) *
+        (peakHeight / 2 - y[i]) / (rightY - y[i])
+    }
+    # Collapse exact plateaus so a flat dip is recognised only when both
+    # neighbouring runs are higher; its closest edge supplies the boundary.
+    runs <- rle(y)
+    ends <- cumsum(runs$lengths)
+    if (length(ends) >= 3L && is.finite(bw) && bw > 0) {
+      mid <- seq.int(2L, length(ends) - 1L)
+      dips <- ends[mid[
+        runs$values[mid] < runs$values[mid - 1L] &
+          runs$values[mid] < runs$values[mid + 1L]
+      ]]
+      dips <- dips[x[dips] < peakX & peakX - x[dips] >= bw &
+        y[dips] <= 0.75 * peakHeight]
+      if (length(dips) > 0L) dipX <- max(x[dips])
+    }
+  }
+  candidates <- c(half_height = halfHeightX, dip = dipX)
+  candidates <- candidates[is.finite(candidates)]
+  source <- if (length(candidates) > 0L) {
+    names(candidates)[which.max(candidates)]
+  } else {
+    "fallback"
+  }
+  finiteEx <- exVec[is.finite(exVec)]
+  boundaryX <- if (source == "fallback") {
+    if (length(finiteEx) > 0L) min(finiteEx) else NA_real_
+  } else {
+    unname(candidates[[source]])
+  }
+  list(
+    width = peakX - boundaryX, source = source, boundaryX = boundaryX,
+    halfHeightX = halfHeightX, dipX = dipX, peakX = peakX,
+    peakHeight = peakHeight, bw = bw
+  )
+}
+
+#' Restrict response search using the main negative-population widths
+#'
+#' Start above the higher main peak plus half the larger tube width, with
+#' a minimum offset of one local-FDR bandwidth at that peak. The shifted-peak
+#' rule instead uses only the unstimulated peak, width and density bandwidth.
+#' @param densityStim,densityUns list Density grids used to identify the peaks.
+#' @param densityBw numeric or list Local-FDR bandwidth or adaptive shared curve.
 #' @keywords internal
 .getCpUnsLocProbTblFilter <- function(
   probTbl,
@@ -1187,20 +1294,25 @@
   stage,
   peakStimX,
   peakUnsX,
-  shiftedPeak = NULL
+  shiftedPeak = NULL,
+  densityStim,
+  densityUns,
+  densityBw
 ) {
   .debug("Filtering before smoothing") # nolint
   peakX <- max(peakStimX, peakUnsX)
 
-  windowWidthStim <- abs(diff(stats::quantile(
-    exVecStim[exVecStim < peakStimX],
-    c(0.05, 1)
-  )))
-  windowWidthUns <- abs(diff(stats::quantile(
-    exVecUns[exVecUns < peakUnsX],
-    c(0.05, 1)
-  )))
-  windowWidth <- max(windowWidthStim, windowWidthUns, na.rm = TRUE)
+  widthStim <- .getCpUnsLocNegWidth(
+    densityStim, peakStimX, exVecStim,
+    .getCpUnsLocDensityBwAt(peakStimX, densityBw)
+  )
+  widthUns <- .getCpUnsLocNegWidth(
+    densityUns, peakUnsX, exVecUns,
+    .getCpUnsLocDensityBwAt(peakUnsX, densityBw)
+  )
+  windowWidthStim <- widthStim$width
+  windowWidthUns <- widthUns$width
+  windowWidth <- max(windowWidthStim, windowWidthUns)
 
   # Optional rule for a stimulated main peak that is itself the responders
   # (most cells respond): start the search from the unstimulated peak.
@@ -1210,19 +1322,29 @@
     peakUnsX = peakUnsX,
     windowWidthUns = windowWidthUns
   )
+  if (!is.null(shiftedPeakRef)) {
+    shiftedPeakRef$windowWidthUnsInfo <- widthUns
+  }
   if (isTRUE(shiftedPeakRef$applied)) {
     .debug("Shifted stimulated peak: using the unstimulated peak") # nolint
     peakX <- peakUnsX
     windowWidth <- windowWidthUns
   }
 
+  searchBw <- .getCpUnsLocDensityBwAt(peakX, densityBw)
+  searchStartX <- peakX + max(0.5 * windowWidth, searchBw)
+  windowWidthInfo <- list(
+    stim = widthStim, uns = widthUns, searchBw = searchBw,
+    searchStartX = searchStartX, shiftedPeak = isTRUE(shiftedPeakRef$applied)
+  )
   probTbl <- probTbl |>
-    dplyr::filter(xStim > peakX + windowWidth / 3) # nolint
+    dplyr::filter(.data$xStim > searchStartX)
 
   if (nrow(probTbl) <= 5L) {
     return(list(
       "probTbl" = probTbl,
       "windowWidth" = windowWidth,
+      "windowWidthInfo" = windowWidthInfo,
       "peakX" = peakX,
       "shiftedPeakRef" = shiftedPeakRef
     ))
@@ -1259,19 +1381,21 @@
   list(
     "probTbl" = probTbl,
     "windowWidth" = windowWidth,
+    "windowWidthInfo" = windowWidthInfo,
     "peakX" = peakX,
     "shiftedPeakRef" = shiftedPeakRef
   )
 }
 
-# Settings for the optional shifted-peak rule (`locShiftedPeakRef`), or NULL
-# when it is off. The reference bandwidth is the per-channel shared bandwidth
-# at the `bwNcellMax` reference size, before any widening for small tubes
-# (smaller of the stimulated and unstimulated tubes' values with
-# `bwScope = "cluster"`). Without a shared bandwidth it is the bandwidth of the
-# local-FDR densities: a fixed `bw`, the per-sample estimate with
-# `bwScope = "sample"`, or for adaptive bandwidths the blended bandwidth curve,
-# read at the unstimulated peak.
+#' Settings for the optional shifted-peak rule (`locShiftedPeakRef`), or NULL
+#' when it is off. The reference bandwidth is the per-channel shared bandwidth
+#' at the `bwNcellMax` reference size, before any widening for small tubes
+#' (smaller of the stimulated and unstimulated tubes' values with
+#' `bwScope = "cluster"`). Without a shared bandwidth it is the bandwidth of the
+#' local-FDR densities: a fixed `bw`, the per-sample estimate with
+#' `bwScope = "sample"`, or for adaptive bandwidths the blended bandwidth curve,
+#' read at the unstimulated peak. This trigger bandwidth is separate from
+#' the actual density bandwidth used for negative widths and search offsets.
 #' @keywords internal
 .getCpUnsLocShiftedPeakSettings <- function(
   chnlSettings,
@@ -1305,9 +1429,11 @@
   out
 }
 
-# Apply the shifted-peak rule: it fires when the stimulated main peak lies
-# more than `mult` reference bandwidths to the right of the unstimulated
-# peak and the unstimulated left window is available. NULL when it is off.
+#' Apply the shifted-peak rule: it fires when the stimulated main peak lies
+#' more than `mult` reference bandwidths to the right of the unstimulated
+#' peak and the unstimulated negative width is available. NULL when it is off.
+#' Its width is measured by `.getCpUnsLocNegWidth()` on the peak density; the
+#' search offset uses half that width with a one-density-bandwidth minimum.
 #' @keywords internal
 .getCpUnsLocShiftedPeakRule <- function(
   shiftedPeak,
@@ -1356,6 +1482,7 @@
     max(.getCut(exTblStimOrig)) < .getCpUnsLocGetMinProbX(probTblPos)
 }
 
+#' Prepare model data while retaining density and negative-width diagnostics
 #' @keywords internal
 .getCpUnsLocGetDataMod <- function(
   exTblStimThreshold,
@@ -1437,6 +1564,7 @@
   attr(dataMod, "locDensityComparison") <- probTblList$densityComparison
   attr(dataMod, "locPeakX") <- probTblList$peakX
   attr(dataMod, "locWindowWidth") <- probTblList$windowWidth
+  attr(dataMod, "locWindowWidthInfo") <- probTblList$windowWidthInfo
 
   .thinDataMod(dataMod, maxCellsPerBin = 20)
 }

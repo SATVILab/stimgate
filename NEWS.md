@@ -1,3 +1,12 @@
+# stimgate 0.99.34
+
+## Bug fixes
+
+- The width of the negative population, which sets where `gateStim()` starts
+  looking for responding cells, is now measured from the main negative peak
+  to its half-height point or to the first clear dip, so skewed or multi-mode
+  negatives no longer push the search, and gates, far to the right.
+
 # stimgate 0.99.33
 
 ## Bug fixes

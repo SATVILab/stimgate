@@ -1,9 +1,10 @@
 #' Get the safe lower boundary from the full stimulated marginal distribution
 #'
 #' The left/main modal-complex peak is identified in the same way as in the
-#' initial one-marker procedure. `windowWidth` is the span from the 5th
-#' percentile of values below that peak to the peak itself. Cytokine-positive
-#' refinement is not allowed at or below `peakX + windowWidth / 3`.
+#' initial one-marker procedure. The negative width uses the closest left
+#' half-height point or clear dip on that same marginal density (SJ bandwidth
+#' with the `bwMin` floor). Refinement is not allowed at or below
+#' `peakX + max(0.5 * windowWidth, densityBw)`.
 #'
 #' @keywords internal
 .getCytPosMarginalReference <- function(
@@ -14,6 +15,7 @@
   out <- list(
     peakX = NA_real_,
     windowWidth = NA_real_,
+    windowWidthInfo = NULL,
     lowerX = NA_real_,
     densityBw = NA_real_,
     reason = "marginal_reference_unavailable"
@@ -99,23 +101,9 @@
     return(out)
   }
 
-  xLeft <- x[x < peakX]
-
-  if (length(xLeft) < 2L) {
-    out$reason <- "marginal_left_region_unavailable"
-    return(out)
-  }
-
-  windowWidth <- abs(
-    diff(
-      stats::quantile(
-        xLeft,
-        probs = c(0.05, 1),
-        na.rm = TRUE,
-        names = FALSE
-      )
-    )
-  )
+  widthInfo <- .getCpUnsLocNegWidth(dens, peakX, x, dens$bw)
+  windowWidth <- widthInfo$width
+  out$windowWidthInfo <- widthInfo
 
   if (
     !is.finite(windowWidth) ||
@@ -127,7 +115,7 @@
 
   out$peakX <- peakX
   out$windowWidth <- windowWidth
-  out$lowerX <- peakX + windowWidth / 3
+  out$lowerX <- peakX + max(0.5 * windowWidth, dens$bw)
   out$densityBw <- dens$bw
   out$reason <- "marginal_reference_available"
 
@@ -176,6 +164,7 @@
 #' The leftmost internal antimode strictly between the marginal lower boundary
 #' and the existing clustered gate is selected. If no such antimode exists, the
 #' existing gate is retained by the caller.
+#' @param windowWidthInfo list or NULL Marginal negative-width diagnostics.
 #'
 #' @keywords internal
 .getCpPosTautString <- function(
@@ -185,12 +174,14 @@
   cpOrig,
   peakX,
   windowWidth,
-  lower
+  lower,
+  windowWidthInfo = NULL
 ) {
   out <- list(
     threshold = NA_real_,
     peakX = suppressWarnings(as.numeric(peakX))[1L],
     windowWidth = suppressWarnings(as.numeric(windowWidth))[1L],
+    windowWidthInfo = windowWidthInfo,
     lowerX = NA_real_,
     gateOriginal = suppressWarnings(as.numeric(cpOrig))[1L],
     antimodes = numeric(0L),

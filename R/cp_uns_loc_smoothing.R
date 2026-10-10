@@ -3,6 +3,8 @@
 # Fits the monotone response-probability curve, supplies fallback smoothers, and
 # stores the finite-difference derivative evaluated from the fitted curve.
 
+#' Smooth response probabilities while retaining negative-width diagnostics
+#' @keywords internal
 .getCpUnsLocGetProbSmooth <- function(
   dataMod,
   stage,
@@ -16,7 +18,8 @@
     "locStimDensity",
     "locDensityComparison",
     "locPeakX",
-    "locWindowWidth"
+    "locWindowWidth",
+    "locWindowWidthInfo"
   )
   retainedValues <- stats::setNames(
     lapply(retainedAttrs, function(name) attr(dataMod, name)),
