@@ -16,7 +16,7 @@ echo " "
 echo "-------------------"
 echo "Run projr"
 date
-apptainer-rscript -f stimgate -- 'devtools::install()'
+apptainer-rscript -f stimgate -- 'devtools::install(build = FALSE)'
 echo "Completed installing stimgate"
 date
 echo "-------------------"

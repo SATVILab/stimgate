@@ -172,3 +172,11 @@ _tmp/log/sbatch/dev-11-sim-low-separation-cyt-pos
 _tmp/log/sbatch/dev-12-sim-cluster-gates
 _tmp/log/sbatch/plots/11-sim-low-separation-cyt-pos
 _tmp/log/sbatch/plots/12-sim-cluster-gates
+_tmp/log/sbatch/dev-14-real-compare-omip111
+_tmp/log/sbatch/dev-14b-real-compare-omip111-shifted-peak
+_tmp/log/sbatch/dev-15-real-compare-omip016
+_tmp/log/sbatch/dev-15b-real-compare-omip016-shifted-peak
+_tmp/log/sbatch/plots/14-real-compare-omip111
+_tmp/log/sbatch/plots/14b-real-compare-omip111-shifted-peak
+_tmp/log/sbatch/plots/15-real-compare-omip016
+_tmp/log/sbatch/plots/15b-real-compare-omip016-shifted-peak

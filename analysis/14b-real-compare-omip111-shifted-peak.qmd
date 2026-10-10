@@ -224,9 +224,8 @@ if (isTRUE(run_plots)) {
         shown$errorPp[[i]], shown$errorPpDefault[[i]]),
       "</summary>\n\n", sep = "")
     cat("![Gate diagnostics for ", shown$mouse[[i]], " ", shown$population[[i]],
-      " ", shown$marker[[i]], "](<", as.character(fs::path_rel(
-        file.path(diagnostic_dir, page$png[[1]]),
-        start = file.path(root_dir, "analysis"))), ">)\n", sep = "")
+      " ", shown$marker[[i]], "](", knitr::image_uri(file.path(diagnostic_dir, page$png[[1]])),
+      ")\n", sep = "")
     cat("\n\n</details>\n\n")
   }
 }

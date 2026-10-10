@@ -315,9 +315,8 @@ if (isTRUE(run_plots)) {
           cat("\n<details><summary>", pages$mouse[[i]], " — ", marker,
             " (PDF page ", pages$page[[i]], ")</summary>\n\n", sep = "")
           cat("![Gate diagnostics for ", pages$mouse[[i]], " ", population,
-            " ", marker, "](<", as.character(fs::path_rel(
-              file.path(diagnostic_dir, pages$png[[i]]),
-              start = file.path(root_dir, "analysis"))), ">)\n", sep = "")
+            " ", marker, "](", knitr::image_uri(file.path(diagnostic_dir, pages$png[[i]])),
+            ")\n", sep = "")
           cat("\n\n</details>\n\n")
         }
       }

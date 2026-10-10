@@ -1,6 +1,15 @@
 ^renv$
 ^renv\.lock$
 ^\.claude$
+^analysis$
+^scripts$
+^data-raw$
+^_raw$
+^output$
+^[^/]+_files$
+^\.agents$
+^\.projects$
+^slurm-[0-9]+\.out$
 
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
 ^_raw/data/small/

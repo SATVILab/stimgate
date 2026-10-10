@@ -169,5 +169,8 @@ test_that("analysis HTML keeps retina size bounded and preserves sibling MC file
     expect_match(text, "knitr:\n  opts_chunk:\n    fig.retina: 1", fixed = TRUE, info = basename(file))
     expect_match(text, "    embed-resources: true", fixed = TRUE, info = basename(file))
     expect_false(grepl("unlink(path, recursive = TRUE)", text, fixed = TRUE), info = basename(file))
+    # Images printed as markdown must be data URIs, not links to saved files.
+    expect_false(grepl("](<", text, fixed = TRUE), info = basename(file))
+    expect_false(grepl("include_graphics(", text, fixed = TRUE), info = basename(file))
   }
 })
