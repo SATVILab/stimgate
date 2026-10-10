@@ -1,5 +1,13 @@
 # AGENTS.md — Configuration for AI Coding Agents
 
+OMIP-111 per-mouse diagnostic pages in Analysis 14 reuse
+`.simDebugLocPlots()` and the Analysis 13 recorder. Rerun each complete
+strain/population with the comparison seed and controls, and require
+exact parity of final base and conditional gates before publishing.
+Overlay the actual projected author raw cutoffs on the common asinh
+scale; use saved combination-count frequencies for the final result
+block rather than recomputing StimGate from its base gate alone.
+
 This file is the **canonical source of truth** for all AI coding agents
 (e.g. Google Jules, GitHub Copilot) working on the `stimgate`
 repository.
@@ -1579,3 +1587,20 @@ preserve ratio-companion dimensions as well. Fitted HTML figures are
 embedded as data URIs: Quarto drops figure files knitr did not record,
 and `include_graphics()` in `results: asis` prints only a path. Check
 such output changes with a quick-profile render, not only unit tests.
+
+OMIP-111 (Analysis 14) imports the supplied FlowJo workspaces with
+FlowKit and audits saved population counts and cytokine frequencies
+before comparing methods. Keep each strain’s matched mouse pairs
+separate, use the same float32 parent-population expression (arcsinh raw
+unmixed fluorescence with recorded cofactor) for all methods, and
+marginalise final StimGate combination counts when cytokine-positive
+refinement is enabled. IL-4/5 is one measured channel. Manual gates are
+an imperfect reference; retain negative net frequencies and explicit
+comparator errors and report finite-mouse coverage per marker.
+
+OMIP-111’s author cytokine rectangles also restrict CD44. Analysis 14
+uses the raw cytokine lower cutoff alone as its primary one-dimensional
+reference, with full author 2-D counts retained as context. Never score
+the CD44-restricted frequencies as if they were unrestricted cytokine
+positivity; validate projected reference masks against the raw FCS read
+by R before method execution.
