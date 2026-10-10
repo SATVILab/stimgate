@@ -77,6 +77,8 @@ source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
 source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
 source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
+source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
+source(file.path(scripts_r_dir, "omip016-methods.R"))
 source(file.path(scripts_r_dir, "omip111.R"))
 source(file.path(scripts_r_dir, "sim-debug-loc.R"))
 source(file.path(scripts_r_dir, "acs_cytof-debug.R"))
@@ -210,6 +212,50 @@ if (isTRUE(run_plots)) {
   print(knitr::kable(coverage))
   .analysis_report_table(comparison_results, c(fig_key, "comparison.csv"), "Every individual comparison, including failure and threshold provenance.", root_dir)
   .analysis_report_table(comparison_summary, c(fig_key, "summary.csv"), "Per-strain, population and marker errors with finite-mouse coverage.", root_dir)
+}
+```
+
+## Cell classification and frequency correlation
+
+Classification uses only stimulated tubes; unstimulated tubes have no
+responders. The primary manual reference is the raw cytokine lower cutoff
+on the common parent cells. The CD44-restricted author masks remain context.
+Manual gates are an imperfect reference. The mouse table retains every
+TP, FP, FN and TN count and each metric's denominator. The summary pools
+counts within strain, population, marker and method, and reports medians over
+mice with the number of defined mouse metrics. Failed comparator gates remain
+missing and contribute only to intended coverage.
+
+```{r}
+#| label: classification-tables
+#| results: asis
+if (isTRUE(run_plots) && exists("comparison_results") && nrow(comparison_results) > 0L) {
+  report_results <- comparison_results
+  classification <- .omip111Classification(prepared_inputs, report_results)
+  .analysis_report_table(classification, c(fig_key, "classification-mice.csv"),
+    "Stimulated-cell classification against the imperfect manual reference for every mouse.", root_dir)
+  .analysis_report_table(.omip111ClassificationSummary(classification),
+    c(fig_key, "classification.csv"),
+    "Pooled cell counts and metric medians over mice, with defined coverage and denominators.", root_dir)
+}
+```
+
+Pearson correlation measures association and Lin concordance correlation
+measures agreement with the imperfect manual reference. Both use net
+frequencies, retaining negative values, across mice within strain, population
+and marker, and pooled across strains and markers within each population.
+The pooled rows combine different markers and strains and are descriptive.
+The table records intended and finite pairs; correlations are missing with
+fewer than three finite pairs or zero variance in either frequency.
+
+```{r}
+#| label: frequency-correlations
+#| results: asis
+if (isTRUE(run_plots) && exists("report_results") && nrow(report_results) > 0L) {
+  correlations <- .omipFrequencyCorrelationTable(report_results,
+    c("strain", "population", "marker"), "propBs", "manualBs", "population")
+  .analysis_report_table(correlations, c(fig_key, "frequency-correlations.csv"),
+    "Pearson and population-moment Lin concordance correlations against manual net frequencies.", root_dir)
 }
 ```
 

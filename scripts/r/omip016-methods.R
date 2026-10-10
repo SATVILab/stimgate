@@ -270,7 +270,7 @@
       nCellStim = nrow(x), countStim = colSums(pos),
       nCellUns = nrow(xUns), countUns = colSums(posUns),
       tp = colSums(pos & labStim), fp = colSums(pos & !labStim),
-      fn = colSums(!pos & labStim),
+      fn = colSums(!pos & labStim), tn = colSums(!pos & !labStim),
       nManualStim = colSums(labStim), nManualUns = colSums(labU),
       stringsAsFactors = FALSE, row.names = NULL
     )
@@ -282,11 +282,9 @@
   out$freq_stim_man <- 100 * out$nManualStim / out$nCellStim
   out$freq_uns_man <- 100 * out$nManualUns / out$nCellUns
   out$freq_bs_man <- pmax(out$freq_stim_man - out$freq_uns_man, 0)
-  # Undefined proportions stay NA.
-  out$fdp <- ifelse(out$tp + out$fp > 0, out$fp / (out$tp + out$fp), NA_real_)
-  out$sensitivity <- ifelse(out$tp + out$fn > 0, out$tp / (out$tp + out$fn), NA_real_)
-  out$f1 <- ifelse(2 * out$tp + out$fp + out$fn > 0,
-                   2 * out$tp / (2 * out$tp + out$fp + out$fn), NA_real_)
+  out <- dplyr::bind_cols(out, .omipClassificationMetrics(out))
+  out$n <- out$nCellStim
+  out$n_defined <- ifelse(is.finite(out$tp + out$fp + out$fn + out$tn), out$n, 0L)
   out
 }
 
@@ -310,4 +308,45 @@
     stop("StimGate statistics do not reproduce the strict x > gate counts.")
   }
   invisible(TRUE)
+}
+
+# Shared render-time OMIP scoring. Counts refer only to stimulated cells.
+.omipClassificationMetrics <- function(counts) {
+  tp <- counts$tp
+  fp <- counts$fp
+  fn <- counts$fn
+  tn <- counts$tn
+  ratio <- function(a, b) ifelse(is.finite(b) & b > 0, a / b, NA_real_)
+  data.frame(
+    n_selected = tp + fp, n_manual_positive = tp + fn,
+    n_manual_negative = tn + fp, n_f1 = 2 * tp + fp + fn,
+    fdp = ratio(fp, tp + fp), precision = ratio(tp, tp + fp),
+    sensitivity = ratio(tp, tp + fn), specificity = ratio(tn, tn + fp),
+    f1 = ratio(2 * tp, 2 * tp + fp + fn)
+  )
+}
+
+# Reuse the ACS population-moment CCC, with OMIP's eligibility rules.
+# Source acs_cytof-plot_cyt.R before calling this helper.
+.omipFrequencyCorrelationTable <- function(results, groups, estimate, reference,
+                                           pooledGroups = character()) {
+  summarise <- function(keys, scope) {
+    results |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(c(keys, "method")))) |>
+      dplyr::group_modify(function(data, key) {
+        x <- data[[estimate]]
+        y <- data[[reference]]
+        finite <- is.finite(x) & is.finite(y)
+        x <- x[finite]
+        y <- y[finite]
+        eligible <- length(x) >= 3L && stats::var(x) > 0 && stats::var(y) > 0
+        data.frame(
+          scope = scope, n_total = nrow(data), n = length(x),
+          pearson = if (eligible) stats::cor(x, y) else NA_real_,
+          ccc = if (eligible) .acsCytofValidationCcc(x, y) else NA_real_
+        )
+      }) |>
+      dplyr::ungroup()
+  }
+  dplyr::bind_rows(summarise(groups, "stratum"), summarise(pooledGroups, "pooled"))
 }
