@@ -146,7 +146,7 @@ result.
 #| results: asis
 error_summary <- .omipShiftedPeakErrorSummary(paired, c("strain", "population", "marker"))
 print(knitr::kable(error_summary, digits = 2))
-if (run_plots) {
+if (isTRUE(run_plots)) {
   .analysis_report_table(paired, c(fig_key, "paired-comparison.csv"),
     "Every outcome under the default and shifted-peak settings.", root_dir)
   .analysis_report_table(error_summary, c(fig_key, "error-summary.csv"),
@@ -161,7 +161,7 @@ shifted-peak StimGate errors; filled points mark tubes where the rule applied.
 #| label: error-figure
 #| fig-width: 10
 #| fig-height: 7
-if (run_plots) {
+if (isTRUE(run_plots)) {
   figure_dir <- .analysis_fig_dir(c(fig_key, "stimgate-error"), root_dir)
   p <- .omipShiftedPeakErrorPlot(paired, facet = c("strain", "population"))
   print(p)
@@ -196,7 +196,7 @@ lists every page.
 #| results: asis
 #| echo: false
 #| out-width: 100%
-if (run_plots) {
+if (isTRUE(run_plots)) {
   diagnostic_dir <- .analysis_fig_dir(c(fig_key, "gate-diagnostics"), root_dir)
   if (run_diagnostics) {
     .acsCytofEnsureCurrentCheckout(root_dir)

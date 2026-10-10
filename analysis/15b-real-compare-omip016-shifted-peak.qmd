@@ -102,13 +102,13 @@ stimgate_settings <- .omip016StimGateSettings(
 ```{r}
 #| label: run-stimgate
 #| include: false
-prep <- .omip016ReadPrepared(path_prepared)
+prepared <- .omip016ReadPrepared(path_prepared)
 path_stimgate <- file.path(path_methods, "stimgate")
 if (isTRUE(run_stimgate)) {
   set.seed(analysis_seed)
   dir.create(path_methods, recursive = TRUE, showWarnings = FALSE)
   .acsCytofReplaceDir(path_stimgate, function(path_tmp) {
-    .omip016RunStimGate(prep, path_tmp, stimgate_settings)
+    .omip016RunStimGate(prepared, path_tmp, stimgate_settings)
   })
 }
 ```
@@ -124,7 +124,7 @@ if (!dir.exists(path_stimgate)) {
 if (!dir.exists(path_stimgate_default) || !file.exists(path_comparators)) {
   stop("Analysis 15 results are missing; render Analysis 15 first.")
 }
-current_pre <- prep$pre[c("version", "inputContentHash", "settings")]
+current_pre <- prepared$pre[c("version", "inputContentHash", "settings")]
 manifest <- readRDS(file.path(path_stimgate, "omip016-manifest.rds"))
 manifest_default <- readRDS(file.path(path_stimgate_default, "omip016-manifest.rds"))
 comparator_results <- readRDS(path_comparators)
@@ -147,10 +147,10 @@ for (method in c("tailgate", "fbeta")) {
 manual_thresholds <- utils::read.csv(file.path(path_prepared, "reference", "manual_thresholds.csv"),
                                      check.names = FALSE)
 comparators <- rbind(comparator_results$tailgate$gates, comparator_results$fbeta$gates,
-                     .omip016ManualGates(prep, manual_thresholds))
-scored <- .omip016Score(prep, rbind(.omip016StimGateGates(prep, path_stimgate), comparators))
-.omip016CheckStimGateCounts(prep, path_stimgate, scored)
-scored_default <- .omip016Score(prep, rbind(.omip016StimGateGates(prep, path_stimgate_default), comparators))
+                     .omip016ManualGates(prepared, manual_thresholds))
+scored <- .omip016Score(prepared, rbind(.omip016StimGateGates(prepared, path_stimgate), comparators))
+.omip016CheckStimGateCounts(prepared, path_stimgate, scored)
+scored_default <- .omip016Score(prepared, rbind(.omip016StimGateGates(prepared, path_stimgate_default), comparators))
 fired <- .omipShiftedPeakFired(path_stimgate, labels = data.frame(project = "OMIP-016"))
 sg <- scored[scored$method == "stimgate", ]
 sg_default <- scored_default[scored_default$method == "stimgate", ]
