@@ -1,6 +1,6 @@
 # Place a gate in the gap below a selected cell value
 
-Place a gate in the gap below a selected cell value
+Bandwidth resolution is shared with the leading-run response discount.
 
 ## Usage
 

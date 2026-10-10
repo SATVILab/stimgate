@@ -1394,17 +1394,21 @@ final package gate rows.
     (`xSum`). For the shape-enforced route this is the largest applied
     pre-fit, global or marginal cut
     ([`.getCpUnsLocShapeRegionBoundary()`](https://satvilab.github.io/stimgate/reference/dot-getCpUnsLocShapeRegionBoundary.md)).
-    `"match"` keeps the previous probability-sum matching, including the
-    gate below the selected cell, and must reproduce previous gates
-    exactly. Keep the reasons distinct
-    (`local_fdr_region_boundary_selected` versus
-    `local_fdr_threshold_selected`) and keep no-response/non-finite
-    cases labelled as fallbacks. Under `"region"`, condition diagnostics
-    count frequencies at the applied gate; `propBsEst` stays a
-    probability-sum diagnostic and is never forced to agree. Analyses
-    set the method explicitly and record it in manifests; changing it
-    requires a new semantics version so cached results from the other
-    method are rejected.
+    `"match"` matches the updated probability-sum estimate and places
+    the gate below the selected cell; it need not reproduce previous
+    gates exactly. For all methods, discount the initial
+    `pred > probSmooth` run linearly from weight zero at ratio 0.75 to
+    one at ratio 1, only within half a density bandwidth of the lowest
+    estimate value; remove only zero-weight candidates there, with full
+    weights and no leading-run removal when bandwidth is unavailable.
+    Keep the reasons distinct (`local_fdr_region_boundary_selected`
+    versus `local_fdr_threshold_selected`) and keep
+    no-response/non-finite cases labelled as fallbacks. Under
+    `"region"`, condition diagnostics count frequencies at the applied
+    gate; `propBsEst` stays a probability-sum diagnostic and is never
+    forced to agree. Analyses set the method explicitly and record it in
+    manifests; changing it requires a new semantics version so cached
+    results from the other method are rejected.
 
 17. **Gate sharing (`gateCombn`, `clusterGates`)**: Only responders
     donate gates: tubes whose own per-sample gate was generated directly
