@@ -79,7 +79,8 @@ test_that("the ACS runner forwards and records locThresholdMethod", {
     expect_s3_class(run$control, "stimControl")
     expect_identical(run$control$locThresholdMethod, expected)
     expect_true(run$control$clusterGates)
-    expect_true(run$control$calcCytPosGates)
+    # One gate per cytokine, as the manual gates and comparators set.
+    expect_false(run$control$calcCytPosGates)
     manifest <- readRDS(file.path(run$paths$stimgate, "acs-manifest.rds"))
     expect_identical(manifest$settings$locThresholdMethod, expected)
     expect_no_error(env$.acsCytofValidateStimGateMethod(manifest, expected))
@@ -181,7 +182,7 @@ test_that("the analysis 9 run manifest must record the threshold method", {
     list(stimgate_loc_threshold_method = "region"), "region", qmd
   ))
   expect_error(
-    check(list(analysis_semantics_version = "acs-cytof-v8"), "region", qmd),
+    check(list(analysis_semantics_version = "acs-cytof-v9"), "region", qmd),
     "stimgate_loc_threshold_method"
   )
   expect_error(
@@ -234,7 +235,7 @@ test_that("analyses 9 and 10 set and record the threshold method", {
   for (qmd in list(qmd9, qmd10)) {
     expect_true(grepl(".acsCytofCheckRunManifestMethod(", qmd, fixed = TRUE))
     expect_true(grepl(forwarded, qmd, fixed = TRUE))
-    expect_true(grepl('"acs-cytof-v8"', qmd, fixed = TRUE))
+    expect_true(grepl('"acs-cytof-v9"', qmd, fixed = TRUE))
     expect_false(grepl('"acs-cytof-v3"', qmd, fixed = TRUE))
   }
 })

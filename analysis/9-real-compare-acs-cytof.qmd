@@ -169,12 +169,13 @@ StimGate uses `bwMtd = "nrd0"` (with `bwNcellMax = 1e4`, `bwFallback = "auto"`
 and no bandwidth bounds); bandwidths are shared per marker
 (`bwScope = "cytokine"`). StimGate uses `gateCombn = "min"`, `minCell = 100`,
 threshold clustering on (`clusterGates = TRUE`) and cytokine-positive refinement
-on (`calcCytPosGates = TRUE`). Each condition-level gate is the lower
+off (`calcCytPosGates = FALSE`), so each cytokine has one gate, as the manual
+gates and the comparators do. Each condition-level gate is the lower
 boundary of the region kept by local-FDR filtering
 (`locThresholdMethod = "cap"`: the region boundary, moved up only where its
 frequency exceeds 1.3 times the probability-sum estimate). The comparison
 scores the final clustered
-`loc_minClust` gates after cytokine-positive refinement. These settings are
+`loc_minClust` gates. These settings are
 recorded with the saved run, and a saved StimGate result made with another
 threshold method is rejected.
 Its unstimulated-sample bias
@@ -360,7 +361,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .write_rds_atomic(
     list(
-      analysis_semantics_version = "acs-cytof-v8",
+      analysis_semantics_version = "acs-cytof-v9",
       stimgate_loc_threshold_method = stimgate_loc_threshold_method,
       run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))
     ),
@@ -372,7 +373,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .analysis_check_expected_run(
     manual_run_manifest,
-    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v8"
+    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v9"
   )
   .acsCytofCheckRunManifestMethod(
     manual_run_manifest, stimgate_loc_threshold_method, analysis_qmd

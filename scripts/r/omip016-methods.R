@@ -35,7 +35,7 @@
 # element is omitted when FALSE so Analysis 15's saved settings still match.
 .omip016StimGateSettings <- function(locThresholdMethod = "cap",
                                      clusterGates = TRUE,
-                                     calcCytPosGates = TRUE,
+                                     calcCytPosGates = FALSE,
                                      locShiftedPeakRef = FALSE) {
   settings <- list(
     biasUns = NULL, biasUnsFactor = 1, bwMtd = "nrd0", bwScope = "cytokine",

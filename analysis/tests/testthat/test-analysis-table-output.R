@@ -66,6 +66,8 @@ test_that("QMD table exports are guarded and large inline table printers stay ab
     lines <- readLines(file, warn = FALSE)
     for (start in which(startsWith(lines, "```{r"))) {
       end <- which(lines == "```" & seq_along(lines) > start)[1L]
+      # Empty chunks (e.g. a QMD's trailing "run all above" chunk) hold no code.
+      if (end <= start + 1L) next
       code <- lines[seq.int(start + 1L, end - 1L)]
       parsed <- parse(text = code)
       if (any(grepl("#\\| (include|eval): false", code))) next

@@ -15,9 +15,9 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
 
 test_that("shifted-peak settings change only the rule and the semantics", {
   env <- .omipShiftedPeakTestEnv()
-  default <- list(semantics = "omip111-v4", seed = 1L, control = list(bwMtd = "nrd0"))
+  default <- list(semantics = "omip111-v5", seed = 1L, control = list(bwMtd = "nrd0"))
   shifted <- env$.omipShiftedPeakSettings(default)
-  expect_identical(shifted$semantics, "omip111-v4-shifted-peak")
+  expect_identical(shifted$semantics, "omip111-v5-shifted-peak")
   expect_true(shifted$control$locShiftedPeakRef)
   expect_identical(shifted$control$bwMtd, "nrd0")
   expect_identical(shifted$seed, 1L)

@@ -40,7 +40,7 @@ every tube are recorded. Each page shows the raw stimulated and unstimulated
 densities, the raw and smoothed response probability, its derivative, the
 expected responding cells per bin and the taut-string density, with the
 filtering boundaries and the initial local-FDR gate. It adds the final gate
-StimGate applied after threshold sharing and cytokine-positive refinement
+StimGate applied after threshold sharing
 (`loc_minClust`, the gate Analysis 9 scores), Analysis 9's Tailgate and
 F-beta gates, and a purple dashed line at the stimulated-tube value where
 stimulated minus unstimulated frequency equals the manual frequency. That line
@@ -252,7 +252,7 @@ if (isTRUE(run_simulations)) {
   # Pages for the report's samples are drawn even if not selected here.
   select <- list(stim = sel_stims, cyt = sel_cyts, sample = sel_samples)
   manifest <- list(
-    analysis_semantics_version = "acs-cytof-debug-v2",
+    analysis_semantics_version = "acs-cytof-debug-v3",
     run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = "")),
     settings = settings,
     select = select,
@@ -316,7 +316,7 @@ if (isTRUE(run_plots)) {
     obj <- .analysis_read_rds(path, "acs_cytof_debug", analysis_qmd)
     .analysis_check_expected_run(
       obj$manifest, "acs_cytof_debug", analysis_qmd,
-      semantics_version = "acs-cytof-debug-v2"
+      semantics_version = "acs-cytof-debug-v3"
     )
     summaries[[pop]] <- obj$table
   }
@@ -435,8 +435,7 @@ if (isTRUE(run_plots)) {
 ### Chosen samples
 
 Each figure is one saved page. Its heading gives why it was chosen and
-StimGate's frequency scored in Analysis 9 (after cytokine-positive
-refinement) against the manual frequency, both background subtracted and
+StimGate's frequency scored in Analysis 9 against the manual frequency, both background subtracted and
 clipped at zero, in percent of the population.
 
 ```{r}

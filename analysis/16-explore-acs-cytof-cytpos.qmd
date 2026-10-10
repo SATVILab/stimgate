@@ -30,10 +30,13 @@ each population and each stimulation:
 
 1. hexagon plots of IFNγ against TNF in the stimulated and unstimulated tubes,
    with StimGate's ordinary gates (orange lines);
-2. the IFNγ distribution among all cells (dotted) and among cells positive
-   for at least one other cytokine (solid), in the stimulated (red) and
-   unstimulated (blue) tubes;
-3. the same for TNF.
+2. TNF among IFNγ+ cells and IFNγ among TNF+ cells (the partner in the
+   hexagon plots), and each among cells positive for any other cytokine
+   (what StimGate's cytokine-positive rule uses), in the stimulated (red)
+   and unstimulated (blue) tubes. The conditional cells are drawn as
+   histograms (bins 0.25 wide, scaled to density so tubes of different sizes
+   compare), since tens of cells are too few for a reliable kernel density;
+   all cells are drawn as dotted density curves for reference.
 
 "Positive for another cytokine" uses StimGate's ordinary gates for the other
 five cytokines (IL-2, IL-6, IL-17, IL-22 and TNF or IFNγ), counting a cell
@@ -41,14 +44,12 @@ when its value is strictly above the gate, as StimGate does. In the density
 plots the dashed dark line is StimGate's ordinary gate and the solid orange
 line its cytokine-positive gate (drawn on top when the two are equal). Exact
 zeros are left out of the densities, as StimGate leaves out each tube's
-minimum; each panel's label gives the number of stimulated cells positive for
-another cytokine. Each density is scaled to its own cells, so the curves
-compare shapes, not cell numbers. Each curve uses its own Sheather-Jones
-bandwidth (at least 0.05), which follows two modes in a small subset without
-being as narrow as a bandwidth chosen for tens of thousands of cells. Curves
-are drawn only for groups with at least five non-zero values. The y axis
-is on a square-root scale so the tails remain visible next to the large peak
-near zero.
+minimum; each panel's label gives the number of stimulated cells in the
+conditional subset (before zeros are dropped). Histograms and curves are
+each scaled to their own cells, so they compare shapes, not cell numbers.
+The all-cell curves use their own Sheather-Jones bandwidth (at least 0.05).
+The y axis is on a square-root scale so the tails remain visible next to the
+large peak near zero.
 
 Everything is read from Analysis 9's most recent run (its cached GatingSets
 and StimGate gates); nothing is gated again. The gates are therefore those of
@@ -149,14 +150,21 @@ if (isTRUE(run_plots)) {
         file.path(fig_dir, paste0(stim, "-hex-IFNg-TNF.png")),
         width = 36, height = 26
       )
-      for (cyt in c("IFNg", "TNF")) {
-        cat("\n\n#### ", cyt, " among cells positive for another cytokine\n\n", sep = "")
+      views <- list(
+        list(cyt = "TNF", given = "IFNg", heading = "TNF among IFNγ+ cells"),
+        list(cyt = "TNF", given = NULL, heading = "TNF among cells positive for another cytokine"),
+        list(cyt = "IFNg", given = "TNF", heading = "IFNγ among TNF+ cells"),
+        list(cyt = "IFNg", given = NULL, heading = "IFNγ among cells positive for another cytokine")
+      )
+      for (view in views) {
+        cat("\n\n#### ", view$heading, "\n\n", sep = "")
         dens_tbl <- dplyr::bind_rows(lapply(donors, function(d) {
-          .acsCytposDensityTbl(dat[[d]], d, cyt)
+          .acsCytposDensityTbl(dat[[d]], d, view$cyt, given = view$given)
         }))
+        given_key <- if (is.null(view$given)) "any_other" else paste0(view$given, "pos")
         .analysis_print_save_fig(
-          .acsCytposDensityPlot(dens_tbl, donor_gates, cyt),
-          file.path(fig_dir, paste0(stim, "-density-", cyt, ".png")),
+          .acsCytposDensityPlot(dens_tbl, donor_gates, view$cyt),
+          file.path(fig_dir, paste0(stim, "-", view$cyt, "-given-", given_key, ".png")),
           width = 30, height = 24
         )
       }

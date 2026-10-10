@@ -8,7 +8,7 @@
 test_that("QMD registry covers all top-level documents with real test files", {
   loaded <- .load_qmd_test_targets()
   targets <- loaded$env$.qmd_test_targets(loaded$root_dir)
-  expect_length(targets, 18L)
+  expect_length(targets, 19L)
   expect_setequal(names(targets), list.files(
     file.path(loaded$root_dir, "analysis"), pattern = "[.]qmd$"
   ))
