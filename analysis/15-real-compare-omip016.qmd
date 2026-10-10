@@ -101,7 +101,8 @@ if (isTRUE(run_comparators)) {
 
 StimGate uses Analysis 9's settings: `bwMtd = "nrd0"` with
 `bwNcellMax = 1e4`, shared per-marker bandwidths, `gateCombn = "min"`,
-`minCell = 100`, threshold clustering and cytokine-positive refinement on,
+`minCell = 100`, threshold clustering on, cytokine-positive refinement off
+(one gate per marker, as the manual gates and the comparators have),
 `locThresholdMethod = "cap"` and `biasUns` equal to the shared bandwidth. The
 comparison scores the final `loc_minClust` gates. Tailgate (stimulated tube,
 automatic tolerance) and F-beta (`beta = 0.8`, `theta = 2`, `width = 10`)
@@ -113,7 +114,7 @@ against these manual gates would make the comparison circular.
 #| label: scientific-settings
 analysis_seed <- 20261009L
 stimgate_settings <- .omip016StimGateSettings(
-  locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = TRUE
+  locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = FALSE
 )
 ```
 
@@ -335,7 +336,9 @@ scored <- scored[order(scored$stim, scored$cyt, scored$method), ]
 
 Cells are called positive as the package calls them: above the gate
 (strict `x > gate`), or, for StimGate, above its lower cytokine-positive gate
-(`gateCyt`) when ordinarily positive for another response marker. The
+(`gateCyt`) when ordinarily positive for another response marker; with the
+refinement off, `gateCyt` equals the gate, so this is the plain `x > gate`
+rule. The
 unstimulated tube is classified with the stimulated tube's gates. StimGate's
 counts from `getStimStats()` equal these recomputed counts. Gates that are not
 a method's own direct estimate:

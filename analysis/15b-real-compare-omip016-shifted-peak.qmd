@@ -92,10 +92,10 @@ path_methods <- .analysis_project_dir("cache", c("omip016", "shifted-peak", "met
 #| label: scientific-settings
 analysis_seed <- 20261009L
 default_settings <- .omip016StimGateSettings(
-  locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = TRUE
+  locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = FALSE
 )
 stimgate_settings <- .omip016StimGateSettings(
-  locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = TRUE,
+  locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = FALSE,
   locShiftedPeakRef = TRUE
 )
 ```
@@ -173,8 +173,8 @@ if (anyNA(paired$shiftedPeakRef)) stop("Missing shifted-peak flags.")
 
 The rule applied for **`r sum(paired$shiftedPeakRef)`** of
 **`r nrow(paired)`** stimulated tube/marker outcomes. The flag is StimGate's
-record for each tube's own local-FDR gate; threshold sharing and
-cytokine-positive refinement can still move the final gate.
+record for each tube's own local-FDR gate; threshold sharing can still move
+the final gate.
 
 ```{r}
 #| label: fired

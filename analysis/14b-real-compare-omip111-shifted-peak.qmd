@@ -76,14 +76,14 @@ if (run_methods) .acsCytofEnsureCurrentCheckout(root_dir)
 #| label: scientific-settings
 # Analysis 14's settings, with only the shifted-peak rule switched on.
 default_settings <- list(
-  semantics = "omip111-v4", seed = 20261009L,
+  semantics = "omip111-v5", seed = 20261009L,
   preprocessing = list(reference = "raw cytokine lower cutoff on common non-naive parent",
     cofactor = 150, parentRelativeTolerance = 0.02,
     frequencyTolerancePp = 0.1),
   control = list(bwMtd = "nrd0", bwScope = "cytokine", bwNcellMax = 1e4,
     bwNcellMin = 1e4, bwFallback = "auto", bwMin = "none", bwMax = "none",
     biasUnsFactor = 1, gateCombn = "min", clusterGates = TRUE,
-    calcCytPosGates = TRUE, minCell = 100, locThresholdMethod = "cap"),
+    calcCytPosGates = FALSE, minCell = 100, locThresholdMethod = "cap"),
   comparators = list(
     fbeta = .acsCytofComparatorSettings("fbeta_default")$params,
     tailgate = .acsCytofComparatorSettings("tailgate_default")$params))
@@ -117,8 +117,8 @@ paired <- .omip111ShiftedPeakPaired(default_results, comparison_results, fired, 
 
 The table counts the stimulated tubes (mice) where the rule applied, for each
 strain, population and marker. It reads the `locShiftedPeakRef` flag that
-StimGate records for each tube's own local-FDR gate. Threshold sharing and
-cytokine-positive refinement can still move a tube's final gate.
+StimGate records for each tube's own local-FDR gate. Threshold sharing can
+still move a tube's final gate.
 
 ```{r}
 #| label: fired

@@ -283,7 +283,7 @@
       manifest <- list(
         context = .acsCytofManifest(preprocessing),
         settings = list(biasUns = biasUns, biasUnsFactor = biasUnsFactor,
-                        clusterGates = TRUE, calcCytPosGates = TRUE,
+                        clusterGates = TRUE, calcCytPosGates = FALSE,
                         locThresholdMethod = locThresholdMethod),
         channelSettings = stimgate::stimgateMetaReadSettingsChnls(pathTmp)
       )
@@ -368,7 +368,7 @@
       bwMax = "none",
       gateCombn = "min",
       clusterGates = TRUE,
-      calcCytPosGates = TRUE,
+      calcCytPosGates = FALSE,
       minCell = 100,
       locThresholdMethod = locThresholdMethod
     )

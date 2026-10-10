@@ -79,7 +79,7 @@ test_that("analysis 8 is paired, transactional, and read-only for plots", {
   expect_true(grepl("stimgate_bw_ncell_min = stimgate_bw_ncell_min", content, fixed = TRUE))
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'comparison_semantics_version <- "batch-mismatch-comparison-v23"',
+    'comparison_semantics_version <- "batch-mismatch-comparison-v24"',
     content,
     fixed = TRUE
   ))
@@ -210,7 +210,7 @@ test_that("analysis 2a uses shared seeded runners and canonical reads", {
 
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl("sim_retry_errors:\\s*true", content))
-  expect_true(has('analysis_semantics_version <- "global-bw-freq-v15"'))
+  expect_true(has('analysis_semantics_version <- "global-bw-freq-v16"'))
   expect_true(has("sim_seed = as.integer(simulation_seed + base_scenario_id - 1L)"))
   # sim_id/sim_seed are fixed on the full grid before filtering/shuffling.
   expect_lt(pos("sim_seed = as.integer("), pos("sim_grid_full <- sim_grid"))

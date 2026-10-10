@@ -17,7 +17,7 @@ test_that("analysis 7 uses run-specific progress and validates full nested colla
   expect_true(grepl("stimgate_bw_ncell_min = stimgate_bw_ncell_min", content, fixed = TRUE))
   expect_true(grepl("simulation_seed:\\s*12345", content))
   expect_true(grepl(
-    'comparison_semantics_version <- "corrected-comparison-v23"',
+    'comparison_semantics_version <- "corrected-comparison-v24"',
     content, fixed = TRUE
   ))
   expect_false(grepl("sim_grid_shuffle_seed", content, fixed = TRUE))

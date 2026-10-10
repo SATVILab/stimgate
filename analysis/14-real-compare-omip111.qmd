@@ -103,14 +103,14 @@ if (run_methods) .acsCytofEnsureCurrentCheckout(root_dir)
 ```{r}
 #| label: scientific-settings
 scientific_settings <- list(
-  semantics = "omip111-v4", seed = 20261009L,
+  semantics = "omip111-v5", seed = 20261009L,
   preprocessing = list(reference = "raw cytokine lower cutoff on common non-naive parent",
     cofactor = 150, parentRelativeTolerance = 0.02,
     frequencyTolerancePp = 0.1),
   control = list(bwMtd = "nrd0", bwScope = "cytokine", bwNcellMax = 1e4,
     bwNcellMin = 1e4, bwFallback = "auto", bwMin = "none", bwMax = "none",
     biasUnsFactor = 1, gateCombn = "min", clusterGates = TRUE,
-    calcCytPosGates = TRUE, minCell = 100, locThresholdMethod = "cap"),
+    calcCytPosGates = FALSE, minCell = 100, locThresholdMethod = "cap"),
   comparators = list(
     fbeta = .acsCytofComparatorSettings("fbeta_default")$params,
     tailgate = .acsCytofComparatorSettings("tailgate_default")$params))
@@ -133,10 +133,11 @@ are reported below. The CSV retains the original FlowJo two-dimensional net
 frequencies as context, clearly separate from the projected cytokine-cut reference.
 
 StimGate uses shared per-cytokine bandwidths, bandwidth-based unstimulated bias,
-threshold sharing and cytokine-positive refinement, with the same control
+threshold sharing, with cytokine-positive refinement off (one gate per
+cytokine, as the author gates and the comparators have) and the same control
 settings as the ACS real-data analysis. We score its final `loc_minClust`
-**combination counts**, marginalised to each cytokine; this preserves the
-conditional refinement actually applied by the package.
+**combination counts**, marginalised to each cytokine; with the refinement off
+these equal the plain `x > gate` counts.
 
 F-beta uses β = 0.8, θ = 2, smoothing width 10 and automatic bin count.
 The existing Richards implementation uses common histogram edges spanning

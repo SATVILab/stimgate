@@ -120,7 +120,7 @@
       input[[sid]] <- sampleInput
     }
     manifest <- list(
-      semantics = "omip111-v4", sourceSha256 = fingerprint,
+      semantics = "omip111-v5", sourceSha256 = fingerprint,
       importer = importer, importerSourceSha256 = digest::digest(file = pathImporter, algo = "sha256"),
       preprocessing = preprocessing,
       scale = paste0("asinh(raw unmixed fluorescence / ", preprocessing$cofactor, "); float32"),

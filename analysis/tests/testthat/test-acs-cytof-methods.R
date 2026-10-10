@@ -566,7 +566,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   path <- file.path(env$path_manual_output, "manual-comparison.rds")
   saveRDS(cached, path)
   path_run_manifest <- file.path(env$path_manual_output, "manifest.rds")
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v8",
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v9",
     stimgate_loc_threshold_method = "region"), path_run_manifest)
   withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA_character_)
   for (expr in as.list(code)[-1L]) eval(expr, env)
@@ -577,7 +577,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   for (old in list(
     list(analysis_semantics_version = "acs-cytof-v3",
       stimgate_loc_threshold_method = "region"),
-    list(analysis_semantics_version = "acs-cytof-v8")
+    list(analysis_semantics_version = "acs-cytof-v9")
   )) {
     saveRDS(old, path_run_manifest)
     expect_error(
@@ -585,7 +585,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
       "RUN_SIMULATIONS=true"
     )
   }
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v8",
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v9",
     stimgate_loc_threshold_method = "region"), path_run_manifest)
 
   unlink(path)

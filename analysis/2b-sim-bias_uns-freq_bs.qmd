@@ -98,7 +98,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bias_uns", "freq_bs")
-analysis_semantics_version <- "bias-uns-freq-v12"
+analysis_semantics_version <- "bias-uns-freq-v13"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
