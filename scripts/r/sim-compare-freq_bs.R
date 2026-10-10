@@ -727,6 +727,8 @@
       n_classified = .data$n_selected + .data$nFalseNeg + .data$nTrueNeg,
       fdp = ratio(.data$nFalsePos, .data$n_selected),
       sensitivity = ratio(.data$nTruePos, .data$n_genuine_pos),
+      precision = ratio(.data$nTruePos, .data$n_selected),
+      specificity = ratio(.data$nTrueNeg, .data$n_genuine_neg),
       false_positive_rate = ratio(.data$nFalsePos, .data$n_genuine_neg),
       f1 = ratio(2 * .data$nTruePos, 2 * .data$nTruePos + .data$nFalsePos + .data$nFalseNeg),
       selected_fraction = ratio(.data$n_selected, .data$n_classified),
@@ -4161,6 +4163,10 @@
       n_run_error = sum(!is.na(.data$error) & nzchar(.data$error)),
       n_no_cutpoint = sum(.data$thresholdOrigin %in% "failed_no_cutpoint"),
       n_fdp_defined = sum(is.finite(.data$fdp)),
+      n_sensitivity_defined = sum(is.finite(.data$sensitivity)),
+      n_precision_defined = sum(is.finite(.data$precision)),
+      n_specificity_defined = sum(is.finite(.data$specificity)),
+      n_f1_defined = sum(is.finite(.data$f1)),
       n_empty = sum(.data$gate_empty %in% TRUE),
       n_fallback = sum(
         .data$gate_status %in% c("fallback_empty", "fallback_selected")
@@ -4170,6 +4176,10 @@
       fdp_q90 = q(.data$fdp, 0.9),
       sensitivity_median = q(.data$sensitivity, 0.5),
       sensitivity_q10 = q(.data$sensitivity, 0.1),
+      precision_median = q(.data$precision, 0.5),
+      precision_q10 = q(.data$precision, 0.1),
+      specificity_median = q(.data$specificity, 0.5),
+      specificity_q10 = q(.data$specificity, 0.1),
       f1_median = q(.data$f1, 0.5),
       f1_q10 = q(.data$f1, 0.1),
       fpr_median = q(.data$false_positive_rate, 0.5),
@@ -4185,11 +4195,45 @@
   spec <- list(
     fdp_median = item("fdp", 0.5), fdp_q90 = item("fdp", 0.9),
     sensitivity_median = item("sensitivity", 0.5), sensitivity_q10 = item("sensitivity", 0.1),
+    precision_median = item("precision", 0.5), precision_q10 = item("precision", 0.1),
+    specificity_median = item("specificity", 0.5), specificity_q10 = item("specificity", 0.1),
     f1_median = item("f1", 0.5), f1_q10 = item("f1", 0.1),
     fpr_median = item("false_positive_rate", 0.5), fpr_q90 = item("false_positive_rate", 0.9)
   )
   out <- dplyr::select(out, -dplyr::any_of(names(spec)))
   dplyr::left_join(out, .simComparePooledStats(metrics, scenarioCols, spec, unit, mcse), by = scenarioCols)
+}
+
+# Render-time tube-level agreement of the final sample frequency with truth.
+# Source acs_cytof-plot_cyt.R first to reuse its population-moment Lin CCC.
+# Runtime errors remain in coverage but do not contribute finite pairs.
+.simCompareCorrelationTable <- function(
+    .data, scenarioCols, keepMethods = .simCompareMethods) {
+  .data <- .simComparePrimaryMethodRows(.data)
+  if (!"error" %in% names(.data)) .data$error <- NA_character_
+  scenarioCols <- unique(c(scenarioCols, "method"))
+  .data |>
+    dplyr::filter(.data$method %in% keepMethods) |>
+    dplyr::mutate(
+      propRespEst = dplyr::if_else(
+        !is.na(.data$error) & nzchar(.data$error), NA_real_, .data$propRespEst
+      )
+    ) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
+    dplyr::group_modify(function(data, keys) {
+      finite <- is.finite(data$propRespEst) & is.finite(data$propRespTruth)
+      x <- data$propRespEst[finite]
+      y <- data$propRespTruth[finite]
+      defined <- length(x) >= 3L && stats::var(x) > 0 && stats::var(y) > 0
+      tibble::tibble(
+        n = nrow(data),
+        n_valid = sum(is.finite(data$propRespEst)),
+        n_pairs = length(x),
+        pearson = if (defined) stats::cor(x, y) else NA_real_,
+        ccc = if (defined) .acsCytofValidationCcc(x, y) else NA_real_
+      )
+    }) |>
+    dplyr::ungroup()
 }
 
 # Pairing check: within each baseline scenario, replicate and sample, every
@@ -4283,6 +4327,14 @@
     label = "Sensitivity",
     median = "sensitivity_median", tail = "sensitivity_q10"
   ),
+  precision = c(
+    label = "Precision",
+    median = "precision_median", tail = "precision_q10"
+  ),
+  specificity = c(
+    label = "Specificity",
+    median = "specificity_median", tail = "specificity_q10"
+  ),
   f1 = c(
     label = "F1 score",
     median = "f1_median", tail = "f1_q10"
@@ -4297,7 +4349,8 @@
 # `.simCompareClassificationSummary()`. Each scenario has adjacent outcome
 # panels, each with its own horizontal range; colour and shape identify the
 # method and line type the statistic (median, or the worse tail: 90th
-# percentile for FDP and false-positive rate, 10th for sensitivity and F1). With
+# percentile for FDP and false-positive rate, 10th for sensitivity, precision,
+# specificity and F1). With
 # `unit_scale`, every vertical scale is fixed at 0-100%.
 .simComparePlotClassification <- function(
     tbl,
@@ -4307,9 +4360,10 @@
     mcse = FALSE) {
   spec <- .simCompareClassificationOutcomes[outcomes]
   tail_label <- if (length(outcomes) == 1L) {
-    if (outcomes %in% c("sensitivity", "f1")) "10th percentile" else "90th percentile"
+    if (outcomes %in% c("sensitivity", "precision", "specificity", "f1")) "10th percentile" else "90th percentile"
   } else {
-    paste(c(fdp = "90th FDP", sensitivity = "10th sensitivity", f1 = "10th F1", fpr = "90th FPR")[outcomes],
+    paste(c(fdp = "90th FDP", sensitivity = "10th sensitivity", precision = "10th precision",
+      specificity = "10th specificity", f1 = "10th F1", fpr = "90th FPR")[outcomes],
       collapse = " / ")
   }
   # One statistic's rows, with its Monte Carlo bounds when present.
@@ -4347,7 +4401,7 @@
     ggplot2::geom_point(size = 1.2, alpha = 0.8, na.rm = TRUE) +
     (if (isTRUE(mcse)) .analysis_mcse_errorbar(long)) +
     ggplot2::facet_wrap(
-      ggplot2::vars(scenario, outcome), ncol = 2,
+      ggplot2::vars(scenario, outcome), ncol = max(2L, length(outcomes)),
       scales = if (unit_scale) "free_x" else "free",
       labeller = ggplot2::labeller(
         scenario = ggplot2::label_wrap_gen(width = 28),
