@@ -463,7 +463,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-### Why StimGate missed most SEB MIP-1beta cells
+### StimGate's gate for SEB MIP-1beta
 
 ```{r}
 #| label: mip1b-debug
@@ -485,18 +485,18 @@ knitr::kable(data.frame(
 ), row.names = FALSE)
 ```
 
-StimGate's own local-FDR gate for the SEB MIP-1beta tube sits above
-essentially the whole response. The response probability (panel B) is close
-to one across the MIP-1beta-positive bump, where the expected responding cells
-are (panel C), but post-smoothing filtering anchored on the sparse extreme
-tail, where a handful of cells give a spiky probability curve, and kept only
-the region above the dip that separates that tail from the bump. The tube's
-own response estimate was therefore zero, so it could not donate or receive a
-lowered shared gate beyond the non-responder cell cap, and the final ordinary
-gate stayed near the top of the data. StimGate's reported frequency for this
-tube comes almost entirely from its cytokine-positive gate, applied to
-MIP-1beta cells that are also positive for another marker (most are IFN-gamma
-positive); MIP-1beta single-positive cells are missed.
+The panels show StimGate's local-FDR gating of the SEB MIP-1beta tube: the
+stimulated and unstimulated densities (panel A), the response probability
+(panel B) and the expected responding cells (panel C). The response
+probability rises once, at the lower edge of the MIP-1beta-positive bump, and
+the gate sits there, next to the manual threshold.
+
+Before stimgate 0.99.30 this gate sat above essentially the whole response.
+The probability smoother could not fit channels whose names are not valid R
+names, such as `PE-A`, so every OMIP-016 tube used the unsmoothed
+probabilities. A handful of cells in the sparse upper tail then gave a spiky
+probability curve that set the gate near the top of the data. The table above
+reports the smoothing method used (`scam_mpi` is the monotone fit).
 
 ```{r}
 #| label: fig-mip1b-debug
