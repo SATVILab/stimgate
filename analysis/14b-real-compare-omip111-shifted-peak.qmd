@@ -1,0 +1,233 @@
+---
+title: OMIP-111 comparison with the shifted-peak rule
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: true
+  run_methods: null
+  run_plots: true
+  run_diagnostics: true
+---
+
+## What this document is
+
+This is the **shifted-peak rule on** version of Analysis 14
+(`14-real-compare-omip111.qmd`). Analysis 14 stays the current-default version.
+Everything is the same as Analysis 14 (prepared inputs, settings, seed,
+comparators, scoring) except one StimGate setting:
+`stimControl(locShiftedPeakRef = TRUE)`.
+
+StimGate normally starts looking for responding cells one third of a
+left-window width above the higher of the stimulated and unstimulated main
+peaks. After PMA/ionomycin, most cells make TNF, so the stimulated main peak
+is made of responding cells and the search starts above most of them. With
+the rule on, if the stimulated main peak lies more than 2 bandwidths to the
+right of the unstimulated main peak, the search starts above the
+unstimulated peak instead, using only the unstimulated tube's left-window
+width. The bandwidth is the shared per-marker bandwidth estimated on 10,000
+cells, without the widening for smaller tubes.
+
+The results here are written to their own cache (`omip111/shifted-peak`) and
+figure folders, and the Analysis 14 results are only read. Read Analysis 14
+for the dataset, the reference and the limits of the comparison; they all
+apply here.
+
+```{r}
+#| label: setup
+#| include: false
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
+source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
+source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
+source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
+source(file.path(scripts_r_dir, "omip111.R"))
+source(file.path(scripts_r_dir, "sim-debug-loc.R"))
+source(file.path(scripts_r_dir, "acs_cytof-debug.R"))
+source(file.path(scripts_r_dir, "omip111-debug.R"))
+source(file.path(scripts_r_dir, "omip-shifted-peak.R"))
+run_simulations <- .as_flag(.get_qmd_param_env("run_simulations", "RUN_SIMULATIONS", FALSE))
+run_methods <- .as_flag(.get_qmd_param_env("run_methods", "RUN_METHODS", run_simulations))
+run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
+run_diagnostics <- .as_flag(.get_qmd_param_env("run_diagnostics", "RUN_DIAGNOSTICS", TRUE))
+fig_key <- .analysis_mode_key("14b-real-compare-omip111-shifted-peak", sized = FALSE)
+path_prepared <- .analysis_project_dir("cache", c("omip111", "prepared"), root_dir, create = FALSE)
+path_default <- .analysis_project_dir("cache", c("omip111", "current"), root_dir, create = FALSE)
+path_results <- .analysis_project_dir("cache", c("omip111", "shifted-peak", "current"), root_dir, create = FALSE)
+path_fbeta <- file.path(root_dir, "scripts", "python", "fbeta.py")
+if (run_methods) .acsCytofEnsureCurrentCheckout(root_dir)
+```
+
+```{r}
+#| label: scientific-settings
+# Analysis 14's settings, with only the shifted-peak rule switched on.
+default_settings <- list(
+  semantics = "omip111-v4", seed = 20261009L,
+  preprocessing = list(reference = "raw cytokine lower cutoff on common non-naive parent",
+    cofactor = 150, parentRelativeTolerance = 0.02,
+    frequencyTolerancePp = 0.1),
+  control = list(bwMtd = "nrd0", bwScope = "cytokine", bwNcellMax = 1e4,
+    bwNcellMin = 1e4, bwFallback = "auto", bwMin = "none", bwMax = "none",
+    biasUnsFactor = 1, gateCombn = "min", clusterGates = TRUE,
+    calcCytPosGates = TRUE, minCell = 100, locThresholdMethod = "cap"),
+  comparators = list(
+    fbeta = .acsCytofComparatorSettings("fbeta_default")$params,
+    tailgate = .acsCytofComparatorSettings("tailgate_default")$params))
+scientific_settings <- .omipShiftedPeakSettings(default_settings)
+```
+
+```{r}
+#| label: run-analysis
+#| include: false
+if (!file.exists(file.path(path_prepared, "COMPLETE"))) {
+  stop("Analysis 14's prepared OMIP-111 inputs are missing; render Analysis 14 first.")
+}
+prepared_inputs <- readRDS(file.path(path_prepared, "inputs.rds"))
+if (run_methods) .omip111Run(prepared_inputs, path_results, scientific_settings, path_fbeta)
+if (!file.exists(file.path(path_results, "COMPLETE"))) stop("Shifted-peak OMIP-111 results are missing; run with RUN_SIMULATIONS=true.")
+comparison_object <- readRDS(file.path(path_results, "result.rds"))
+if (!identical(comparison_object$settings, scientific_settings)) stop("Saved shifted-peak settings differ; rerun methods.")
+if (!identical(comparison_object$preprocessing, prepared_inputs$manifest)) stop("Prepared inputs differ from the shifted-peak results.")
+comparison_results <- comparison_object$results
+if (!file.exists(file.path(path_default, "COMPLETE"))) stop("Analysis 14 default results are missing.")
+default_object <- readRDS(file.path(path_default, "result.rds"))
+if (!identical(default_object$settings, default_settings)) stop("Analysis 14 default results use other settings.")
+default_results <- default_object$results
+fired <- .omipShiftedPeakFired(
+  file.path(path_results, rep(c("C57", "BALB"), each = 2L), c("CD4", "CD8"), "stimgate"),
+  labels = data.frame(strain = rep(c("C57", "BALB"), each = 2L), population = c("CD4", "CD8")))
+paired <- .omip111ShiftedPeakPaired(default_results, comparison_results, fired, prepared_inputs$samples)
+```
+
+## How often the rule applied
+
+The table counts the stimulated tubes (mice) where the rule applied, for each
+strain, population and marker. It reads the `locShiftedPeakRef` flag that
+StimGate records for each tube's own local-FDR gate. Threshold sharing and
+cytokine-positive refinement can still move a tube's final gate.
+
+```{r}
+#| label: fired
+#| results: asis
+fired_summary <- paired |>
+  dplyr::filter(.data$method == "StimGate") |>
+  dplyr::group_by(.data$strain, .data$population, .data$marker) |>
+  dplyr::summarise(mice = dplyr::n(), rule_applied = sum(.data$shiftedPeakRef),
+    .groups = "drop")
+cat("The rule applied for **", sum(fired_summary$rule_applied), "** of **",
+  sum(fired_summary$mice), "** StimGate tube/marker outcomes.\n\n", sep = "")
+print(knitr::kable(fired_summary))
+comparators_unchanged <- .omipShiftedPeakComparatorsUnchanged(paired)
+cat("\nF-beta and Tailgate results are identical to Analysis 14: **",
+  if (comparators_unchanged) "yes" else "no", "**.\n\n", sep = "")
+```
+
+## StimGate errors with and without the rule
+
+Errors are StimGate's net frequency minus the projected author cytokine-cut
+reference, in percentage points, as in Analysis 14. Each row averages the five
+mice of one strain, population and marker. "Default" is Analysis 14's saved
+result.
+
+```{r}
+#| label: error-table
+#| results: asis
+error_summary <- .omipShiftedPeakErrorSummary(paired, c("strain", "population", "marker"))
+print(knitr::kable(error_summary, digits = 2))
+if (run_plots) {
+  .analysis_report_table(paired, c(fig_key, "paired-comparison.csv"),
+    "Every outcome under the default and shifted-peak settings.", root_dir)
+  .analysis_report_table(error_summary, c(fig_key, "error-summary.csv"),
+    "Mean StimGate error per strain, population and marker.", root_dir)
+}
+```
+
+Each point below is one mouse. Lines join the same mouse's default and
+shifted-peak StimGate errors; filled points mark tubes where the rule applied.
+
+```{r}
+#| label: error-figure
+#| fig-width: 10
+#| fig-height: 7
+if (run_plots) {
+  figure_dir <- .analysis_fig_dir(c(fig_key, "stimgate-error"), root_dir)
+  p <- .omipShiftedPeakErrorPlot(paired, facet = c("strain", "population"))
+  print(p)
+  ggplot2::ggsave(file.path(figure_dir, "stimgate-error-default-vs-shifted-peak.png"), p,
+    width = 10, height = 7, units = "in", dpi = 150)
+}
+```
+
+## All three methods with the rule on
+
+```{r}
+#| label: method-errors
+#| results: asis
+descriptive_errors <- comparison_results |>
+  dplyr::group_by(.data$method) |>
+  dplyr::summarise(eligible_outcomes = sum(is.finite(.data$errorPp)),
+    mean_absolute_error_pp = mean(.data$absoluteErrorPp, na.rm = TRUE),
+    median_absolute_error_pp = stats::median(.data$absoluteErrorPp, na.rm = TRUE),
+    .groups = "drop")
+print(knitr::kable(descriptive_errors, digits = 3))
+```
+
+## Gate diagnostics where the rule applied
+
+These are Analysis 14's per-mouse diagnostic pages, rerun with the rule on.
+The rerun must reproduce every saved final gate exactly before any page is
+shown. Only the outcomes where the rule applied are shown here; the CSV index
+lists every page.
+
+```{r}
+#| label: individual-gate-diagnostics
+#| results: asis
+#| echo: false
+#| out-width: 100%
+if (run_plots) {
+  diagnostic_dir <- .analysis_fig_dir(c(fig_key, "gate-diagnostics"), root_dir)
+  if (run_diagnostics) {
+    .acsCytofEnsureCurrentCheckout(root_dir)
+    .omip111DebugRun(prepared_inputs, comparison_results, scientific_settings,
+      diagnostic_dir, path_results)
+  }
+  if (!file.exists(file.path(diagnostic_dir, "COMPLETE"))) stop("Gate diagnostics are missing; use RUN_DIAGNOSTICS=true.")
+  diagnostic_object <- readRDS(file.path(diagnostic_dir, "diagnostics.rds"))
+  if (!identical(diagnostic_object$settings, scientific_settings) ||
+    !identical(diagnostic_object$context, prepared_inputs$manifest)) {
+    stop("Saved gate diagnostics are stale; use RUN_DIAGNOSTICS=true.")
+  }
+  diagnostic_index <- diagnostic_object$index
+  .analysis_report_table(diagnostic_index, c(fig_key, "gate-diagnostic-index.csv"),
+    "All diagnostic pages, with PDF page numbers and saved-gate parity.", root_dir)
+  shown <- paired[paired$method == "StimGate" & paired$shiftedPeakRef, ]
+  for (i in seq_len(nrow(shown))) {
+    page <- diagnostic_index[diagnostic_index$strain == shown$strain[[i]] &
+      diagnostic_index$population == shown$population[[i]] &
+      diagnostic_index$marker == shown$marker[[i]] &
+      diagnostic_index$mouse == shown$mouse[[i]], ]
+    if (nrow(page) != 1L) stop("Missing diagnostic page for an outcome where the rule applied.")
+    cat("\n<details><summary>", shown$mouse[[i]], " ", shown$population[[i]], " ",
+      shown$marker[[i]], sprintf(" (error %+.1f pp; default %+.1f pp)",
+        shown$errorPp[[i]], shown$errorPpDefault[[i]]),
+      "</summary>\n\n", sep = "")
+    cat("![Gate diagnostics for ", shown$mouse[[i]], " ", shown$population[[i]],
+      " ", shown$marker[[i]], "](<", as.character(fs::path_rel(
+        file.path(diagnostic_dir, page$png[[1]]),
+        start = file.path(root_dir, "analysis"))), ">)\n", sep = "")
+    cat("\n\n</details>\n\n")
+  }
+}
+```
