@@ -14,8 +14,10 @@ test_that("full simulation grids seed biological scenarios rather than tuning ro
     env$simulation_seed <- 12345L
     env$sim_grid_shuffle_seed <- 8L
     env$sim_grid_chunk_index <- env$sim_grid_n_chunks <- 1L
-    lines <- readLines(list.files(file.path(root, "analysis"),
-      paste0("^", id, "-.*qmd$"), full.names = TRUE))
+    # The adaptive-bandwidth analyses 5 and 6 are archived.
+    dir <- file.path(root, "analysis")
+    if (id %in% c("5", "6")) dir <- file.path(dir, "_archive")
+    lines <- readLines(list.files(dir, paste0("^", id, "-.*qmd$"), full.names = TRUE))
     chunk <- function(label) {
       start <- which(lines == paste0("#| label: ", label))
       end <- start + which(lines[(start + 1L):length(lines)] == "```")[1L]

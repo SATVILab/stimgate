@@ -1,6 +1,6 @@
 .style_qmd_files <- c(
   "1-sim-trans.qmd", "3-sim-bw-est-base.qmd", "4-sim-bw-est-norm.qmd",
-  "5-sim-bw-est-adaptive.qmd", "6-sim-bw-freq_bs-adaptive.qmd"
+  "_archive/5-sim-bw-est-adaptive.qmd", "_archive/6-sim-bw-freq_bs-adaptive.qmd"
 )
 
 .style_qmd_lines <- function(file) {

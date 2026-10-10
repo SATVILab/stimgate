@@ -19,14 +19,14 @@ test_that("adaptive bandwidth simulation helpers source cleanly without legacy f
   expect_false(exists("simCytExperiment", envir = env, inherits = FALSE))
 })
 
-test_that("analysis/5-sim-bw-est-adaptive.qmd does not source functionsForBenchmarking-Cyt.R", {
-  qmd_path <- file.path(root_dir, "analysis", "5-sim-bw-est-adaptive.qmd")
+test_that("analysis/_archive/5-sim-bw-est-adaptive.qmd does not source functionsForBenchmarking-Cyt.R", {
+  qmd_path <- file.path(root_dir, "analysis", "_archive", "5-sim-bw-est-adaptive.qmd")
   expect_true(file.exists(qmd_path))
 
   lines <- readLines(qmd_path, warn = FALSE)
   expect_false(
     any(grepl("functionsForBenchmarking-Cyt\\.R", lines)),
-    info = "analysis/5-sim-bw-est-adaptive.qmd should not source functionsForBenchmarking-Cyt.R"
+    info = "analysis/_archive/5-sim-bw-est-adaptive.qmd should not source functionsForBenchmarking-Cyt.R"
   )
 })
 
@@ -315,7 +315,7 @@ test_that("analysis 5 collation summarises finite estimates per component", {
 
 test_that("analysis 5 dev filter selects values that exist in the grid", {
   lines <- readLines(file.path(
-    root_dir, "analysis", "5-sim-bw-est-adaptive.qmd"
+    root_dir, "analysis", "_archive", "5-sim-bw-est-adaptive.qmd"
   ))
   chunk <- function(label) {
     start <- which(lines == paste0("#| label: ", label))
@@ -349,7 +349,7 @@ test_that("analysis 5 dev filter selects values that exist in the grid", {
 
 
 test_that("analysis 5 plot filenames work with the controlled scenario labels", {
-  lines <- readLines(file.path(root_dir, "analysis", "5-sim-bw-est-adaptive.qmd"))
+  lines <- readLines(file.path(root_dir, "analysis", "_archive", "5-sim-bw-est-adaptive.qmd"))
   start <- grep("^          path_plot <- file.path", lines)
   end <- grep("^          dir.create", lines)
   expect_length(start, 1L)

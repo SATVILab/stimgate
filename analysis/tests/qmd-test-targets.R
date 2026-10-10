@@ -25,8 +25,7 @@
     "4-sim-bw-est-norm.qmd" = c(
       "test-sim-bw-est-norm-simcyto.R", "test-analysis-mcse.R"
     ),
-    "5-sim-bw-est-adaptive.qmd" = "test-sim-bw-est-adaptive-simcyto.R",
-    "6-sim-bw-freq_bs-adaptive.qmd" = "test-sim-bw-freq_bs-adaptive-simcyto.R",
+    "6-sim-tune-comparators.qmd" = "test-sim-tune-comparators.R",
     "7-sim-compare-freq_bs.qmd" = c(
       "test-signed-percentile-plots.R",
       "test-sim-compare-freq_bs-simcyto.R", "test-analysis-7-transactional-multichunk.R",

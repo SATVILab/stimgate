@@ -14,8 +14,8 @@ primary_qmds <- c(
   "2b-sim-bias_uns-freq_bs.qmd",
   "3-sim-bw-est-base.qmd",
   "4-sim-bw-est-norm.qmd",
-  "5-sim-bw-est-adaptive.qmd",
-  "6-sim-bw-freq_bs-adaptive.qmd",
+  "_archive/5-sim-bw-est-adaptive.qmd",
+  "_archive/6-sim-bw-freq_bs-adaptive.qmd",
   "7-sim-compare-freq_bs.qmd",
   "8-sim-compare-freq_bs-batch.qmd"
 )

@@ -44,7 +44,7 @@ run_selection() {
 }
 
 run_selection
-for stem in 11-sim-low-separation-cyt-pos 12-sim-cluster-gates; do
+for stem in 6-sim-tune-comparators 11-sim-low-separation-cyt-pos 12-sim-cluster-gates; do
   [[ $(grep -c "dev-${stem}.sh" "$SLURM_TEST_LOG") -eq 1 ]]
   plot=$(grep -F "plots-${stem}|" "$SLURM_TEST_LOG")
   [[ "$plot" == *"PLOT_QMD_FILES=analysis/${stem}.qmd,ANALYSIS_RUN_ID=slurm-test-run,RUN_SIMULATIONS=false,RUN_PLOTS=true|"* ]]
@@ -195,8 +195,8 @@ for launcher in dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shif
   grep -Fq -- "$launcher" "$SLURM_TEST_LOG"
 done
 
-# Analyses 11/12 each submit one serial simulation and one dependent plot job.
-for stem in 11-sim-low-separation-cyt-pos 12-sim-cluster-gates; do
+# Analyses 6/11/12 each submit one serial simulation and one dependent plot job.
+for stem in 6-sim-tune-comparators 11-sim-low-separation-cyt-pos 12-sim-cluster-gates; do
   run_selection "${stem%%-*}"
   [[ $(wc -l < "$SLURM_TEST_LOG") -eq 2 ]]
   sim=$(grep -F "dev-${stem}.sh" "$SLURM_TEST_LOG")

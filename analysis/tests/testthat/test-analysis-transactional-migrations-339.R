@@ -59,8 +59,8 @@ test_that("analysis Slurm launchers render top-level QMDs with one run ID", {
     list(script = "dev-2b-stim-bias_uns-freq_bs.sh", qmd = "2b-sim-bias_uns-freq_bs.qmd"),
     list(script = "dev-3-sim-bw-est-base.sh", qmd = "3-sim-bw-est-base.qmd"),
     list(script = "dev-4-sim-bw-est-norm.sh", qmd = "4-sim-bw-est-norm.qmd"),
-    list(script = "dev-5-sim-bw-est-adaptive.sh", qmd = "5-sim-bw-est-adaptive.qmd"),
-    list(script = "dev-6-sim-bw-freq_bs-adaptive.sh", qmd = "6-sim-bw-freq_bs-adaptive.qmd")
+    list(script = "_archive/dev-5-sim-bw-est-adaptive.sh", qmd = "_archive/5-sim-bw-est-adaptive.qmd"),
+    list(script = "_archive/dev-6-sim-bw-freq_bs-adaptive.sh", qmd = "_archive/6-sim-bw-freq_bs-adaptive.qmd")
   )
 
   for (spec in launcher_specs) {
@@ -165,7 +165,7 @@ test_that("promoted bandwidth outputs are discoverable without a simulation run"
 })
 
 test_that("analysis 6 promotes its summaries through the shared runner", {
-  content <- read_project_file("analysis", "6-sim-bw-freq_bs-adaptive.qmd")
+  content <- read_project_file("analysis", "_archive", "6-sim-bw-freq_bs-adaptive.qmd")
   expect_true(grepl(".simBandwidthFinishChunk(", content, fixed = TRUE))
   expect_true(grepl(".simBandwidthFreqBsAdaptiveCollate(tbl,",
                    content, fixed = TRUE))

@@ -18,7 +18,7 @@ root_dir <- normalizePath(
 test_that("bandwidth QMDs set the threshold method explicitly", {
   for (qmd in c(
     "2a-sim-bw-freq_bs-global.qmd", "2b-sim-bias_uns-freq_bs.qmd",
-    "6-sim-bw-freq_bs-adaptive.qmd"
+    "_archive/6-sim-bw-freq_bs-adaptive.qmd"
   )) {
     txt <- paste(
       readLines(file.path(root_dir, "analysis", qmd)),
