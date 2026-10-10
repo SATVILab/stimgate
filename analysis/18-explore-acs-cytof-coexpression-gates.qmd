@@ -1,0 +1,325 @@
+---
+title: Co-expression gates on every ACS sample
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: true
+  run_plots: false
+  run_compass: null
+---
+
+## What this document is
+
+Analysis 17 explored a rule that lowers a cytokine's gate for cells positive
+for another cytokine where the two are co-expressed beyond independence (the
+"co-expression gates"; `scripts/r/coexpression-gates.R`, also available in
+StimGate as `stimControl(cytPosMethod = "coexpression")`). Here the rule is
+applied to every ACS population, stimulation and donor, starting from Analysis
+9's ordinary gates, to see what it does at scale and to catch anything
+pathological.
+
+For each stimulated tube and every ordered pair of cytokines (a, b), b's gate
+is lowered for cells above a's gate when:
+
+1. the cells above both ordinary gates show a clear net response (z > 2);
+2. working back from a floor (the control tube's main negative peak, from
+   non-zero values, plus 1.5 robust SDs) in 20 bins, the bins from the ordinary
+   gate down to the new gate depart from independence (Pearson residual ≥ 3.5,
+   expected count from the stimulated tube's own marginal shares) and are at
+   least 0.75 times as pure as the double positives (purity = 1 − control
+   share / stimulated share), both for the lowest bin on its own and for all
+   the bins together;
+3. the added band is trimmed along a: a's cut rises (in 20ths of a's
+   gate-to-floor distance) until the slice above it, and the band above that,
+   are pure enough.
+
+A cell is b-positive if above b's ordinary gate, or above the raised a cut and
+the lowered b gate for any a. Control tubes are classified with their
+stimulated tube's gates. Cytokines without a gate are negative.
+
+For each population this document shows:
+
+- background-subtracted frequencies (stimulated minus control) of
+  single-positive cells (exactly one cytokine) and multi-positive cells (two or
+  more), ordinary gates against co-expression gates, one point per donor;
+- for each cytokine, how its single-positive frequency (positive for it alone)
+  and multi-positive frequency (positive for it and another) change;
+- a table of possible pathologies per tube (below);
+- hexagon plots of the tubes whose multi-positive frequency changed most, for
+  the pair of cytokines that added the most cells;
+- COMPASS functionality and polyfunctionality scores fitted separately on the
+  ordinary and the co-expression combination counts.
+
+Possible pathologies flagged per tube:
+
+- **bottom bin**: a gate lowered into the bin next to its floor, so the floor,
+  not the data, stopped it;
+- **control**: control cells called multi-positive at least doubled and up by
+  ten or more;
+- **multi jump**: the net multi-positive frequency more than tripled (from at
+  least 0.01%);
+- **single negative**: the net single-positive frequency driven below −0.05%.
+
+Everything is read from Analysis 9's most recent run; Analysis 9's caches are
+never changed. Results are cached under the projr cache folder
+`acs_cytof_coexpression/`.
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+fig_key <- .analysis_mode_key("18-explore-acs-cytof-coexpression-gates", sized = FALSE)
+for (fn in c(
+  "acs_cytof-helper.R", "acs_cytof-gate.R", "acs_cytof-methods.R",
+  "acs_cytof-debug.R", "acs_cytof-explore-cytpos.R", "coexpression-gates.R",
+  "acs_cytof-coexpression-gates.R"
+)) {
+  source(file.path(scripts_r_dir, fn))
+}
+run_simulations <- .as_flag(.get_qmd_param_env("run_simulations", "RUN_SIMULATIONS", FALSE))
+run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
+run_compass <- .get_qmd_param_env("run_compass", "RUN_COMPASS", NULL)
+run_compass <- if (is.null(run_compass)) run_simulations else .as_flag(run_compass)
+n_workers <- as.integer(Sys.getenv("ACS_COEX_WORKERS", "1"))
+compass_iterations <- as.integer(Sys.getenv("ACS_COEX_COMPASS_ITERATIONS", "10000"))
+```
+
+```{r}
+#| label: settings
+#| include: false
+pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "nk_pre", "b")
+rule_settings <- .acsCoexGatesSettings()
+run_settings <- list(
+  semantics = .acsCoexGatesSemantics, rule = rule_settings, pops = pop_vec
+)
+compass_settings <- c(run_settings, list(iterations = compass_iterations, replications = 8L, seed = 100L))
+```
+
+```{r}
+#| label: paths
+#| include: false
+# Analysis 9's caches are only read: never create or change them here.
+path_gs_base <- projr::projr_path_get("cache", "acs_cytof", "gs", create = FALSE, format = "absolute")
+path_scratch_base <- projr::projr_path_get("cache", "acs_cytof", "scratch", create = FALSE, format = "absolute")
+cache_dir <- projr::projr_path_get_dir(
+  "cache", "acs_cytof_coexpression", create = run_simulations || run_compass, format = "absolute"
+)
+channel_map <- .acsCytofChannelMap()
+path_pop <- function(pop) file.path(cache_dir, paste0(pop, ".rds"))
+path_compass <- file.path(cache_dir, "compass.rds")
+```
+
+```{r}
+#| label: run
+#| include: false
+# One population at a time; each is written atomically once complete.
+if (isTRUE(run_simulations)) {
+  for (pop in pop_vec) {
+    message("Co-expression gates: ", pop)
+    paths <- .acsCytofPopulationPaths(pop, "unused", path_gs_base, path_scratch_base)
+    res <- .acsCoexGatesPopulation(pop, paths, channel_map, rule_settings, workers = n_workers)
+    .write_rds_atomic(list(settings = run_settings, result = res), path_pop(pop))
+  }
+}
+```
+
+```{r}
+#| label: collate
+#| include: false
+read_pop <- function(pop) {
+  if (!file.exists(path_pop(pop))) {
+    stop("No co-expression gate results for population '", pop, "' at ", path_pop(pop),
+      ". Render with RUN_SIMULATIONS=true first.")
+  }
+  x <- readRDS(path_pop(pop))
+  if (!identical(x$settings, run_settings)) {
+    stop("Cached co-expression gate results for '", pop, "' were made with other settings.")
+  }
+  x$result
+}
+res_all <- lapply(stats::setNames(pop_vec, pop_vec), read_pop)
+low_all <- do.call(rbind, lapply(res_all, `[[`, "low"))
+counts_all <- do.call(rbind, lapply(res_all, `[[`, "counts"))
+freq_all <- .acsCoexGatesFreq(counts_all)
+paired_all <- .acsCoexGatesPaired(.acsCoexGatesSingleMulti(freq_all))
+flags_all <- .acsCoexGatesFlags(low_all, paired_all, rule_settings)
+```
+
+```{r}
+#| label: compass
+#| include: false
+if (isTRUE(run_compass)) {
+  # One fit per population, stimulation and rule, forked over the workers.
+  # Both rules use the same categories (`.acsCoexGatesCompassKeep()`).
+  fit_jobs <- do.call(rbind, lapply(pop_vec, function(pop) {
+    stims <- sort(unique(counts_all$stim[counts_all$pop == pop]))
+    expand.grid(pop = pop, stim = stims, rule = c("ordinary", "coexpr"), stringsAsFactors = FALSE)
+  }))
+  fit_one <- function(i) {
+    job <- fit_jobs[i, ]
+    counts_curr <- counts_all[counts_all$pop == job$pop & counts_all$stim == job$stim, ]
+    fit <- .acsCoexGatesCompass(counts_curr, job$rule, keep = .acsCoexGatesCompassKeep(counts_curr),
+      iterations = compass_settings$iterations, replications = compass_settings$replications,
+      seed = compass_settings$seed)
+    fit$scores$pop <- job$pop
+    fit$scores$stim <- job$stim
+    fit$subsets$pop <- job$pop
+    fit$subsets$stim <- job$stim
+    fit
+  }
+  fits <- if (n_workers > 1L) {
+    oplan <- future::plan(future::multicore, workers = n_workers)
+    fits_out <- future.apply::future_lapply(seq_len(nrow(fit_jobs)), fit_one, future.seed = TRUE)
+    future::plan(oplan)
+    fits_out
+  } else {
+    lapply(seq_len(nrow(fit_jobs)), fit_one)
+  }
+  .write_rds_atomic(list(
+    settings = compass_settings,
+    scores = do.call(rbind, lapply(fits, `[[`, "scores")),
+    subsets = do.call(rbind, lapply(fits, `[[`, "subsets"))
+  ), path_compass)
+}
+compass <- if (file.exists(path_compass)) readRDS(path_compass)
+if (!is.null(compass) && !identical(compass$settings, compass_settings)) compass <- NULL
+```
+
+## Overview
+
+```{r}
+#| label: overview
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  cat("Tubes per population (stimulated tubes with a control tube), median net single- and",
+    "multi-positive frequencies (%) with the ordinary and co-expression gates, the number of",
+    "ordered pairs lowered per tube (median) and tubes with each flag.\n\n")
+  any_tbl <- paired_all[paired_all$cytokine == "any", ]
+  overview <- do.call(rbind, lapply(pop_vec, function(pop) {
+    s <- any_tbl[any_tbl$pop == pop & any_tbl$type == "single", ]
+    m <- any_tbl[any_tbl$pop == pop & any_tbl$type == "multi", ]
+    f <- flags_all[flags_all$pop == pop, ]
+    data.frame(pop = pop, tubes = nrow(f),
+      singleOrd = round(100 * stats::median(s$propBsOrdinary), 3),
+      singleCoex = round(100 * stats::median(s$propBsCoexpr), 3),
+      multiOrd = round(100 * stats::median(m$propBsOrdinary), 3),
+      multiCoex = round(100 * stats::median(m$propBsCoexpr), 3),
+      pairsLowered = stats::median(f$nLowered),
+      bottomBin = sum(f$flagBottomBin), control = sum(f$flagControl),
+      multiJump = sum(f$flagMultiJump), singleNegative = sum(f$flagSingleNegative))
+  }))
+  print(knitr::kable(overview, row.names = FALSE))
+  .analysis_report_table(flags_all, c(fig_key, "tube-flags.csv"),
+    "Per tube: pairs lowered, cells added and pathology flags.", root_dir)
+  .analysis_report_table(low_all, c(fig_key, "lowered-gates.csv"),
+    "Per tube and ordered cytokine pair: ordinary, lowered and raised gates, floors, z and purity.",
+    root_dir, quiet = TRUE)
+  .analysis_report_table(paired_all, c(fig_key, "single-multi-frequencies.csv"),
+    "Per tube: single- and multi-positive background-subtracted frequencies, ordinary and co-expression gates.",
+    root_dir, quiet = TRUE)
+}
+```
+
+```{r}
+#| label: populations
+#| echo: false
+#| results: asis
+#| fig-width: 12
+#| fig-height: 7
+if (isTRUE(run_plots)) {
+  for (pop in pop_vec) {
+    fig_dir <- .analysis_fig_dir(c(fig_key, pop), root_dir)
+    pop_paired <- paired_all[paired_all$pop == pop, ]
+    cat("\n\n## ", pop, "\n\n", sep = "")
+    cat("\n\n### Single- and multi-positive frequencies\n\n")
+    .analysis_print_save_fig(.acsCoexGatesScatterPlot(pop_paired),
+      file.path(fig_dir, "single-multi-scatter.png"), width = 30, height = 16)
+    cat("\n\n### Change for each cytokine\n\n")
+    .analysis_print_save_fig(.acsCoexGatesDiffPlot(pop_paired),
+      file.path(fig_dir, "cytokine-change.png"), width = 30, height = 16)
+
+    cat("\n\n### Tubes that changed most\n\n")
+    cat("The eight tubes with the largest change in net multi-positive frequency; for each,",
+      "the lowered pair that added the most stimulated cells (x: the cytokine the cells are",
+      "positive for; y: the cytokine whose gate is lowered).\n\n")
+    f <- flags_all[flags_all$pop == pop, ]
+    f <- f[order(-abs(f$multiBsCoexpr - f$multiBsOrdinary)), ]
+    f <- utils::head(f[f$nLowered > 0, ], 8L)
+    if (nrow(f)) {
+      paths <- .acsCytofPopulationPaths(pop, "unused", path_gs_base, path_scratch_base)
+      gs <- flowWorkspace::load_gs(paths$gs, backend_readonly = TRUE)
+      sample_map <- .acsCytofReadPreprocessing(paths$gs, gs)$sampleMap
+      gates <- stimgate::getStimGates(paths$stimgate)
+      tubes <- lapply(seq_len(nrow(f)), function(i) {
+        lw <- low_all[low_all$pop == pop & low_all$stim == f$stim[[i]] &
+          low_all$donor == f$donor[[i]] & low_all$lowered, ]
+        lw <- lw[which.max(lw$addedStim), ]
+        list(
+          dat = .acsCytposTubeData(gs, sample_map, gates, f$donor[[i]], f$stim[[i]], channel_map),
+          a = lw$a, b = lw$b, cut = lw$cut, condCut = lw$condCut,
+          label = paste0(f$donor[[i]], " ", f$stim[[i]], ": ", lw$b, " among ", lw$a, "+")
+        )
+      })
+      .analysis_print_save_fig(.acsCoexGatesTubeHexPlot(tubes),
+        file.path(fig_dir, "most-changed-hex.png"), width = 30, height = 34)
+    }
+  }
+}
+```
+
+## COMPASS
+
+COMPASS (`SimpleCOMPASS`, `r compass_iterations` iterations, 8 replications,
+seed 100) is fitted separately for each population and stimulation on the
+combination counts from the ordinary gates and from the co-expression gates.
+Both fits use the same categories: the all-negative one and those with at
+least 5 stimulated cells in at least 3 donors under either rule (the rare
+ones carry no information and slow the sampler). Each point is a donor's score
+with the two sets of counts.
+
+```{r}
+#| label: compass-plots
+#| echo: false
+#| results: asis
+#| fig-width: 14
+#| fig-height: 12
+if (isTRUE(run_plots)) {
+  if (is.null(compass)) {
+    cat("No COMPASS results for these settings; render with RUN_COMPASS=true.\n\n")
+  } else {
+    fig_dir <- .analysis_fig_dir(c(fig_key, "compass"), root_dir)
+    cat("\n\n### Functionality score\n\n")
+    .analysis_print_save_fig(.acsCoexGatesCompassPlot(compass$scores, "fs"),
+      file.path(fig_dir, "functionality.png"), width = 36, height = 30)
+    cat("\n\n### Polyfunctionality score\n\n")
+    .analysis_print_save_fig(.acsCoexGatesCompassPlot(compass$scores, "pfs"),
+      file.path(fig_dir, "polyfunctionality.png"), width = 36, height = 30)
+    .analysis_report_table(compass$scores, c(fig_key, "compass-scores.csv"),
+      "COMPASS functionality and polyfunctionality scores per donor, ordinary and co-expression gates.",
+      root_dir)
+    .analysis_report_table(compass$subsets, c(fig_key, "compass-subsets.csv"),
+      "COMPASS mean posterior response probability per subset, ordinary and co-expression gates.",
+      root_dir)
+  }
+}
+```
+
+```{r}
+```

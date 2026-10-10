@@ -56,7 +56,7 @@
     "2c-sim-test.qmd" = c(
       "test-sim-test-qmd.R", "test-sim-debug-loc.R", "test-sim-debug-compare.R"
     ),
-    "11-sim-low-separation-cyt-pos.qmd" = "test-sim-low-separation.R",
+    "11-sim-low-separation-cyt-pos.qmd" = c("test-sim-low-separation.R", "test-coexpression-gates.R"),
     "12-sim-cluster-gates.qmd" = c("test-sim-cluster-lab.R", "test-sim-cluster-weak.R"),
     "13-real-debug-acs-cytof.qmd" = c(
       "test-acs-cytof-debug.R", "test-sim-debug-loc.R", "test-acs-cytof-gate.R"
@@ -73,7 +73,12 @@
       "test-acs-cytof-explore-cytpos.R", "test-acs-cytof-paths.R"
     ),
     "17-explore-acs-cytof-coexpression.qmd" = c(
-      "test-acs-cytof-explore-score.R", "test-acs-cytof-explore-cytpos.R"
+      "test-acs-cytof-explore-score.R", "test-acs-cytof-explore-cytpos.R",
+      "test-coexpression-gates.R"
+    ),
+    "18-explore-acs-cytof-coexpression-gates.qmd" = c(
+      "test-acs-cytof-coexpression-gates.R", "test-coexpression-gates.R",
+      "test-coexpression-gates-package.R"
     )
   )
   documents <- list.files(file.path(root_dir, "analysis"), pattern = "[.]qmd$")
