@@ -11,6 +11,16 @@ Apply current post-smoothing filtering for the ordinary local-FDR route
   exTblUnsBias,
   cpMin,
   stage,
-  chnlSettings
+  chnlSettings,
+  exTblStimOrig = NULL,
+  exTblUnsOrig = NULL
 )
 ```
+
+## Arguments
+
+- exTblStimOrig, exTblUnsOrig:
+
+  data.frame or NULL Original sample expression, without unstimulated
+  bias, for marginal span frequencies. Default: NULL (skip trimming when
+  original expression is unavailable).
