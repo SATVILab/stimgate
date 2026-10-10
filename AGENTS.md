@@ -719,6 +719,23 @@ the `flowWorkspace` stack from source.
     2c-style page per stimulated tube and cytokine, adding the final
     `loc_minClust` gate, Analysis 9’s Tailgate/F-beta gates and manual
     frequencies.
+  - `omip016-prepare.R` / `omip016-methods.R`: Analysis 15
+    (`15-real-compare-omip016.qmd`, FlowRepository FR-FCM-ZZ2T). The
+    deposited FCS files are uncompensated;
+    `scripts/python/omip016_flowjo_jo.py` decodes the authors’ binary
+    FlowJo for Mac workspace (compensation matrix, gate tree, polygon
+    vertices, Boolean gates) and fails rather than guess. The gates are
+    re-applied to the raw events (vertices at or below zero on
+    compensated axes extended to the data minimum; Boolean expressions
+    read left to right, with the `&`-before-`|` reading reported as a
+    sensitivity). Curated sample/marker maps and raw MD5s live in
+    `_raw/data/small/comparison_data/omip016/`; prepared data and method
+    results go to the projr cache `omip016/prepared` and
+    `omip016/methods`. Comparators keep their published defaults.
+    Scoring classifies each method/tube jointly across markers with
+    StimGate’s cytokine-positive rule (`x > gate`, or `x > gateCyt` when
+    ordinarily positive for another marker) and must reproduce
+    [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md).
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for
     simulation.
   - `sim-debug-loc.R`: `.simDebugLoc()` wraps a QMD’s rerun call
