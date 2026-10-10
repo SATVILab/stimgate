@@ -120,6 +120,7 @@ for (fn in c(
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-plot.R",
+  "acs_cytof-plot_cyt.R",
   "sim-compare-freq_bs.R",
   "sim-compare-performance-plot.R",
   "sim-compare-qmd7-presentation.R"
@@ -1136,6 +1137,34 @@ if (isTRUE(run_plots)) {
 }
 ```
 
+### Frequency agreement with simulated truth
+
+The CSV reports Pearson correlation and Lin's concordance correlation (CCC)
+between each method's final sample-level background-subtracted frequency estimate
+and the simulated truth, per scenario and method. StimGate uses
+`loc_sample` `propRespEst` against `propRespTruth`; comparators use the same
+estimates as the frequency-error figures. These are tube-level descriptive
+statistics pooled over valid samples, with total tubes, valid estimates and
+finite-pair counts. Datasets (`iter`) are the independent unit; no intervals
+are reported. Pearson measures linear association; CCC also measures agreement
+with the identity line, using population (n) variances and covariance as in
+Lin (1989). Both are NA with fewer than three finite pairs or zero variance
+in either member of the pair.
+
+```{r}
+#| label: frequency-correlation
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && nrow(compare_tbl) > 0L) {
+  .analysis_report_table(
+    .simCompareCorrelationTable(compare_tbl, scenarioCols = scenario_cols),
+    c(fig_key, "frequency-correlation.csv"),
+    "Tube-level descriptive Pearson correlation and Lin CCC with finite-pair coverage.",
+    path_root = root_dir
+  )
+}
+```
+
 ### False discovery proportion, sensitivity and F1 score by cell count
 
 The frequency errors above score the background-subtracted frequency, in which
@@ -1147,7 +1176,8 @@ positive in the stimulated tube against the simulated labels. The false
 discovery proportion (FDP) is the fraction of called-positive cells that are
 negative; it is undefined when the gate calls no cells, and those tubes are
 counted in the coverage table. Sensitivity is the fraction of genuinely
-positive cells that are called positive (zero for an empty gate). The F1
+positive cells that are called positive, TP / (TP + FN); it is NA when
+there are no genuine positives and zero for an empty gate when positives exist. The F1
 score, 2TP / (2TP + FP + FN), is the harmonic mean of precision (1 - FDP) and
 sensitivity, so it is low when a gate either misses positives or calls many
 negatives; it is zero for an empty gate on a tube with genuine positives. Each
@@ -1156,11 +1186,20 @@ tube gives one value; the figures show tube-level medians and the worse tail
 pooled across datasets. Panels separate response frequencies and expression distributions,
 with one mean position setting per plot and no random condition perturbation.
 
+The classification CSV includes each scenario and method's tube count, valid
+gate count and defined count beside the median and 10th percentile of sensitivity,
+precision, specificity and F1, retaining the FDP summaries. Precision is
+TP / (TP + FP), or 1 - FDP, and is NA when the gate selects nothing.
+Specificity is TN / (TN + FP) and is NA when there are no genuine negatives.
+F1 is NA when 2TP + FP + FN is zero. Undefined proportions remain NA and do
+not contribute to the corresponding quantiles. Precision and specificity
+appear in the table only.
+
 ```{r}
 #| label: classification-summary
 #| echo: false
 #| results: asis
-if (isTRUE(run_plots)) {
+if (isTRUE(run_plots) && nrow(compare_tbl) > 0L) {
   class_summary <- .simCompareClassificationSummary(
     compare_tbl,
     scenarioCols = scenario_cols, mcse = show_mcse
@@ -1169,12 +1208,14 @@ if (isTRUE(run_plots)) {
     class_summary |>
       dplyr::select(
         dplyr::any_of(colnames(sim_grid)), approach, method,
-        n, n_valid, n_failed, n_fdp_defined, n_empty, n_fallback,
+        n, n_valid, n_failed, n_fdp_defined, n_sensitivity_defined,
+        n_precision_defined, n_specificity_defined, n_f1_defined, n_empty, n_fallback,
         fdp_median, fdp_q90, sensitivity_median, sensitivity_q10,
+        precision_median, precision_q10, specificity_median, specificity_q10,
         f1_median, f1_q10
       ),
     c(fig_key, paste0("mcse_", mcse_mode), "classification-summary.csv"),
-    "Tube-level FDP, sensitivity and F1 with valid, defined, empty-gate and fallback counts.",
+    "Tube-level classification medians and worse tails with valid, defined, empty-gate and fallback counts.",
     path_root = root_dir
   )
   .analysis_report_table(

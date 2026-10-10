@@ -53,6 +53,7 @@ source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
 source(file.path(scripts_r_dir, "sim-misc.R"))
 source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
 source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
+source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
 source(file.path(scripts_r_dir, "sim-debug-loc.R"))
 source(file.path(scripts_r_dir, "acs_cytof-debug.R"))
 source(file.path(scripts_r_dir, "omip016-prepare.R"))
@@ -414,21 +415,52 @@ if (isTRUE(run_plots)) {
 ### Agreement with the manual labels
 
 Per-cell agreement in the stimulated tube with the manual labels: false
-discovery proportion (FDP), sensitivity and F1. Undefined proportions are
-missing.
+discovery proportion (FDP), precision, sensitivity, specificity and F1.
+Manual gates are an imperfect reference. The CSV retains TP, FP, FN, TN,
+metric denominators and defined cell coverage. Undefined proportions are missing.
 
 ```{r}
 #| label: classification
-cls <- scored[, c("method", "stim", "cyt", "tp", "fp", "fn", "fdp", "sensitivity", "f1")]
-if (isTRUE(run_plots)) {
+#| results: asis
+if (isTRUE(run_plots) && exists("scored") && nrow(scored) > 0L) {
+  cls <- scored[, c("method", "stim", "cyt", "n", "n_defined", "tp", "fp", "fn", "tn",
+    "n_selected", "n_manual_positive", "n_manual_negative", "n_f1",
+    "fdp", "precision", "sensitivity", "specificity", "f1")]
   .analysis_report_table(cls, c(fig_key, "classification.csv"),
-                         "Per-cell agreement with the manual labels.")
+    "Stimulated-cell agreement with the imperfect manual labels.")
 }
-knitr::kable(cls[cls$method != "manual", ], digits = 3, row.names = FALSE)
 ```
 
 The manual threshold rows (`method = "manual"`) differ from perfect agreement
 only through the rectangles' other bounds.
+
+Frequency correlations compare each method's background-subtracted frequency
+with the imperfect manual reference across tubes, within stimulation and
+cytokine and pooled over all tubes and cytokines. Frequencies retain the
+existing clipping at zero. Pooled rows combine different cytokines and
+stimulations and are descriptive. The CSV gives Pearson and Lin concordance
+correlations and intended and finite pair counts. Fewer than three finite
+pairs or zero variance gives missing correlations; a stratum with only one
+tube therefore has no defined correlation.
+
+**Summary by method.** Counts are summed over stimulations and cytokines
+before the proportions are calculated; Pearson and concordance correlations
+(CCC) are the pooled rows of the CSV. `n_defined` counts outcomes with a usable
+gate, and `n_pairs` the finite frequency pairs.
+The summary table follows the link to the full CSV.
+
+```{r}
+#| label: frequency-correlations
+#| results: asis
+if (isTRUE(run_plots) && exists("scored") && nrow(scored) > 0L) {
+  report_scored <- scored[scored$method != "manual", ]
+  correlations <- .omipFrequencyCorrelationTable(report_scored,
+    c("stim", "cyt"), "freq_bs", "freq_bs_man")
+  .analysis_report_table(correlations, c(fig_key, "frequency-correlations.csv"),
+    "Frequency association and population-moment Lin concordance against the manual reference.")
+  .omipAgreementKable(.omipAgreementOverview(report_scored, correlations, character()))
+}
+```
 
 ### Gates on the data
 

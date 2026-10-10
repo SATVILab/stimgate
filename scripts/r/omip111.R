@@ -321,3 +321,80 @@
       }, .groups = "drop"
     )
 }
+
+# Reconstruct calls from saved gates and prepared float32 expression, never
+# from author CD44-restricted masks. Source omip016-methods.R first.
+.omip111Classification <- function(prepared, results) {
+  required <- c("strain", "mouse", "population", "marker", "method",
+                "sampleStim", "threshold", "gate", "gateCyt", "countStim", "nCellStim")
+  if (!all(required %in% names(results)) || is.null(prepared$input)) {
+    stop("Saved OMIP-111 inputs/results lack essential classification fields.")
+  }
+  key <- c("strain", "mouse", "population", "marker", "method")
+  if (anyDuplicated(results[key])) stop("Duplicate OMIP-111 classification outcomes.")
+  groups <- split(seq_len(nrow(results)), interaction(
+    results$strain, results$population, results$mouse, results$method, drop = TRUE
+  ))
+  rows <- lapply(groups, function(indices) {
+    g <- results[indices, , drop = FALSE]
+    markers <- names(.omip111Markers(g$population[[1]]))
+    if (!setequal(g$marker, markers) || length(unique(g$sampleStim)) != 1L) {
+      stop("Incomplete marker gates for an OMIP-111 stimulated tube.")
+    }
+    g <- g[match(markers, g$marker), , drop = FALSE]
+    input <- prepared$input[[g$sampleStim[[1]]]][[g$population[[1]]]]
+    x <- input$expression
+    manual <- input$manual
+    if (is.null(x) || is.null(manual) || !identical(dim(x), dim(manual)) ||
+        !all(markers %in% colnames(x)) || !all(markers %in% colnames(manual)) ||
+        anyNA(manual) || !is.logical(manual) || any(!is.finite(x)) ||
+        anyNA(g$nCellStim) || any(g$nCellStim != nrow(x))) {
+      stop("Missing or inconsistent prepared OMIP-111 expression/manual masks.")
+    }
+    x <- x[, markers, drop = FALSE]
+    manual <- manual[, markers, drop = FALSE]
+    if (startsWith(g$method[[1]], "StimGate")) {
+      if (any(!is.finite(g$gate)) || anyNA(g$gateCyt)) {
+        stop("Essential saved StimGate base/conditional gates are missing.")
+      }
+      pos <- .omip016Classify(x, g$gate, g$gateCyt)
+      if (anyNA(g$countStim) || any(colSums(pos) != g$countStim)) {
+        stop("StimGate reconstructed positive counts differ from saved marginal counts.")
+      }
+    } else {
+      pos <- .omip016Classify(x, g$threshold, rep(NA_real_, length(markers)))
+    }
+    counts <- data.frame(
+      tp = colSums(pos & manual), fp = colSums(pos & !manual),
+      fn = colSums(!pos & manual), tn = colSums(!pos & !manual)
+    )
+    if (!startsWith(g$method[[1]], "StimGate")) {
+      counts[!is.finite(g$threshold), ] <- NA_real_
+    }
+    nDefined <- ifelse(is.finite(rowSums(counts)), nrow(x), 0L)
+    dplyr::bind_cols(g[key], data.frame(n = nrow(x), n_defined = nDefined), counts,
+                    .omipClassificationMetrics(counts))
+  })
+  dplyr::bind_rows(rows)
+}
+
+.omip111ClassificationSummary <- function(classification) {
+  counts <- c("tp", "fp", "fn", "tn")
+  metrics <- c("fdp", "precision", "sensitivity", "specificity", "f1")
+  summary <- classification |>
+    dplyr::group_by(.data$strain, .data$population, .data$marker, .data$method) |>
+    dplyr::summarise(
+      n_mice = dplyr::n(),
+      n_defined = sum(is.finite(.data$tp + .data$fp + .data$fn + .data$tn)),
+      n_cells_defined = sum(.data$n[is.finite(.data$tp + .data$fp + .data$fn + .data$tn)]),
+      n = sum(.data$n),
+      dplyr::across(dplyr::all_of(counts),
+        ~ if (any(is.finite(.x))) sum(.x[is.finite(.x)]) else NA_real_),
+      dplyr::across(dplyr::all_of(metrics), list(
+        median = ~ if (any(is.finite(.x))) stats::median(.x[is.finite(.x)]) else NA_real_,
+        n_defined = ~ sum(is.finite(.x))
+      )), .groups = "drop"
+    )
+  # Pooled ratios use summed counts; medians give each defined mouse equal weight.
+  dplyr::bind_cols(summary, .omipClassificationMetrics(summary))
+}

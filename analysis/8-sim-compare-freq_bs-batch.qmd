@@ -122,6 +122,7 @@ for (fn in c(
   "sim-bandwidth.R",
   "sim-bandwidth-analysis-io.R",
   "sim-bandwidth-analysis-plot.R",
+  "acs_cytof-plot_cyt.R",
   "sim-compare-freq_bs.R",
   "sim-compare-performance-plot.R"
 )) {
@@ -926,19 +927,28 @@ stimulation. The background-subtracted frequency is a separate estimand and
 is covered in the secondary results.
 
 From the counts of true positives (TP), false positives (FP), false
-negatives (FN) and true negatives (TN):
+negatives (FN) and true negatives (TN), FDP is FP / (TP + FP) and precision
+is TP / (TP + FP), or 1 - FDP. Both are NA when the gate selects nothing.
+Sensitivity (recall) is TP / (TP + FN), NA when there are no genuine positives,
+and zero for an empty gate when positives exist. Specificity is TN / (TN + FP),
+NA when there are no genuine negatives. F1 is 2TP / (2TP + FP + FN), NA when
+its denominator is zero. The false-positive rate is FP / (FP + TN), NA when
+there are no genuine negatives, and the selected fraction is
+(TP + FP) / (TP + FP + FN + TN), NA when there are no cells.
 
-- FDP = FP / (TP + FP), undefined when the gate selects no stimulated cells;
-- sensitivity = TP / (TP + FN), so an empty gate has zero sensitivity;
-- false-positive rate = FP / (FP + TN);
-- selected fraction = (TP + FP) / (TP + FP + FN + TN).
+The classification CSV reports every scenario, mismatch setting and method,
+with total tubes, valid gates and defined counts beside the median and
+10th percentile of sensitivity, precision, specificity and F1, retaining
+FDP's median and 90th percentile. Undefined proportions remain NA and do not
+contribute to their quantiles. Precision and specificity appear in the table
+only. A separate CSV retains bootstrap coverage and unavailable intervals.
 
 Each stimulated tube in each dataset gives one value of each outcome. The
 pooled quantiles describe tube-level distributions; cell counts are never
 pooled across tubes. Tubes within a dataset share gating settings and are not
 independent replicates. **FDP summaries leave out tubes whose gate selected no
 cells**, because FDP is undefined there; the tables below count these tubes.
-FDP and sensitivity are always shown together, so a
+FDP, sensitivity and F1 are shown together, so a
 gate that selects almost nothing cannot look successful merely because it
 contains few negatives.
 
@@ -955,8 +965,22 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     compare_raw,
     scenarioCols = classification_cols, mcse = show_mcse
   )
-  .analysis_report_table(.simComparePerformanceCoverage(class_scenario, classification_cols),
+  .analysis_report_table(
+    class_scenario |>
+      dplyr::select(
+        dplyr::all_of(classification_cols), n, n_valid, n_failed,
+        n_fdp_defined, n_sensitivity_defined, n_precision_defined,
+        n_specificity_defined, n_f1_defined, n_empty, n_fallback,
+        fdp_median, fdp_q90, sensitivity_median, sensitivity_q10,
+        precision_median, precision_q10, specificity_median, specificity_q10,
+        f1_median, f1_q10
+      ),
     c(fig_key, paste0("mcse_", mcse_mode), "classification-summary.csv"),
+    "Tube-level classification medians and worse tails with valid and defined counts.",
+    path_root = root_dir
+  )
+  .analysis_report_table(.simComparePerformanceCoverage(class_scenario, classification_cols),
+    c(fig_key, paste0("mcse_", mcse_mode), "classification-bootstrap-coverage.csv"),
     "Tube-level classification bootstrap coverage and unavailable intervals.", path_root = root_dir)
 }
 ```
@@ -965,7 +989,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 
 The independent unit is the simulated dataset (`iter`), whose tubes are gated
 with shared settings and cluster gates. Within each scenario and dataset, we
-compute each method's median FDP and median sensitivity, then subtract the
+compute each method's median FDP, sensitivity and F1, then subtract the
 competitor's value from
 StimGate's value. Each dataset has equal weight. The tables report the mean
 paired difference and a 95% interval, mean ± 1.96 SD / √D, using the spread
@@ -973,7 +997,7 @@ between the D datasets with finite paired summaries. Intervals are NA for D < 5.
 Dataset-pair coverage and finite-tube coverage are reported explicitly;
 undefined outcomes are omitted from the corresponding method summary and a
 dataset with no finite outcomes has no paired difference.
-Negative FDP differences and positive sensitivity differences favour StimGate.
+Negative FDP differences and positive sensitivity or F1 differences favour StimGate.
 
 ```{r}
 #| label: dataset-paired-differences
@@ -982,7 +1006,7 @@ Negative FDP differences and positive sensitivity differences favour StimGate.
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   dataset_differences <- .simCompareDatasetDifferences(
     compare_raw, scenarioCols = classification_cols,
-    outcomes = c("fdp", "sensitivity")
+    outcomes = c("fdp", "sensitivity", "f1")
   )
   for (set in .simCompareMethodSets()) {
     .analysis_heading(set$heading, 4L)
@@ -1013,12 +1037,12 @@ same proportions. Rate axes span at least 0–10%, while existing 0–100%
 classification and ±100% signed-error reference spans are retained. Ranges
 expand with the data and intervals.
 
-### FDP and sensitivity against mismatch size
+### FDP, sensitivity and F1 against mismatch size
 
-Each scenario occupies a row with FDP and sensitivity side by side, both on
+Each scenario occupies a row with FDP, sensitivity and F1 side by side, all on
 fixed 0-100% scales. Solid lines are tube-level medians; dashed lines
 are the worse tail, the 90th percentile of FDP and the 10th percentile of
-sensitivity. Wrapped strips name each baseline scenario, each with its own horizontal
+sensitivity and F1. Wrapped strips name each baseline scenario, each with its own horizontal
 range (on a square-root scale) because mismatch sizes differ between
 transformations. Each mismatch mechanism has its own figure. Error bars (with
 `show_mcse` on) resample whole datasets and recalculate the pooled tube-level
@@ -1034,7 +1058,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     class_scenario,
     make_plot = .compare_mismatch_plot(
       .simComparePlotClassification,
-      outcomes = c("fdp", "sensitivity"), mcse = show_mcse
+      outcomes = c("fdp", "sensitivity", "f1"), mcse = show_mcse
     ),
     dir = .compare_fresh_fig_dir("fdp_sensitivity"),
     file_fn = .compare_mismatch_file,
@@ -1255,6 +1279,34 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 ```
 
 ## Secondary results: background-subtracted frequency error
+
+### Frequency agreement with simulated truth
+
+The CSV reports Pearson correlation and Lin's concordance correlation (CCC)
+between each method's final sample-level background-subtracted frequency estimate
+and the simulated truth, per scenario, mismatch setting and method. StimGate uses
+`loc_sample` `propRespEst` against `propRespTruth`; comparators use the same
+estimates as the frequency-error figures. These are tube-level descriptive
+statistics pooled over valid samples, with total tubes, valid estimates and
+finite-pair counts. Datasets (`iter`) are the independent unit; no intervals
+are reported. Pearson measures linear association; CCC also measures agreement
+with the identity line, using population (n) variances and covariance as in
+Lin (1989). Both are NA with fewer than three finite pairs or zero variance
+in either member of the pair.
+
+```{r}
+#| label: frequency-correlation
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .analysis_report_table(
+    .simCompareCorrelationTable(compare_raw, scenarioCols = scenario_cols),
+    c(fig_key, "frequency-correlation.csv"),
+    "Tube-level descriptive Pearson correlation and Lin CCC with finite-pair coverage.",
+    path_root = root_dir
+  )
+}
+```
 
 The figures below describe the accuracy of the background-subtracted
 frequency estimate, which answers a different question from the gate purity

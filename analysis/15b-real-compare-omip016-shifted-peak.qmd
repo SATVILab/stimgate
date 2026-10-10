@@ -62,6 +62,7 @@ source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
 source(file.path(scripts_r_dir, "sim-misc.R"))
 source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
 source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
+source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
 source(file.path(scripts_r_dir, "sim-debug-loc.R"))
 source(file.path(scripts_r_dir, "acs_cytof-debug.R"))
 source(file.path(scripts_r_dir, "omip016-prepare.R"))
@@ -151,6 +152,7 @@ comparators <- rbind(comparator_results$tailgate$gates, comparator_results$fbeta
 scored <- .omip016Score(prepared, rbind(.omip016StimGateGates(prepared, path_stimgate), comparators))
 .omip016CheckStimGateCounts(prepared, path_stimgate, scored)
 scored_default <- .omip016Score(prepared, rbind(.omip016StimGateGates(prepared, path_stimgate_default), comparators))
+.omip016CheckStimGateCounts(prepared, path_stimgate_default, scored_default)
 fired <- .omipShiftedPeakFired(path_stimgate, labels = data.frame(project = "OMIP-016"))
 sg <- scored[scored$method == "stimgate", ]
 sg_default <- scored_default[scored_default$method == "stimgate", ]
@@ -230,10 +232,54 @@ names(freq_wide) <- sub("^freq_bs\\.", "", names(freq_wide))
 freq_wide$manual <- scored$freq_bs_man[match(paste(freq_wide$stim, freq_wide$cyt),
                                              paste(scored$stim, scored$cyt))]
 knitr::kable(freq_wide, digits = 3, row.names = FALSE)
-cls <- scored[scored$method != "manual", c("method", "stim", "cyt", "fdp", "sensitivity", "f1")]
-if (isTRUE(run_plots)) {
+```
+
+Classification compares stimulated cells with the imperfect manual labels.
+The CSV includes TP, FP, FN, TN, FDP, precision, sensitivity, specificity and
+F1, their denominators, and defined cell coverage for both StimGate settings
+and the comparators. Undefined proportions remain missing.
+
+```{r}
+#| label: classification
+#| results: asis
+if (isTRUE(run_plots) && exists("scored") && nrow(scored) > 0L) {
+  report_scored <- scored[scored$method != "manual", ]
+  report_scored$method[report_scored$method == "stimgate"] <- "StimGate shifted peak"
+  default_sg <- scored_default[scored_default$method == "stimgate", ]
+  default_sg$method <- "StimGate default"
+  report_scored <- dplyr::bind_rows(report_scored, default_sg)
+  cls <- report_scored[, c("method", "stim", "cyt", "n", "n_defined", "tp", "fp", "fn", "tn",
+    "n_selected", "n_manual_positive", "n_manual_negative", "n_f1",
+    "fdp", "precision", "sensitivity", "specificity", "f1")]
   .analysis_report_table(cls, c(fig_key, "classification.csv"),
-                         "Per-cell agreement with the manual labels, rule on.")
+    "Stimulated-cell agreement with the imperfect manual labels, including both StimGate settings.")
+}
+```
+
+Frequency correlations compare each method's background-subtracted frequency
+with the imperfect manual reference across tubes, within stimulation and
+cytokine and pooled over all tubes and cytokines. Frequencies retain the
+existing clipping at zero. Pooled rows combine different cytokines and
+stimulations and are descriptive. The CSV gives Pearson and Lin concordance
+correlations and intended and finite pair counts. Fewer than three finite
+pairs or zero variance gives missing correlations; a stratum with only one
+tube therefore has no defined correlation.
+
+**Summary by method.** Counts are summed over stimulations and cytokines
+before the proportions are calculated; Pearson and concordance correlations
+(CCC) are the pooled rows of the CSV. `n_defined` counts outcomes with a usable
+gate, and `n_pairs` the finite frequency pairs.
+The summary table follows the link to the full CSV.
+
+```{r}
+#| label: frequency-correlations
+#| results: asis
+if (isTRUE(run_plots) && exists("scored") && nrow(scored) > 0L) {
+  correlations <- .omipFrequencyCorrelationTable(report_scored,
+    c("stim", "cyt"), "freq_bs", "freq_bs_man")
+  .analysis_report_table(correlations, c(fig_key, "frequency-correlations.csv"),
+    "Frequency association and population-moment Lin concordance against the manual reference.")
+  .omipAgreementKable(.omipAgreementOverview(report_scored, correlations, character()))
 }
 ```
 
