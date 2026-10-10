@@ -113,6 +113,31 @@ test_that(".getCpUnsLocGetProbSmooth produces monotone fit", {
   )
 })
 
+test_that(".getCpUnsLocGetProbSmooth fits channels whose names are not valid R names", {
+  # FCS channel names such as "PE-A" once broke the model formula, so every
+  # tube fell back to the unsmoothed probabilities.
+  x_vals <- seq(0, 5, length.out = 40)
+  prob_vals <- 1 / (1 + exp(-(x_vals - 2.5) * 2))
+  fit_one <- function(chnl) {
+    tmp_dir <- withr::local_tempdir("test_prob_smooth_names")
+    data_mod <- data.frame(x_vals, probSmooth = prob_vals)
+    names(data_mod)[1] <- chnl
+    attr(data_mod, "chnlCut") <- chnl
+    attr(data_mod, "idxMod") <- seq_along(x_vals)
+    attr(data_mod, "ind") <- 1L
+    .getCpUnsLocGetProbSmooth(
+      dataMod = data_mod, stage = "init", pathProject = tmp_dir,
+      chnl = chnl, chnlSettings = list()
+    )
+  }
+  plain <- fit_one("IFNg")
+  for (chnl in c("PE-A", "BC1(La139)Dd", "Horizon V450-A")) {
+    out <- fit_one(chnl)
+    expect_equal(attr(out, "locProbSmoothMethod"), "scam_mpi", info = chnl)
+    expect_equal(out$pred, plain$pred, info = chnl)
+  }
+})
+
 test_that(".getCpUnsLocGetProbSmooth handles small cell counts", {
   tmp_dir <- file.path(tempdir(), "test_prob_smooth_small_cells")
   dir.create(tmp_dir, showWarnings = FALSE, recursive = TRUE)
@@ -199,10 +224,10 @@ test_that(".getCpUnsLocGetProbSmooth falls back when fit is rejected", {
 
 test_that("pure smoothing helpers validate inputs and prediction structures", {
   # .getCpUnsLocGetProbSmoothNewData
-  new_data <- .getCpUnsLocGetProbSmoothNewData("TNF", c(0.5, 1.5, 2.5))
+  new_data <- .getCpUnsLocGetProbSmoothNewData(c(0.5, 1.5, 2.5))
   expect_s3_class(new_data, "data.frame")
-  expect_named(new_data, "TNF")
-  expect_equal(new_data$TNF, c(0.5, 1.5, 2.5))
+  expect_named(new_data, "x")
+  expect_equal(new_data$x, c(0.5, 1.5, 2.5))
 
   # .getCpUnsLocGetProbSmoothCheckNCellOut
   df_in <- data.frame(probSmooth = c(0.2, 0.6))
