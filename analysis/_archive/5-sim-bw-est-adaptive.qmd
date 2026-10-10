@@ -36,14 +36,14 @@ library(purrr)
 library(furrr)
 library(progressr)
 
-root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+root_dir <- normalizePath(Find(function(p) file.exists(file.path(p, "DESCRIPTION")), c(".", "..", "../..")), winslash = "/")
 stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
 knitr::opts_knit$set(root.dir = root_dir)
 
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
-analysis_qmd <- "analysis/5-sim-bw-est-adaptive.qmd"
+analysis_qmd <- "analysis/_archive/5-sim-bw-est-adaptive.qmd"
 
 sim_grid_chunk_index <- as.integer(.get_qmd_param_env(
   "sim_grid_chunk_index",

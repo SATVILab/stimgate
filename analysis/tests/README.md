@@ -1,6 +1,6 @@
 # Analysis test targets
 
-With `mode: render`, the manual-only **analysis-qmd-tests** workflow renders QMDs end to end instead (quick mode by default, optionally dev): one parallel Windows job per QMD runs the simulation render, then the plot render, and uploads the HTML and saved figures. `qmds: all` renders every simulation QMD except 5 and 6. For example: `gh workflow run analysis-qmd-tests.yaml -f mode=render -f qmds='2a,7'`.
+With `mode: render`, the manual-only **analysis-qmd-tests** workflow renders QMDs end to end instead (quick mode by default, optionally dev): one parallel Windows job per QMD runs the simulation render, then the plot render, and uploads the HTML and saved figures. `qmds: all` renders simulation QMDs 1, 2a, 2b, 3, 4, 7 and 8 (the adaptive-bandwidth analyses 5 and 6 are archived in `analysis/_archive/`). For example: `gh workflow run analysis-qmd-tests.yaml -f mode=render -f qmds='2a,7'`.
 
 Run commands from the repository root. The package is loaded from the current
 checkout, and failed expectations cause a nonzero exit status.

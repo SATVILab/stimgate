@@ -19,14 +19,14 @@ test_that("adaptive bandwidth simulation helpers source cleanly without legacy f
   expect_false(exists("simCytExperiment", envir = env, inherits = FALSE))
 })
 
-test_that("analysis/6-sim-bw-freq_bs-adaptive.qmd does not source functionsForBenchmarking-Cyt.R", {
-  qmd_path <- file.path(root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd")
+test_that("analysis/_archive/6-sim-bw-freq_bs-adaptive.qmd does not source functionsForBenchmarking-Cyt.R", {
+  qmd_path <- file.path(root_dir, "analysis", "_archive", "6-sim-bw-freq_bs-adaptive.qmd")
   expect_true(file.exists(qmd_path))
 
   lines <- readLines(qmd_path, warn = FALSE)
   expect_false(
     any(grepl("functionsForBenchmarking-Cyt\\.R", lines)),
-    info = "analysis/6-sim-bw-freq_bs-adaptive.qmd should not source functionsForBenchmarking-Cyt.R"
+    info = "analysis/_archive/6-sim-bw-freq_bs-adaptive.qmd should not source functionsForBenchmarking-Cyt.R"
   )
 })
 
@@ -237,7 +237,7 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
 
 test_that("analysis 6 uses shared transactional runners and full-grid reruns", {
   content <- paste(readLines(file.path(
-    root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd"
+    root_dir, "analysis", "_archive", "6-sim-bw-freq_bs-adaptive.qmd"
   )), collapse = "\n")
   for (contract in c(
     'analysis_semantics_version <- "adaptive-bw-freq-v9"',

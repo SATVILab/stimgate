@@ -95,8 +95,13 @@ test_that("QMD table exports are guarded and large inline table printers stay ab
             # Simulation reports keep one inline result table: three methods by
             # six outcome columns. The OMIP real-data reports (one donor or a
             # few mice) print small inline tables of their single dataset.
-            expect_identical(basename(file), "8-sim-compare-freq_bs-batch.qmd")
-            expect_match(paste(deparse(expr), collapse = ""), ".simCompareMethodOutcomeCounts", fixed = TRUE)
+            # Analysis 6 prints its five best settings per method (ten rows).
+            allowed <- c(
+              "8-sim-compare-freq_bs-batch.qmd" = ".simCompareMethodOutcomeCounts",
+              "6-sim-tune-comparators.qmd" = "knitr::kable(rank_display"
+            )
+            expect_true(basename(file) %in% names(allowed), info = basename(file))
+            expect_match(paste(deparse(expr), collapse = ""), allowed[[basename(file)]], fixed = TRUE)
           }
         }
         for (child in as.list(expr)[if (is.call(expr)) -1L else seq_along(expr)]) visit(child, guarded)

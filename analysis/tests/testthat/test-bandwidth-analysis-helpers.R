@@ -2,7 +2,7 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
 
 script_bw_io <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-io.R")
 script_bw_plot <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-plot.R")
-qmd_6 <- file.path(root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd")
+qmd_6 <- file.path(root_dir, "analysis", "_archive", "6-sim-bw-freq_bs-adaptive.qmd")
 
 .load_bw_analysis_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))

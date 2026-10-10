@@ -1,0 +1,592 @@
+---
+title: Choosing the F-beta and Tailgate settings
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: true
+  run_plots: false
+  simulation_seed: 60600
+---
+
+Analyses 7 and 8 compare StimGate with two other ways of setting a gate,
+F-beta and Tailgate. This page chooses the settings those two methods use. It
+looks at a response probability of 0.2%, all three transformations, both
+degrees of separation, and parent populations of 5,000 and 100,000 cells.
+
+For Tailgate, the settings are the derivative tolerance and the bias added to
+its cutpoint. For F-beta, the setting is beta. Each choice is compared with
+the published default settings and with the settings Analyses 7 and 8 use now.
+
+## Set-up
+
+```{r}
+#| label: setup
+#| include: false
+
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(tibble)
+  library(dplyr)
+  library(purrr)
+  library(tidyr)
+})
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  FALSE
+))
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+
+simulation_seed <- as.integer(.get_qmd_param_env(
+  "simulation_seed",
+  "SIMULATION_SEED",
+  60600L
+))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
+
+devtools::load_all(root_dir, quiet = TRUE)
+
+if (isTRUE(run_simulations)) {
+  .analysis_require_packages(c("cytoUtils", "openCyto", "flowStats", "simcyto", "ks", "reticulate"))
+}
+
+# Source simulation helpers in dependency order.
+for (fn in c(
+  "sim-misc.R",
+  "sim-bandwidth.R",
+  "sim-compare-freq_bs.R",
+  "sim-compare-tune.R"
+)) {
+  source(file.path(scripts_r_dir, fn))
+}
+```
+
+## Scientific settings
+
+The data are simulated as in Analysis 7: one marker, negative cells centred at
+zero and responding cells centred at `mean_pos`, with variance 1.5, then
+transformed (Gaussian, skewed or gamma). The low and high separations are
+Analysis 7's. In the stimulated tube 0.2% of the cells respond. The
+unstimulated tube has background responders at 0.2 times that rate (0.04%) and
+the same number of cells. The seeds differ from Analysis 7's, so the settings
+are chosen on different simulated data from the data used to report results.
+
+Only F-beta and Tailgate are run. Both use the same inputs as in Analysis 7:
+F-beta compares the stimulated tube with its unstimulated tube, and Tailgate
+gates the stimulated tube on its own. As in Analysis 7, when a method finds
+no cutpoint (without an error), the gate is placed just above the highest
+cell. Errors are kept as missing results.
+
+Tailgate settings:
+
+- **Tolerance.** Tailgate's cutpoint is the first point to the right of the
+  main peak, after the steepest descent, where the slope of the density is
+  flatter than the tolerance. cytoUtils' default tolerance is an absolute
+  value, 0.01, which depends on the scale of the data. Analysis 7 uses
+  `autoTol = TRUE`: a tolerance of 1e-2 times the steepest slope. The grid
+  varies that fraction in half steps on a log10 scale, from 1e-6 to 1e-1, and
+  keeps the absolute 0.01 for comparison. A smaller tolerance moves the
+  cutpoint further right; if the density never becomes that flat, Tailgate
+  finds no cutpoint and the gate falls back to just above the highest cell.
+- **Bias.** The cutpoint is then moved up by the bias, as StimGate moves its
+  gates up by its own bias. Analysis 7 uses a bias of 0.1.
+
+F-beta setting:
+
+- **beta.** F-beta picks the gate that maximises the F-beta score of the
+  stimulated tube against the unstimulated tube. Beta below 1 weights
+  precision more than recall, which pushes the gate up; beta above 1 pushes
+  it down. The published value is 0.8. The other F-beta settings stay at their
+  published values (theta 2, moving-average width 10).
+
+```{r}
+#| label: scientific-settings
+tune_settings <- .simTuneSettings()
+sim_grid_full <- .simTuneGrid(simulation_seed, prob_response = 0.002, n_cell = c(5e3, 1e5))
+
+# Datasets of 20 samples, each sample one unstimulated/stimulated pair. The
+# dataset is the unit for uncertainty; draft runs use fewer datasets.
+sim_size <- .analysis_sim_size()
+n_sample <- 20L
+n_iter <- c(final = 10L, draft = 3L)[[sim_size]]
+# Samples of the first dataset whose gates are drawn.
+n_hist_sample <- 4L
+# Settings whose mean median F1 is within this of the best are compared on
+# their estimates.
+f1_tolerance <- 0.02
+
+sim_grid <- sim_grid_full
+# Dev keeps one debugging scenario; quick keeps the smallest grid that still
+# draws every figure.
+if (analysis_dev) {
+  sim_grid <- dplyr::filter(
+    sim_grid, .data$transformation == "gamma", .data$mean_pos_setting == "low",
+    .data$n_cell == 1e5
+  )
+  n_sample <- 2L
+  n_iter <- 1L
+  n_hist_sample <- 2L
+} else if (analysis_quick) {
+  sim_grid <- dplyr::filter(
+    sim_grid, .data$transformation %in% c("gaussian", "gamma"),
+    .data$mean_pos_setting == "low", .data$n_cell == 5e3
+  )
+  n_sample <- 3L
+  n_iter <- 1L
+  n_hist_sample <- 2L
+}
+
+path_fbeta <- file.path(root_dir, "scripts", "python", "fbeta.py")
+if (isTRUE(run_simulations) && !file.exists(path_fbeta)) {
+  stop("F-beta comparison script not found: ", path_fbeta)
+}
+```
+
+Each scenario has `r n_iter` datasets of `r n_sample` samples, so
+`r n_iter * n_sample` stimulated tubes. Tailgate is run with
+`r length(tune_settings$tailgate$tol_rel) + 1L` tolerances and
+`r length(tune_settings$tailgate$bias)` biases, and F-beta with
+`r length(tune_settings$fbeta$beta)` values of beta, all on the same tubes.
+
+## Simulation
+
+```{r}
+#| label: simulate
+#| include: false
+analysis_key <- .analysis_mode_key(c("sim", "tune-comparators"))
+fig_key <- .analysis_mode_key("6-sim-tune-comparators")
+dir_cache <- .analysis_cache_dir(analysis_key, root_dir, create = run_simulations)
+path_results <- file.path(dir_cache, "results.rds")
+
+cache_settings <- .simTuneCacheSettings(
+  grid = sim_grid,
+  n_sample = n_sample,
+  n_iter = n_iter,
+  settings = tune_settings,
+  simulation_seed = simulation_seed,
+  profile = list(
+    analysis_dev = analysis_dev, analysis_quick = analysis_quick,
+    sim_size = sim_size, n_hist_sample = n_hist_sample
+  )
+)
+
+if (isTRUE(run_simulations)) {
+  # Datasets run in parallel; each has its own seed, so the number of
+  # workers does not change the results.
+  results <- .simTuneRunGrid(
+    sim_grid, n_sample, n_iter, path_fbeta, tune_settings, n_hist_sample,
+    workers = max(1L, .simGetCores()), root_dir = root_dir
+  )
+  .simTuneWriteCache(results, cache_settings, path_results)
+}
+```
+
+```{r}
+#| label: rerun-one-simulation
+#| include: false
+#| eval: false
+sim_id_target <- 10L
+rerun <- .simTuneRunScenario(
+  dplyr::filter(sim_grid_full, .data$sim_id == sim_id_target),
+  n_sample, n_iter,
+  fbeta_env = .simCompareFbetaEnvironment(pathFbeta = path_fbeta),
+  settings = tune_settings, n_hist_sample = n_hist_sample
+)
+```
+
+## Collation
+
+```{r}
+#| label: collate
+#| include: false
+if (!isTRUE(run_simulations)) {
+  results <- .simTuneReadCache(path_results, cache_settings, analysis_key)
+}
+metrics <- .simTuneMetrics(results$scores)
+summary_tbl <- .simTuneSummary(metrics)
+rank_tbl <- .simTuneRank(summary_tbl, f1_tolerance = f1_tolerance)
+compare_tbl <- .simTuneCompareSettings(rank_tbl)
+selected_tbl <- dplyr::filter(rank_tbl, .data$selected)
+selected_lab <- function(m) {
+  lab <- selected_tbl$setting_lab[selected_tbl$method == m]
+  if (length(lab) == 0L) "none (no setting had a finite F1 in every scenario)" else lab
+}
+n_cell_vec <- sort(unique(sim_grid$n_cell))
+```
+
+## How the settings are chosen
+
+Two things are judged, each over the stimulated tubes of a scenario:
+
+- **F1 score**, the median and the 10th and 90th percentiles. F1 combines
+  sensitivity and precision of the gate against the simulated labels:
+  2TP / (2TP + FP + FN).
+- **Estimated frequency**, the 10th and 90th percentiles of the
+  background-subtracted frequency (stimulated minus unstimulated cells above
+  the gate). The truth is 0.2%. The estimate error of a setting is the larger
+  of the relative errors of these two percentiles, so it is small only when the
+  middle 80% of estimates lies close to the truth.
+
+The percentiles pool the tubes of all datasets in a scenario. The twelve
+scenarios count equally. For each method, the settings whose mean median F1 is
+within `r f1_tolerance` of the best are kept, and of those the one with the
+smallest mean estimate error is chosen (ties go to the higher mean 10th
+percentile of F1).
+
+```{r}
+#| label: selection
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  cat("\n\n**Selected F-beta setting:** ", selected_lab("fbeta"), ".\n\n", sep = "")
+  cat("**Selected Tailgate setting:** ", selected_lab("tailgate"), ".\n\n", sep = "")
+  rank_display <- rank_tbl |>
+    dplyr::group_by(.data$method) |>
+    dplyr::slice_head(n = 5L) |>
+    dplyr::ungroup() |>
+    dplyr::transmute(
+      setting = .data$setting_lab,
+      `mean median F1` = round(.data$mean_f1_median, 3),
+      `mean 10th pct F1` = round(.data$mean_f1_p10, 3),
+      `mean estimate error` = round(.data$mean_est_band_error, 3),
+      `truth in 10th-90th` = paste0(.data$n_truth_in_band, " / ", .data$n_scenarios)
+    )
+  print(knitr::kable(rank_display, caption = paste(
+    "The five best settings of each method by the rule above (mean over",
+    "scenarios). Estimate error is the larger relative error of the 10th and",
+    "90th percentiles of the estimates."
+  )))
+  .analysis_report_table(rank_tbl, c(fig_key, "setting_rank.csv"),
+    "Every setting of each method, averaged over scenarios, in selection order.",
+    root_dir)
+}
+```
+
+## Selected against default settings
+
+Each point is the median over the stimulated tubes of one scenario, and the
+bar runs from the 10th to the 90th percentile. The reference settings are
+F-beta's published beta (0.8); Tailgate with cytoUtils' default absolute
+tolerance and no bias; Tailgate with Analysis 7's automatic tolerance and no
+bias ("Tailgate (default settings)" in Analysis 7); and Tailgate as Analysis 7
+runs it now (automatic tolerance 1%, bias 0.1).
+
+### F1
+
+```{r}
+#| label: fig-compare-f1
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotCompare(summary_tbl, compare_tbl, "f1")
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "compare"), root_dir), "compare-f1.png"
+  ), height = 22)
+}
+```
+
+### Estimated frequency
+
+Estimates are shown relative to the truth, so 1 (dashed) is correct.
+
+```{r}
+#| label: fig-compare-est
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotCompare(summary_tbl, compare_tbl, "est")
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "compare"), root_dir), "compare-estimate.png"
+  ), height = 22)
+}
+```
+
+### Paired differences within datasets
+
+For each dataset, the median F1 and the median estimate under the selected
+setting minus those under each reference setting. The table gives the mean
+over datasets and its standard error (datasets are independent; the tubes of a
+dataset are not separate units here).
+
+```{r}
+#| label: dataset-differences
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  diff_tbl <- .simTuneDatasetDifferences(metrics, compare_tbl)
+  .analysis_report_table(diff_tbl, c(fig_key, "dataset_differences.csv"),
+    "Selected minus reference setting, per scenario: mean and standard error over datasets of the dataset median F1 and median estimate.",
+    root_dir)
+}
+```
+
+## Gates
+
+### On a subset of samples
+
+The first `r n_hist_sample` samples of the first dataset in each scenario
+(chosen in advance). Bars are the stimulated tube, with simulated responders
+(orange) stacked on the negative cells (grey); the dark outline is the
+unstimulated tube. Counts use a pseudo-log scale so that the few responding
+cells stay visible. Vertical lines are the gates of the compared settings;
+selected settings are dashed, so they remain visible where they give the same
+gate as a reference setting.
+
+```{r}
+#| label: fig-gates
+#| echo: false
+#| results: asis
+#| fig-width: 6.3
+#| fig-height: 6.5
+if (isTRUE(run_plots)) {
+  scen_tbl <- dplyr::distinct(sim_grid, .data$sim_id, .data$transformation,
+    .data$mean_pos_setting, .data$mean_pos, .data$n_cell)
+  for (trans in unique(scen_tbl$transformation)) {
+    .analysis_heading(trans, 4L)
+    for (i in which(scen_tbl$transformation == trans)) {
+      row <- scen_tbl[i, ]
+      .analysis_heading(paste0(
+        row$mean_pos_setting, " separation (", row$mean_pos, "), ",
+        .simTuneCellLab(row$n_cell)
+      ), 5L)
+      p <- .simTunePlotGates(
+        dplyr::filter(results$hist, .data$sim_id == row$sim_id),
+        dplyr::filter(metrics, .data$sim_id == row$sim_id),
+        compare_tbl
+      )
+      .analysis_print_save_fig(p, file.path(
+        .analysis_fig_dir(c(fig_key, "gates"), root_dir),
+        paste0("gates-", row$transformation, "-", row$mean_pos_setting,
+          "-n_cell_", format(row$n_cell, scientific = FALSE), ".png")
+      ), height = 17)
+    }
+  }
+}
+```
+
+### Across all tubes
+
+The gates of every stimulated tube under the compared settings.
+
+```{r}
+#| label: fig-gate-spread
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotGateSpread(metrics, compare_tbl)
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "gates"), root_dir), "gate-spread.png"
+  ), height = 22)
+}
+```
+
+## Tailgate: tolerance and bias
+
+Each cell is one tolerance and bias in one scenario. The red box marks the
+selected setting. Tolerances are fractions of the steepest slope, except
+"abs 0.01", cytoUtils' default absolute tolerance.
+
+### Median F1
+
+```{r}
+#| label: fig-tailgate-heat-f1
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotTailgateHeat(summary_tbl, "f1_median", "Median F1",
+    dplyr::filter(selected_tbl, .data$method == "tailgate"))
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "tailgate"), root_dir), "heat-f1-median.png"
+  ), height = 22)
+}
+```
+
+### 10th percentile of F1
+
+```{r}
+#| label: fig-tailgate-heat-f1-p10
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotTailgateHeat(summary_tbl, "f1_p10", "10th pct F1",
+    dplyr::filter(selected_tbl, .data$method == "tailgate"))
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "tailgate"), root_dir), "heat-f1-p10.png"
+  ), height = 22)
+}
+```
+
+### Estimate error
+
+The larger of the relative errors of the 10th and 90th percentiles of the
+estimates (0 is best).
+
+```{r}
+#| label: fig-tailgate-heat-est
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotTailgateHeat(summary_tbl, "est_band_error", "Estimate error",
+    dplyr::filter(selected_tbl, .data$method == "tailgate"), direction = -1)
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "tailgate"), root_dir), "heat-estimate-error.png"
+  ), height = 22)
+}
+```
+
+### F1 against tolerance
+
+The median F1 against the tolerance (log10 scale), one line per bias; the
+bands run from the 10th to the 90th percentile. The dotted line is Analysis
+7's tolerance (1e-2). cytoUtils' absolute tolerance is not on this scale and
+appears only in the heat maps.
+
+```{r}
+#| label: fig-tailgate-tol-f1
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotTailgateTol(summary_tbl, "f1")
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "tailgate"), root_dir), "tol-f1.png"
+  ), height = 22)
+}
+```
+
+### Estimated frequency against tolerance
+
+```{r}
+#| label: fig-tailgate-tol-est
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotTailgateTol(summary_tbl, "est")
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "tailgate"), root_dir), "tol-estimate.png"
+  ), height = 22)
+}
+```
+
+### F1 against bias
+
+The median F1 against bias, one line per tolerance; the bands run from the
+10th to the 90th percentile.
+
+```{r}
+#| label: fig-tailgate-lines-f1
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotTailgateLines(summary_tbl, "f1")
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "tailgate"), root_dir), "lines-f1.png"
+  ), height = 22)
+}
+```
+
+### Estimated frequency against bias
+
+```{r}
+#| label: fig-tailgate-lines-est
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotTailgateLines(summary_tbl, "est")
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "tailgate"), root_dir), "lines-estimate.png"
+  ), height = 22)
+}
+```
+
+## F-beta: beta
+
+### F1
+
+```{r}
+#| label: fig-fbeta-f1
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotFbeta(summary_tbl, "f1")
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "fbeta"), root_dir), "beta-f1.png"
+  ), height = 22)
+}
+```
+
+### Estimated frequency
+
+```{r}
+#| label: fig-fbeta-est
+#| echo: false
+#| fig-width: 6.3
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  p <- .simTunePlotFbeta(summary_tbl, "est")
+  .analysis_print_save_fig(p, file.path(
+    .analysis_fig_dir(c(fig_key, "fbeta"), root_dir), "beta-estimate.png"
+  ), height = 22)
+}
+```
+
+## Coverage
+
+Errors and fallback gates, by scenario and setting. A fallback gate sits just
+above the highest cell, because the method found no cutpoint.
+
+```{r}
+#| label: coverage
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  coverage_tbl <- summary_tbl |>
+    dplyr::select(dplyr::all_of(c(.simTuneScenarioCols, "method", "setting_lab")),
+      "n", "n_datasets", "n_error", "n_fallback", "n_f1_finite", "n_est_finite")
+  .analysis_report_table(coverage_tbl, c(fig_key, "coverage.csv"),
+    "Tubes, errors, fallback gates and finite F1 and estimates for every scenario and setting.",
+    root_dir)
+  .analysis_report_table(summary_tbl, c(fig_key, "summary.csv"),
+    "Median and 10th/90th percentiles of F1 and of the estimates for every scenario and setting.",
+    root_dir, quiet = TRUE)
+}
+```
+
+```{r}
+
+```

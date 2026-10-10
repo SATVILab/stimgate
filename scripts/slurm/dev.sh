@@ -13,8 +13,7 @@ scripts=(
   "dev-2b-stim-bias_uns-freq_bs.sh"
   "dev-3-sim-bw-est-base.sh"
   "dev-4-sim-bw-est-norm.sh"
-  # "dev-5-sim-bw-est-adaptive.sh"
-  # "dev-6-sim-bw-freq_bs-adaptive.sh"
+  "dev-6-sim-tune-comparators.sh"
   "dev-7-sim-compare-freq_bs.sh"
   "dev-8-sim-compare-freq_bs-batch.sh"
   "dev-9-real-compare-acs-cytof.sh"
@@ -114,12 +113,6 @@ chunked_qmd_stem_for_script() {
     dev-4-sim-bw-est-norm.sh)
       echo "4-sim-bw-est-norm"
       ;;
-    dev-5-sim-bw-est-adaptive.sh)
-      echo "5-sim-bw-est-adaptive"
-      ;;
-    dev-6-sim-bw-freq_bs-adaptive.sh)
-      echo "6-sim-bw-freq_bs-adaptive"
-      ;;
     dev-7-sim-compare-freq_bs.sh)
       echo "7-sim-compare-freq_bs"
       ;;
@@ -137,6 +130,7 @@ chunked_qmd_stem_for_script() {
 plot_qmds_for_script() {
   case "$1" in
     dev-1-sim-trans.sh) echo "analysis/1-sim-trans.qmd" ;;
+    dev-6-sim-tune-comparators.sh) echo "analysis/6-sim-tune-comparators.qmd" ;;
     dev-7-sim-compare-freq_bs.sh) echo "analysis/7-sim-compare-freq_bs.qmd" ;;
     dev-8-sim-compare-freq_bs-batch.sh)
       echo "analysis/8-sim-compare-freq_bs-batch.qmd"

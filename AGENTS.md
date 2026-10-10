@@ -604,7 +604,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `functionsForBenchmarking-Cyt.R`: Cytokine simulation utilities.
   - `sim-bandwidth.R`: Simulation bandwidth utilities.
   - `sim-bandwidth-analysis-io.R` / `sim-bandwidth-analysis-plot.R`: Output-file lookup and plotting helpers for the bandwidth QMDs.
-  - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2-6, followed by one delimited section of scenario/validation/collation callbacks per analysis.
+  - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2-6 (the adaptive-bandwidth QMDs 5 and 6 are archived in `analysis/_archive/`), followed by one delimited section of scenario/validation/collation callbacks per analysis.
   - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating, comparator, manual-comparison and plotting helpers for analyses 9 and 10. `.acsCytofGateStim()` (in `acs_cytof-gate.R`) is the one `gateStim()` call shared by Analyses 9 and 13.
   - `acs_cytof-debug.R`: Analysis 13 (`13-real-debug-acs-cytof.qmd`): re-gates
     each ACS population inside `.simDebugLoc()` and draws one 2c-style page per
@@ -626,6 +626,19 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     (`x > gate`, or `x > gateCyt` when ordinarily positive for another marker)
     and must reproduce `getStimStats()`.
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
+  - `sim-compare-tune.R`: Analysis 6 (`6-sim-tune-comparators.qmd`): chooses
+    Tailgate's tolerance and bias and F-beta's beta on Analysis 7-style data
+    (0.2% response, every transformation and separation, 5,000 and 100,000
+    cells; own seeds). Only the comparators run. A relative tolerance is a
+    fraction of the steepest density slope (log10 grid, 1e-6 to 1e-1), so
+    1e-2 must equal `autoTol = TRUE`. Settings are judged on tube-level F1
+    (median, 10th/90th percentiles) and the 10th/90th percentiles of the
+    estimates, and compared with the published and current Analysis 7
+    settings. Datasets are the parallel unit: each has its own seed and each
+    worker sources the helpers and creates its own F-beta environment, so
+    serial and parallel runs agree. Its single Slurm job (one task per
+    worker) is followed by a plot job, like 11/12; archived launchers live in
+    `scripts/slurm/_archive/` so that `dev.sh 6` selects this analysis.
   - `sim-debug-loc.R`: `.simDebugLoc()` wraps a QMD's rerun call unchanged and uses `trace()` to record, or browse, the local-FDR gating of one sample (optionally every later one too); `.simDebugLocPlots()` / `.simDebugLocSummary()` plot and summarise it. Records are counted and named per tube and channel (`dataset<k>_ind<i>_<channel>`); `sample = NULL, ind = NULL` records every tube, `tubeInfo` maps a GatingSet index to real donor/stimulus labels, and `onRecord` handles each record as soon as it is gated (e.g. saves it) so large real-data runs keep only small summaries. Plot and info helpers must work with `truth`/`sim` NULL.
   - `sim-debug-compare.R`: `.simDebugCompare()` runs F-beta and Tailgate on a `.simDebugLoc()` sample as Analyses 7/8 do; `.simDebugFigure()` combines simulation settings with each method's plots, settings and result on one x range.
   - `sim-low-separation.R`: Analysis 11 (`11-sim-low-separation-cyt-pos.qmd`): two-marker
@@ -930,7 +943,8 @@ rows before drawing reference lines.
 
 
 9. **Shared analysis runners and cached settings**:
-   Bandwidth QMDs 2-6 use `.simBandwidthRunRow()`, `.simBandwidthRunGrid()`
+   Bandwidth QMDs 2-4 and the archived 5-6 (`analysis/_archive/`, no longer
+   pursued; their tests read them there) use `.simBandwidthRunRow()`, `.simBandwidthRunGrid()`
    and `.simBandwidthFinishChunk()`. Assign IDs and seeds on the full grid
    before dev/quick filters, shuffling or chunking. Biological scenario IDs exclude
    all method settings, including bias; pre-draw replicate seeds in bandwidth wrappers.

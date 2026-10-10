@@ -394,7 +394,7 @@ test_that("analysis 5 uses shared seeded runners and canonical reads", {
   qmd_path <- file.path(
     root_dir,
     "analysis",
-    "5-sim-bw-est-adaptive.qmd"
+    "_archive/5-sim-bw-est-adaptive.qmd"
   )
   lines <- readLines(qmd_path, warn = FALSE)
   content <- paste(lines, collapse = "\n")
@@ -482,7 +482,7 @@ test_that("analysis 5 uses shared seeded runners and canonical reads", {
 
 test_that("analysis 6 presentation chunks are guarded and rerun is singular", {
   lines <- readLines(file.path(
-    root_dir, "analysis", "6-sim-bw-freq_bs-adaptive.qmd"
+    root_dir, "analysis", "_archive", "6-sim-bw-freq_bs-adaptive.qmd"
   ), warn = FALSE)
   expect_equal(length(grep("^```\\{r", lines)),
                length(grep("^```\\s*$", lines)))
@@ -505,9 +505,12 @@ test_that("analysis 6 presentation chunks are guarded and rerun is singular", {
 })
 
 test_that("all simulation QMDs use shared mode keys and dev precedence", {
-  files <- list.files(file.path(root_dir, "analysis"),
-                      pattern = "^(1|2a|2b|3|4|5|6|7|8)-.*\\.qmd$",
-                      full.names = TRUE)
+  files <- c(
+    list.files(file.path(root_dir, "analysis"),
+               pattern = "^(1|2a|2b|3|4|7|8)-.*\\.qmd$", full.names = TRUE),
+    list.files(file.path(root_dir, "analysis", "_archive"),
+               pattern = "^(5|6)-.*\\.qmd$", full.names = TRUE)
+  )
   expect_length(files, 9L)
   for (file in files) {
     content <- paste(readLines(file), collapse = "\n")
