@@ -1319,9 +1319,14 @@ method outputs must carry identical input/preprocessing manifests before
 comparison. Keep per-marker threshold provenance and failure coverage;
 exclude failed estimates from agreement metrics and persist cohort
 exclusions rather than hiding omitted rows behind render warnings. With
-ACS clustering and cytokine-positive refinement enabled, score
-`loc_minClust`, and preserve cluster provenance when assembling the
-final package gate rows.
+ACS clustering enabled, score `loc_minClust`, and preserve cluster
+provenance when assembling the final package gate rows. Comparisons
+against manual gates (Analyses 9/10/13, 14/14b and 15/15b) run StimGate
+with `calcCytPosGates = FALSE`: the manual gates and the comparators set
+one gate per cytokine, so a second, conditional StimGate gate would
+score a different rule. Analysis 11, which studies the refinement, keeps
+it on. The scoring code keeps the cytokine-positive counting rule, which
+reduces to `x > gate` when `gateCyt` equals `gate`.
 
 12. **Shared local-FDR bandwidths (`bwScope`, issue \#417)**: The scalar
     local-FDR bandwidth is chosen once per channel during settings
@@ -1651,10 +1656,11 @@ FlowKit and audits saved population counts and cytokine frequencies
 before comparing methods. Keep each strain’s matched mouse pairs
 separate, use the same float32 parent-population expression (arcsinh raw
 unmixed fluorescence with recorded cofactor) for all methods, and
-marginalise final StimGate combination counts when cytokine-positive
-refinement is enabled. IL-4/5 is one measured channel. Manual gates are
-an imperfect reference; retain negative net frequencies and explicit
-comparator errors and report finite-mouse coverage per marker.
+marginalise final StimGate combination counts (cytokine-positive
+refinement is off for this comparison, so these equal `x > gate`
+counts). IL-4/5 is one measured channel. Manual gates are an imperfect
+reference; retain negative net frequencies and explicit comparator
+errors and report finite-mouse coverage per marker.
 
 OMIP-111’s author cytokine rectangles also restrict CD44. Analysis 14
 uses the raw cytokine lower cutoff alone as its primary one-dimensional
@@ -1670,6 +1676,6 @@ plus Pearson and concordance correlations (CCC, population moments via
 `.acsCytofValidationCcc()`) between estimated and reference frequencies.
 Precision is not specificity. These are computed at render time from
 saved gates and counts, without reruns. OMIP-111 rebuilds StimGate calls
-with the cytokine-positive rule and must reproduce the saved marginal
-counts. ACS (9/10) has frequency-only manual references, so only
-correlations apply.
+with the cytokine-positive rule (equal to `x > gate` with the refinement
+off) and must reproduce the saved marginal counts. ACS (9/10) has
+frequency-only manual references, so only correlations apply.
