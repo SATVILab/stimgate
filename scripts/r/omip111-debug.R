@@ -66,6 +66,35 @@
   ), info, headings)
 }
 
+# Print every diagnostic page in a collapsed block under strain, population and
+# marker headings. An optional `note` column extends each block's summary.
+.omip111DiagnosticPages <- function(index, pathDebug) {
+  for (strain in c("C57", "BALB")) {
+    for (population in c("CD4", "CD8")) {
+      cat("\n\n### ", strain, " non-naïve ", population, "\n\n", sep = "")
+      subset <- index[index$strain == strain & index$population == population, ]
+      for (marker in unique(subset$marker)) {
+        cat("\n\n#### ", marker, "\n\n", sep = "")
+        pages <- subset[subset$marker == marker, ]
+        for (i in seq_len(nrow(pages))) {
+          note <- if (is.null(pages$note)) "" else pages$note[[i]]
+          cat("\n<details><summary>", pages$mouse[[i]], " — ", marker,
+            " (PDF page ", pages$page[[i]], ")", note, "</summary>\n\n",
+            sep = ""
+          )
+          cat("![Gate diagnostics for ", pages$mouse[[i]], " ", population,
+            " ", marker, "](", knitr::image_uri(file.path(pathDebug, pages$png[[i]])),
+            ")\n",
+            sep = ""
+          )
+          cat("\n\n</details>\n\n")
+        }
+      }
+    }
+  }
+  invisible(NULL)
+}
+
 # The rerun must reproduce the saved gating. Gates may differ in the last bits
 # when OpenBLAS uses a different thread count, so they must agree to `tol`,
 # and every final combination count must be identical: the same cells are

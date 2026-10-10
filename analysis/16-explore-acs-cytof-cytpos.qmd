@@ -1,0 +1,169 @@
+---
+title: Cytokine distributions among cells positive for another cytokine (ACS CyTOF)
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  run_simulations: false
+  run_plots: true
+  pops: all
+  stims: all
+---
+
+## What this document is
+
+StimGate's cytokine-positive gates lower a cytokine's gate for cells that are
+already positive for another cytokine, because a much larger share of those
+cells respond. Choosing a better rule for that lower gate needs a view of how
+each cytokine is actually distributed among those cells, and how that differs
+from all cells.
+
+This document shows, for every ACS CyTOF donor with manual gating (12 donors),
+each population and each stimulation:
+
+1. hexagon plots of IFNγ against TNF in the stimulated and unstimulated tubes,
+   with StimGate's ordinary gates (orange lines);
+2. the IFNγ distribution among all cells (dotted) and among cells positive
+   for at least one other cytokine (solid), in the stimulated (red) and
+   unstimulated (blue) tubes;
+3. the same for TNF.
+
+"Positive for another cytokine" uses StimGate's ordinary gates for the other
+five cytokines (IL-2, IL-6, IL-17, IL-22 and TNF or IFNγ), counting a cell
+when its value is strictly above the gate, as StimGate does. In the density
+plots the dashed dark line is StimGate's ordinary gate and the solid orange
+line its cytokine-positive gate (drawn on top when the two are equal). Exact
+zeros are left out of the densities, as StimGate leaves out each tube's
+minimum; each panel's label gives the number of stimulated cells positive for
+another cytokine. Each density is scaled to its own cells, so the curves
+compare shapes, not cell numbers. Each curve uses its own Sheather-Jones
+bandwidth (at least 0.05), which follows two modes in a small subset without
+being as narrow as a bandwidth chosen for tens of thousands of cells. Curves
+are drawn only for groups with at least five non-zero values. The y axis
+is on a square-root scale so the tails remain visible next to the large peak
+near zero.
+
+Everything is read from Analysis 9's most recent run (its cached GatingSets
+and StimGate gates); nothing is gated again. The gates are therefore those of
+the version Analysis 9 last ran with.
+
+## Set-up
+
+Parameters (or environment variables `ACS_EXPLORE_POPS`, `ACS_EXPLORE_STIMS`)
+choose the populations and stimulations; lists are comma separated and `all`
+selects everything.
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+fig_key <- .analysis_mode_key("16-explore-acs-cytof-cytpos", sized = FALSE)
+for (fn in c(
+  "acs_cytof-helper.R", "acs_cytof-gate.R", "acs_cytof-methods.R",
+  "acs_cytof-debug.R", "acs_cytof-explore-cytpos.R"
+)) {
+  source(file.path(scripts_r_dir, fn))
+}
+
+run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
+sel_pops <- .acsCytofDebugList(.get_qmd_param_env("pops", "ACS_EXPLORE_POPS", "all"))
+sel_stims <- .acsCytofDebugList(.get_qmd_param_env("stims", "ACS_EXPLORE_STIMS", "all"))
+```
+
+```{r}
+#| label: paths
+#| include: false
+# Analysis 9's caches are only read: never create or change them here.
+path_gs_base <- projr::projr_path_get(
+  "cache", "acs_cytof", "gs",
+  create = FALSE, format = "absolute"
+)
+path_scratch_base <- projr::projr_path_get(
+  "cache", "acs_cytof", "scratch",
+  create = FALSE, format = "absolute"
+)
+path_comparison <- projr::projr_path_get(
+  "cache", "acs_cytof", "manual-comparison", "manual-comparison.rds",
+  create = FALSE, format = "absolute"
+)
+if (!file.exists(path_comparison)) {
+  stop("Analysis 9's manual comparison is missing; render Analysis 9 first.")
+}
+comparison <- readRDS(path_comparison)
+manual_donors <- sort(unique(as.character(comparison$SampleID)))
+settings <- .acsCytofDebugSettings(
+  file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
+)
+pops <- intersect(
+  settings$popVec,
+  intersect(sel_pops %||% settings$popVec, unique(as.character(comparison$popCode)))
+)
+channel_map <- .acsCytofChannelMap()
+```
+
+Donors with manual gating: `r paste(manual_donors, collapse = ", ")`.
+Populations shown: `r paste(pops, collapse = ", ")`.
+
+```{r}
+#| label: plots
+#| results: asis
+#| fig-width: 14
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  for (pop in pops) {
+    paths <- .acsCytofPopulationPaths(pop, "unused", path_gs_base, path_scratch_base)
+    gs <- flowWorkspace::load_gs(paths$gs, backend_readonly = TRUE)
+    sample_map <- .acsCytofReadPreprocessing(paths$gs, gs)$sampleMap
+    gates <- stimgate::getStimGates(paths$stimgate)
+    stims <- intersect(sel_stims %||% sort(setdiff(unique(sample_map$stim), "uns")),
+      setdiff(unique(sample_map$stim), "uns"))
+    cat("\n\n## ", pop, "\n\n", sep = "")
+    for (stim in stims) {
+      cat("\n\n### ", pop, ": ", stim, "\n\n", sep = "")
+      donors <- intersect(manual_donors, sample_map$SampleID[sample_map$stim == stim])
+      dat <- stats::setNames(lapply(donors, function(donor) {
+        .acsCytposTubeData(gs, sample_map, gates, donor, stim, channel_map)
+      }), donors)
+      donor_gates <- lapply(dat, function(d) d[c("gate", "gateCyt")])
+      fig_dir <- .analysis_fig_dir(c(fig_key, pop), root_dir)
+
+      cat("\n\n#### IFNγ against TNF\n\n")
+      hex_tbl <- dplyr::bind_rows(lapply(donors, function(d) .acsCytposHexTbl(dat[[d]], d)))
+      .analysis_print_save_fig(
+        .acsCytposHexPlot(hex_tbl, donor_gates),
+        file.path(fig_dir, paste0(stim, "-hex-IFNg-TNF.png")),
+        width = 36, height = 26
+      )
+      for (cyt in c("IFNg", "TNF")) {
+        cat("\n\n#### ", cyt, " among cells positive for another cytokine\n\n", sep = "")
+        dens_tbl <- dplyr::bind_rows(lapply(donors, function(d) {
+          .acsCytposDensityTbl(dat[[d]], d, cyt)
+        }))
+        .analysis_print_save_fig(
+          .acsCytposDensityPlot(dens_tbl, donor_gates, cyt),
+          file.path(fig_dir, paste0(stim, "-density-", cyt, ".png")),
+          width = 30, height = 24
+        )
+      }
+    }
+  }
+}
+```
+
+```{r}
+```

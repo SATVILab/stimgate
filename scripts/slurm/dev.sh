@@ -71,7 +71,8 @@ if (( $# > 0 )); then
 fi
 
 # Some analyses read another's results, so submit the one they read first
-# when both run: 13 reads 9, 14b reads 14 and 15b reads 15.
+# when both run: 13 reads 9, 14b reads 14 and 15b reads 15. The OMIP analyses
+# also wait for Analysis 1's projr build, which clears the figure folder.
 move_after() {
   local first="$1" second="$2" idx_first=-1 idx_second=-1 i moved
   for i in "${!scripts[@]}"; do
@@ -84,6 +85,10 @@ move_after() {
     scripts=("${scripts[@]}" "$moved")
   fi
 }
+for omip_script in dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh \
+  dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh; do
+  move_after dev-1-sim-trans.sh "$omip_script"
+done
 move_after dev-9-real-compare-acs-cytof.sh dev-13-real-debug-acs-cytof.sh
 move_after dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh
 move_after dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh
@@ -148,13 +153,10 @@ plot_qmds_for_script() {
     dev-13-real-debug-acs-cytof.sh)
       echo "analysis/13-real-debug-acs-cytof.qmd"
       ;;
-    dev-14-real-compare-omip111.sh) echo "analysis/14-real-compare-omip111.qmd" ;;
-    dev-14b-real-compare-omip111-shifted-peak.sh)
-      echo "analysis/14b-real-compare-omip111-shifted-peak.qmd"
-      ;;
-    dev-15-real-compare-omip016.sh) echo "analysis/15-real-compare-omip016.qmd" ;;
-    dev-15b-real-compare-omip016-shifted-peak.sh)
-      echo "analysis/15b-real-compare-omip016-shifted-peak.qmd"
+    # The OMIP analyses (14, 14b, 15, 15b) draw their plots in their own
+    # simulation job (plots_in_sim_job), so they have no plot job.
+    dev-14-real-compare-omip111.sh | dev-14b-real-compare-omip111-shifted-peak.sh | \
+      dev-15-real-compare-omip016.sh | dev-15b-real-compare-omip016-shifted-peak.sh)
       ;;
     *)
       qmd_stem="$(chunked_qmd_stem_for_script "$1")"
@@ -162,6 +164,17 @@ plot_qmds_for_script() {
         echo "analysis/${qmd_stem}.qmd"
       fi
       ;;
+  esac
+}
+
+# Analyses quick enough to draw their plots in the simulation render.
+plots_in_sim_job() {
+  case "$1" in
+    dev-14-real-compare-omip111.sh | dev-14b-real-compare-omip111-shifted-peak.sh | \
+      dev-15-real-compare-omip016.sh | dev-15b-real-compare-omip016-shifted-peak.sh)
+      return 0
+      ;;
+    *) return 1 ;;
   esac
 }
 
@@ -316,13 +329,26 @@ for script in "${scripts[@]}"; do
   else
     echo "Submitting $script"
     dependency_args=()
+    dependency=""
     dependency_ids="$(sim_dependency_for_script "$script")"
     if [[ -n "$dependency_ids" ]]; then
-      dependency_args=(--dependency="afterok${dependency_ids}")
+      dependency="afterok${dependency_ids}"
+    fi
+    run_plots=false
+    if plots_in_sim_job "$script"; then
+      run_plots=true
+      # Analysis 1's projr build clears projr's output folder, where figures go.
+      projr_ids="${script_job_ids[dev-1-sim-trans.sh]:-}"
+      if [[ -n "$projr_ids" ]]; then
+        dependency+="${dependency:+,}afterany${projr_ids}"
+      fi
+    fi
+    if [[ -n "$dependency" ]]; then
+      dependency_args=(--dependency="$dependency")
     fi
     submit_job "$script_dir/$script" -- \
       ${dependency_args[@]+"${dependency_args[@]}"} \
-      --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",RUN_SIMULATIONS=true,RUN_PLOTS=false"$sim_size_export"
+      --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",RUN_SIMULATIONS=true,RUN_PLOTS="$run_plots""$sim_size_export"
     script_job_ids["$script"]=":$submitted_job_id"
     all_sim_job_ids+=("$submitted_job_id")
   fi

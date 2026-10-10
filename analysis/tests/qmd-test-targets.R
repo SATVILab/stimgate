@@ -68,6 +68,9 @@
     "15-real-compare-omip016.qmd" = "test-omip016.R",
     "15b-real-compare-omip016-shifted-peak.qmd" = c(
       "test-omip016.R", "test-omip-shifted-peak.R"
+    ),
+    "16-explore-acs-cytof-cytpos.qmd" = c(
+      "test-acs-cytof-explore-cytpos.R", "test-acs-cytof-paths.R"
     )
   )
   documents <- list.files(file.path(root_dir, "analysis"), pattern = "[.]qmd$")

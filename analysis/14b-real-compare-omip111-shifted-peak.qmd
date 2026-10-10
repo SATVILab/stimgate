@@ -244,12 +244,12 @@ descriptive_errors <- comparison_results |>
 print(knitr::kable(descriptive_errors, digits = 3))
 ```
 
-## Gate diagnostics where the rule applied
+## Gate diagnostics
 
-These are Analysis 14's per-mouse diagnostic pages, rerun with the rule on.
-The rerun must reproduce every saved final gate exactly before any page is
-shown. Only the outcomes where the rule applied are shown here; the CSV index
-lists every page.
+These are Analysis 14's per-mouse diagnostic pages, rerun with the rule on,
+for every mouse, population and marker. The rerun must reproduce every saved
+final gate exactly before any page is shown. Each summary gives StimGate's
+error with and without the rule and marks the outcomes where the rule applied.
 
 ```{r}
 #| label: individual-gate-diagnostics
@@ -272,21 +272,17 @@ if (isTRUE(run_plots)) {
   diagnostic_index <- diagnostic_object$index
   .analysis_report_table(diagnostic_index, c(fig_key, "gate-diagnostic-index.csv"),
     "All diagnostic pages, with PDF page numbers and saved-gate parity.", root_dir)
-  shown <- paired[paired$method == "StimGate" & paired$shiftedPeakRef, ]
-  for (i in seq_len(nrow(shown))) {
-    page <- diagnostic_index[diagnostic_index$strain == shown$strain[[i]] &
-      diagnostic_index$population == shown$population[[i]] &
-      diagnostic_index$marker == shown$marker[[i]] &
-      diagnostic_index$mouse == shown$mouse[[i]], ]
-    if (nrow(page) != 1L) stop("Missing diagnostic page for an outcome where the rule applied.")
-    cat("\n<details><summary>", shown$mouse[[i]], " ", shown$population[[i]], " ",
-      shown$marker[[i]], sprintf(" (error %+.1f pp; default %+.1f pp)",
-        shown$errorPp[[i]], shown$errorPpDefault[[i]]),
-      "</summary>\n\n", sep = "")
-    cat("![Gate diagnostics for ", shown$mouse[[i]], " ", shown$population[[i]],
-      " ", shown$marker[[i]], "](", knitr::image_uri(file.path(diagnostic_dir, page$png[[1]])),
-      ")\n", sep = "")
-    cat("\n\n</details>\n\n")
+  sg_rows <- paired[paired$method == "StimGate", ]
+  k <- match(
+    paste(diagnostic_index$strain, diagnostic_index$population, diagnostic_index$marker, diagnostic_index$mouse),
+    paste(sg_rows$strain, sg_rows$population, sg_rows$marker, sg_rows$mouse)
+  )
+  if (anyNA(k) || nrow(diagnostic_index) != nrow(sg_rows)) {
+    stop("Diagnostic pages do not match the StimGate outcomes.")
   }
+  diagnostic_index$note <- sprintf(": error %+.1f pp; default %+.1f pp%s",
+    sg_rows$errorPp[k], sg_rows$errorPpDefault[k],
+    ifelse(sg_rows$shiftedPeakRef[k], "; rule applied", ""))
+  .omip111DiagnosticPages(diagnostic_index, diagnostic_dir)
 }
 ```

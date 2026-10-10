@@ -20,6 +20,23 @@ local({
     testthat::expect_false("conditional gate" %in% env$.omip111DebugLines(rows, refs, 150)$line)
   })
 
+  testthat::test_that("diagnostic pages print every page with its note", {
+    dir <- withr::local_tempdir()
+    writeBin(as.raw(1:8), file.path(dir, "page.png"))
+    index <- expand.grid(
+      mouse = c("M1", "M2"), marker = "TNF", population = c("CD4", "CD8"),
+      strain = c("C57", "BALB"), stringsAsFactors = FALSE
+    )
+    index$page <- 1L
+    index$png <- "page.png"
+    index$note <- paste0(": note ", seq_len(nrow(index)))
+    out <- paste(utils::capture.output(env$.omip111DiagnosticPages(index, dir)), collapse = "\n")
+    testthat::expect_equal(lengths(regmatches(out, gregexpr("<details>", out))), nrow(index))
+    testthat::expect_equal(lengths(regmatches(out, gregexpr("data:image/png", out))), nrow(index))
+    testthat::expect_true(all(vapply(index$note, grepl, logical(1), x = out, fixed = TRUE)))
+    testthat::expect_match(out, "### BALB non-naïve CD8", fixed = TRUE)
+  })
+
   testthat::test_that("OMIP-111 pairs by mouse and condition and rejects incomplete pairs", {
     files <- unlist(lapply(c("C57", "BALB"), function(strain) {
       unlist(lapply(1:5, function(mouse) {
