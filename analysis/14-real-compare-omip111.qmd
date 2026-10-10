@@ -357,24 +357,7 @@ if (isTRUE(run_plots)) {
   diagnostic_index <- diagnostic_object$index
   .analysis_report_table(diagnostic_index, c(fig_key, "gate-diagnostic-index.csv"),
     "All 80 diagnostic pages, with PDF page numbers and saved-gate parity.", root_dir)
-  for (strain in c("C57", "BALB")) {
-    for (population in c("CD4", "CD8")) {
-      cat("\n\n### ", strain, " non-naïve ", population, "\n\n", sep = "")
-      subset <- diagnostic_index[diagnostic_index$strain == strain & diagnostic_index$population == population, ]
-      for (marker in unique(subset$marker)) {
-        cat("\n\n#### ", marker, "\n\n", sep = "")
-        pages <- subset[subset$marker == marker, ]
-        for (i in seq_len(nrow(pages))) {
-          cat("\n<details><summary>", pages$mouse[[i]], " — ", marker,
-            " (PDF page ", pages$page[[i]], ")</summary>\n\n", sep = "")
-          cat("![Gate diagnostics for ", pages$mouse[[i]], " ", population,
-            " ", marker, "](", knitr::image_uri(file.path(diagnostic_dir, pages$png[[i]])),
-            ")\n", sep = "")
-          cat("\n\n</details>\n\n")
-        }
-      }
-    }
-  }
+  .omip111DiagnosticPages(diagnostic_index, diagnostic_dir)
 }
 ```
 

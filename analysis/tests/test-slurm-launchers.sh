@@ -162,29 +162,39 @@ done
 run_selection
 grep -Fq -- 'dev-13-real-debug-acs-cytof.sh' "$SLURM_TEST_LOG"
 
-# OMIP analyses: 14b and 15b wait for 14 and 15 when both are submitted,
-# whatever the order requested, and run alone without a dependency.
+# OMIP analyses draw their plots in the simulation job, with no plot job.
+# 14b and 15b wait for 14 and 15 when both are submitted, whatever the order
+# requested, and run alone without a dependency.
 for pair in "14 14b real-compare-omip111" "15 15b real-compare-omip016"; do
   read -r base variant stem <<< "$pair"
   run_selection "$variant"
-  [[ $(wc -l < "$SLURM_TEST_LOG") -eq 2 ]]
+  [[ $(wc -l < "$SLURM_TEST_LOG") -eq 1 ]]
   sim_variant=$(grep -F "dev-${variant}-${stem}-shifted-peak.sh" "$SLURM_TEST_LOG")
   [[ "$sim_variant" != *"--dependency"* ]]
-  grep -Fq -- "PLOT_QMD_FILES=analysis/${variant}-${stem}-shifted-peak.qmd," "$SLURM_TEST_LOG"
+  [[ "$sim_variant" == *",RUN_SIMULATIONS=true,RUN_PLOTS=true|"* ]]
   for selection in "$base $variant" "$variant $base"; do
     # shellcheck disable=SC2086
     run_selection $selection
+    [[ $(wc -l < "$SLURM_TEST_LOG") -eq 2 ]]
     sim_base=$(grep -F "dev-${base}-${stem}.sh" "$SLURM_TEST_LOG")
     sim_variant=$(grep -F "dev-${variant}-${stem}-shifted-peak.sh" "$SLURM_TEST_LOG")
     [[ "$sim_base" != *"--dependency"* ]]
     [[ "$sim_variant" == *"|--dependency=afterok:101|"* ]]
-    grep -Fq -- "PLOT_QMD_FILES=analysis/${base}-${stem}.qmd," "$SLURM_TEST_LOG"
+    [[ "$sim_base" == *",RUN_PLOTS=true|"* ]]
   done
+  # Analysis 1's projr build clears the figure folder, so the OMIP job waits
+  # for it whatever the order requested.
+  run_selection "$base" 1
+  sim_base=$(grep -F "dev-${base}-${stem}.sh" "$SLURM_TEST_LOG")
+  [[ "$sim_base" == *"|--dependency=afterany:101|"* ]]
+  run_selection 1 "$base" "$variant"
+  sim_variant=$(grep -F "dev-${variant}-${stem}-shifted-peak.sh" "$SLURM_TEST_LOG")
+  [[ "$sim_variant" == *"|--dependency=afterok:102,afterany:101|"* ]]
   # Prepared data are reused unless preprocessing is requested.
   : > "$SLURM_TEST_LOG"
   bash "$project_root/scripts/slurm/dev-${base}-${stem}.sh" > "$test_dir/output" 2>&1
   grep -Fq -- 'preprocessing=false|' "$SLURM_TEST_LOG"
-  grep -Fq -- 'simulations=true|plots=false' "$SLURM_TEST_LOG"
+  grep -Fq -- 'simulations=true|plots=true' "$SLURM_TEST_LOG"
   : > "$SLURM_TEST_LOG"
   RUN_PREPROCESSING=true bash "$project_root/scripts/slurm/dev-${base}-${stem}.sh" > "$test_dir/output" 2>&1
   grep -Fq -- 'preprocessing=true|' "$SLURM_TEST_LOG"

@@ -7,7 +7,7 @@
 
 # OMIP-111 (Analysis 14): StimGate, Tailgate and F-beta against the authors' gates.
 # Gating and comparator runs only: the prepared data are reused unless
-# RUN_PREPROCESSING=true is set. Plots are rendered by the dependent plot job.
+# RUN_PREPROCESSING=true is set. Plots are drawn in the same render.
 
 set -euo pipefail
 
@@ -27,7 +27,7 @@ export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
 export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
 export RUN_SIMULATIONS="${RUN_SIMULATIONS:-true}"
 export RUN_PREPROCESSING="${RUN_PREPROCESSING:-false}"
-export RUN_PLOTS="${RUN_PLOTS:-false}"
+export RUN_PLOTS="${RUN_PLOTS:-true}"
 export PROJECT_ROOT="$project_root"
 
 cd "$project_root"

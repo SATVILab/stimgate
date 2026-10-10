@@ -135,14 +135,22 @@
   rows <- scored[as.character(scored$ind) == as.character(ind) & scored$chnl == chnl, ]
   sg <- rows[rows$method == "stimgate", ]
   man <- rows[rows$method == "manual", ]
+  gateOf <- function(method) {
+    x <- rows$gate[rows$method == method]
+    if (length(x) == 1L) x else NA_real_
+  }
   extra <- data.frame(
     # The line key appends each value.
-    line = c("final gate", "final cyt+ gate", "manual"),
-    x = c(sg$gate, sg$gateCyt, man$gate),
-    colour = c("#D55E00", "#D55E00", "#CC0000"),
-    linetype = c("solid", "dotted", "solid"),
-    linewidth = c(1.1, 0.9, 0.9)
+    line = c("final gate", "final cyt+ gate", "F-beta", "Tailgate", "manual"),
+    x = c(sg$gate, sg$gateCyt, gateOf("fbeta"), gateOf("tailgate"), man$gate),
+    colour = c(
+      "#D55E00", "#D55E00", .analysis_method_colours[["fbeta"]],
+      .analysis_method_colours[["tailgate"]], "#CC0000"
+    ),
+    linetype = c("solid", "dotted", "solid", "solid", "solid"),
+    linewidth = c(1.1, 0.9, 0.9, 0.9, 0.9)
   )
+  extra <- extra[is.finite(extra$x), , drop = FALSE]
   plots <- .simDebugLocPlots(rec, extraLines = extra)
   keep <- plots[c("density", "prob", "respCells")]
   attr(keep, "lines") <- attr(plots, "lines")
@@ -160,6 +168,34 @@
       stringsAsFactors = FALSE
     )
   )
+}
+
+# Every stimulated tube and marker's local-FDR page, saved under `figDir` and
+# printed in a collapsed block under per-stimulation headings. `note`, aligned
+# with StimGate's rows of `scored`, extends each block's summary; `heading` is
+# the Markdown level of the stimulation headings.
+.omip016DebugPages <- function(pathProject, scored, figDir, note = NULL, heading = "###") {
+  sg <- scored[scored$method == "stimgate", ]
+  if (is.null(note)) note <- rep("", nrow(sg))
+  if (length(note) != nrow(sg)) stop("Expected one note per StimGate outcome.")
+  dir.create(figDir, recursive = TRUE, showWarnings = FALSE)
+  for (st in unique(as.character(sg$stim))) {
+    cat("\n\n", heading, " ", toupper(st), "\n\n", sep = "")
+    for (i in which(as.character(sg$stim) == st)) {
+      cyt <- as.character(sg$cyt[[i]])
+      dbg <- .omip016DebugGate(pathProject, sg$ind[[i]], sg$chnl[[i]], scored)
+      path <- file.path(figDir, paste0(st, "-", cyt, "-local_fdr.png"))
+      ggplot2::ggsave(path, dbg$plot,
+        width = 30, height = 25, units = "cm", dpi = 110, bg = "white"
+      )
+      cat("\n<details><summary>", toupper(st), " ", cyt, note[[i]], "</summary>\n\n",
+        "![StimGate local-FDR gating for ", toupper(st), " ", cyt, "](",
+        knitr::image_uri(path), ")\n\n</details>\n\n",
+        sep = ""
+      )
+    }
+  }
+  invisible(NULL)
 }
 
 # StimGate's final gates as one row per stimulated tube and channel.

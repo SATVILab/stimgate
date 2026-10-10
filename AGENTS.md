@@ -2,10 +2,8 @@
 
 OMIP-111 per-mouse diagnostic pages in Analysis 14 reuse `.simDebugLocPlots()`
 and the Analysis 13 recorder. Rerun each complete strain/population with the
-comparison seed and controls. Before publishing, require final base and
-conditional gates to agree to 1e-10 and every final combination count to be
-identical: a different OpenBLAS thread count changes gates in the last bits,
-so launchers, including `render-plots.sh`, set `OPENBLAS_NUM_THREADS=1`. Overlay the actual projected author raw
+comparison seed and controls, and require exact parity of final base and
+conditional gates before publishing. Overlay the actual projected author raw
 cutoffs on the common asinh scale; use saved combination-count frequencies for
 the final result block rather than recomputing StimGate from its base gate alone.
 
@@ -407,7 +405,7 @@ after Analysis 9, and the OMIP analyses 14, 14b, 15 and 15b. `sim_dependency_for
 makes 13's job wait `afterok` on 9's (and 14b on 14, 15b on 15) when both are
 submitted, and `dev.sh` (`move_after()`) submits the analysis that is read first
 whatever the order requested. OMIP launchers reuse prepared data unless
-`RUN_PREPROCESSING=true`; plot jobs also set `RUN_METHODS=false`. Keep enabled
+`RUN_PREPROCESSING=true` and draw plots by default; plot jobs also set `RUN_METHODS=false`. Keep enabled
 chunked analyses in the `scripts` list and `chunked_qmd_stem_for_script()`
 mapping, sharing run ID, chunk count and shuffle seed across each run.
 Every simulation launcher must propagate render failures. Plot jobs receive the
@@ -419,7 +417,10 @@ agreement on the full collated table before promotion and uses one scientific
 settings list for manifest recording and canonical reads.
 Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`;
 validate all target arguments before submitting jobs. After the simulation jobs,
-`dev.sh` submits one `scripts/slurm/render-plots.sh` job per analysis that
+`dev.sh` submits one `scripts/slurm/render-plots.sh` job per analysis (except
+the OMIP analyses 14, 14b, 15 and 15b, which are quick enough to draw their
+plots in the simulation render, `plots_in_sim_job()`, and wait `afterany` on
+Analysis 1's projr build) that
 renders the real QMD once with `SHOW_MCSE=on`, with simulations off and plots
 on, to `<stem>-mcse_on.html` (render `off` manually when needed)
 (`plot_qmds_for_script()`;
