@@ -2,14 +2,11 @@
 
 OMIP-111 per-mouse diagnostic pages in Analysis 14 reuse
 `.simDebugLocPlots()` and the Analysis 13 recorder. Rerun each complete
-strain/population with the comparison seed and controls. Before
-publishing, require final base and conditional gates to agree to 1e-10
-and every final combination count to be identical: a different OpenBLAS
-thread count changes gates in the last bits, so launchers, including
-`render-plots.sh`, set `OPENBLAS_NUM_THREADS=1`. Overlay the actual
-projected author raw cutoffs on the common asinh scale; use saved
-combination-count frequencies for the final result block rather than
-recomputing StimGate from its base gate alone.
+strain/population with the comparison seed and controls, and require
+exact parity of final base and conditional gates before publishing.
+Overlay the actual projected author raw cutoffs on the common asinh
+scale; use saved combination-count frequencies for the final result
+block rather than recomputing StimGate from its base gate alone.
 
 This file is the **canonical source of truth** for all AI coding agents
 (e.g. Google Jules, GitHub Copilot) working on the `stimgate`
@@ -481,22 +478,25 @@ after Analysis 9, and the OMIP analyses 14, 14b, 15 and 15b.
 14b on 14, 15b on 15) when both are submitted, and `dev.sh`
 (`move_after()`) submits the analysis that is read first whatever the
 order requested. OMIP launchers reuse prepared data unless
-`RUN_PREPROCESSING=true`; plot jobs also set `RUN_METHODS=false`. Keep
-enabled chunked analyses in the `scripts` list and
-`chunked_qmd_stem_for_script()` mapping, sharing run ID, chunk count and
-shuffle seed across each run. Every simulation launcher must propagate
-render failures. Plot jobs receive the submission’s run ID and set
-`ANALYSIS_EXPECTED_RUN_ID` so cached reads reject results from another
-run; manual renders leave it unset. Plot jobs explicitly set all ACS
-stage controls to false. Promotion locks live next to `current/`, shared
-by every run of the analysis. Analysis 8 validates pairing and
+`RUN_PREPROCESSING=true` and draw plots by default; plot jobs also set
+`RUN_METHODS=false`. Keep enabled chunked analyses in the `scripts` list
+and `chunked_qmd_stem_for_script()` mapping, sharing run ID, chunk count
+and shuffle seed across each run. Every simulation launcher must
+propagate render failures. Plot jobs receive the submission’s run ID and
+set `ANALYSIS_EXPECTED_RUN_ID` so cached reads reject results from
+another run; manual renders leave it unset. Plot jobs explicitly set all
+ACS stage controls to false. Promotion locks live next to `current/`,
+shared by every run of the analysis. Analysis 8 validates pairing and
 zero-shift agreement on the full collated table before promotion and
 uses one scientific settings list for manifest recording and canonical
 reads. Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`,
 or `2a 2b`; validate all target arguments before submitting jobs. After
 the simulation jobs, `dev.sh` submits one
-`scripts/slurm/render-plots.sh` job per analysis that renders the real
-QMD once with `SHOW_MCSE=on`, with simulations off and plots on, to
+`scripts/slurm/render-plots.sh` job per analysis (except the OMIP
+analyses 14, 14b, 15 and 15b, which are quick enough to draw their plots
+in the simulation render, `plots_in_sim_job()`, and wait `afterany` on
+Analysis 1’s projr build) that renders the real QMD once with
+`SHOW_MCSE=on`, with simulations off and plots on, to
 `<stem>-mcse_on.html` (render `off` manually when needed)
 (`plot_qmds_for_script()`; 9 also renders 10). It depends `afterok` on
 its own simulation jobs and `afterany` on the submission’s other
@@ -745,6 +745,12 @@ the `flowWorkspace` stack from source.
     2c-style page per stimulated tube and cytokine, adding the final
     `loc_minClust` gate, Analysis 9’s Tailgate/F-beta gates and manual
     frequencies.
+  - `acs_cytof-explore-cytpos.R`: Analysis 16
+    (`16-explore-acs-cytof-cytpos.qmd`): read-only views of Analysis 9’s
+    latest ACS gates for the manually gated donors — IFNg-TNF hexagon
+    plots and IFNg/TNF densities among cells positive for another
+    cytokine (strict `x > gate`), to inform the cytokine-positive rule.
+    It never re-gates or writes to Analysis 9’s caches.
   - `omip016-prepare.R` / `omip016-methods.R`: Analysis 15
     (`15-real-compare-omip016.qmd`, FlowRepository FR-FCM-ZZ2T). The
     deposited FCS files are uncompensated;
