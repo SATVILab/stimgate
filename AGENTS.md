@@ -88,6 +88,16 @@ condition is unusually high relative to the unstimulated background.
 Run package commands from the **repository root** (the directory
 containing `DESCRIPTION`).
 
+Keep research analyses, developer scripts, data-generation inputs,
+generated reports and agent/project metadata out of the source package
+via `.Rbuildignore`; `.gitignore` does not control R package builds.
+Keep manual exclusions outside the projr-managed block. For the local
+Slurm installer, use `devtools::install(build = FALSE)` to install
+directly from the checkout: `R CMD build` copies the checkout before
+applying exclusions, which is slow on shared filesystems even for
+ignored caches and worktrees. Continue building source archives for
+package checks and releases.
+
 ### Local development / ordinary agent environments
 
 Outside CI and the GitHub Copilot cloud agent, `.Rprofile` selects the
@@ -1589,7 +1599,11 @@ must reach every free-scale facet. Comparison 8 uses `fit_panels = TRUE`
 for height per facet row and matching HTML and saved dimensions;
 preserve ratio-companion dimensions as well. Fitted HTML figures are
 embedded as data URIs: Quarto drops figure files knitr did not record,
-and `include_graphics()` in `results: asis` prints only a path. Check
+and `include_graphics()` in `results: asis` prints only a path. Saved
+images shown in HTML (e.g. diagnostic PNG pages) are likewise printed
+with
+[`knitr::image_uri()`](https://rdrr.io/pkg/knitr/man/image_uri.html),
+never as markdown links to files, so every HTML is self-contained. Check
 such output changes with a quick-profile render, not only unit tests.
 
 OMIP-111 (Analysis 14) imports the supplied FlowJo workspaces with
