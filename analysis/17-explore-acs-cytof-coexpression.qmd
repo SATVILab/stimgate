@@ -146,7 +146,8 @@ source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 fig_key <- .analysis_mode_key("17-explore-acs-cytof-coexpression", sized = FALSE)
 for (fn in c(
   "acs_cytof-helper.R", "acs_cytof-gate.R", "acs_cytof-methods.R",
-  "acs_cytof-debug.R", "acs_cytof-explore-cytpos.R", "acs_cytof-explore-score.R"
+  "acs_cytof-debug.R", "acs_cytof-explore-cytpos.R", "coexpression-gates.R",
+  "acs_cytof-explore-score.R"
 )) {
   source(file.path(scripts_r_dir, fn))
 }

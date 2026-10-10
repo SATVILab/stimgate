@@ -620,7 +620,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     (`17-explore-acs-cytof-coexpression.qmd`), also read-only on Analysis 9:
     a two-marker co-expression score from control-tube tail p-values, Poisson
     GAM departures from independence, and gates lowered for cells positive
-    for the other cytokine (`.acsCoexLowerGate()`: only with a clear
+    for the other cytokine (`.coexLowerGate()`: only with a clear
     double-positive response; 20 bins from gate to floor, each set judged on
     departure from independence and purity relative to the double positives;
     the added band trimmed on purity), with conditional histograms scaled per

@@ -2,6 +2,7 @@ local({
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   env <- new.env(parent = globalenv())
   sys.source(file.path(root, "scripts", "r", "analysis-plot-style.R"), env)
+  sys.source(file.path(root, "scripts", "r", "coexpression-gates.R"), env)
   sys.source(file.path(root, "scripts", "r", "acs_cytof-explore-score.R"), env)
 
   testthat::test_that("tail p-values are conformal and zeros score nothing", {
@@ -34,6 +35,7 @@ local({
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   env <- new.env(parent = globalenv())
   sys.source(file.path(root, "scripts", "r", "analysis-plot-style.R"), env)
+  sys.source(file.path(root, "scripts", "r", "coexpression-gates.R"), env)
   sys.source(file.path(root, "scripts", "r", "acs_cytof-explore-score.R"), env)
 
   testthat::test_that("residuals are zero under exact independence", {
@@ -65,12 +67,13 @@ local({
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   env <- new.env(parent = globalenv())
   sys.source(file.path(root, "scripts", "r", "analysis-plot-style.R"), env)
+  sys.source(file.path(root, "scripts", "r", "coexpression-gates.R"), env)
   sys.source(file.path(root, "scripts", "r", "acs_cytof-explore-score.R"), env)
 
   testthat::test_that("the floor sits about 1.5 SD above a normal negative peak", {
     withr::local_seed(2)
     x <- rnorm(20000, 1, 0.4)
-    testthat::expect_equal(env$.acsCoexNegFloor(x), 1 + 1.5 * 0.4, tolerance = 0.08)
+    testthat::expect_equal(env$.coexNegFloor(x), 1 + 1.5 * 0.4, tolerance = 0.08)
   })
 
   testthat::test_that("lowered gates follow a stimulation-specific diagonal", {
@@ -80,10 +83,10 @@ local({
     resp <- data.frame(IFNg = rnorm(200, 3.5, 0.4), TNF = runif(200, 2, 5))
     gate <- c(IFNg = 2, TNF = 4.5)
     dat <- list(stim = rbind(neg(20000), resp), uns = neg(20000), gate = gate)
-    low <- env$.acsCoexLowerGate(dat, a = "IFNg", b = "TNF")
+    low <- env$.coexLowerGate(dat, a = "IFNg", b = "TNF")
     testthat::expect_gt(low$z, 2)
     testthat::expect_lt(low$cut, 2.5)
-    testthat::expect_gte(low$cut, env$.acsCoexNegFloor(dat$uns$TNF))
+    testthat::expect_gte(low$cut, env$.coexNegFloor(dat$uns$TNF))
     testthat::expect_gte(low$condCut, gate[["IFNg"]])
     s <- env$.acsCoexLowerSummary(dat, "IFNg", "TNF", "d1")$summary
     testthat::expect_gt(s$netPct, s$netRectanglePct)
@@ -91,11 +94,11 @@ local({
     # The same co-expression in the control tube: no double-positive response,
     # so nothing moves.
     both <- list(stim = rbind(neg(20000), resp), uns = rbind(neg(20000), resp), gate = gate)
-    testthat::expect_equal(env$.acsCoexLowerGate(both, a = "IFNg", b = "TNF")$cut, 4.5)
+    testthat::expect_equal(env$.coexLowerGate(both, a = "IFNg", b = "TNF")$cut, 4.5)
   })
 
   testthat::test_that("purity is one with no control cells and undefined with none at all", {
-    testthat::expect_equal(env$.acsCoexPurity(c(4, 4, 0, 0), c(0, 2, 1, 0), 100, 100),
+    testthat::expect_equal(env$.coexPurity(c(4, 4, 0, 0), c(0, 2, 1, 0), 100, 100),
       c(1, 0.5, -Inf, NA))
   })
 
@@ -107,7 +110,7 @@ local({
     bg <- function() data.frame(IFNg = runif(40, 2, 2.6), TNF = runif(40, 2, 4))
     gate <- c(IFNg = 2, TNF = 4.5)
     dat <- list(stim = rbind(neg(20000), resp, bg()), uns = rbind(neg(20000), bg()), gate = gate)
-    low <- env$.acsCoexLowerGate(dat, a = "IFNg", b = "TNF")
+    low <- env$.coexLowerGate(dat, a = "IFNg", b = "TNF")
     testthat::expect_lt(low$cut, 4.5)
     testthat::expect_gt(low$condCut, 2.2)
   })
