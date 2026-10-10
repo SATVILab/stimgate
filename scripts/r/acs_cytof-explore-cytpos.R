@@ -51,20 +51,23 @@
     dplyr::mutate(donor = donor)
 }
 
-# One donor's values of `cyt` among all cells and among cells positive for
-# another cytokine, in both tubes. Exact zeros are dropped (as StimGate drops
-# each tube's minimum); `zeroShare` records how many were dropped.
-.acsCytposDensityTbl <- function(dat, donor, cyt) {
+# One donor's values of `cyt` among all cells and among a conditional subset,
+# in both tubes: cells above `given`'s base gate, or (when `given` is NULL)
+# cells positive for any other cytokine. Exact zeros are dropped (as StimGate
+# drops each tube's minimum); `zeroShare` records how many were dropped.
+.acsCytposDensityTbl <- function(dat, donor, cyt, given = NULL) {
+  label <- if (is.null(given)) "positive for another cytokine" else paste0(given, "+")
   one <- function(ex, tube) {
-    other <- .acsCytposOtherPos(ex, dat$gate, cyt)
+    cond <- if (is.null(given)) {
+      .acsCytposOtherPos(ex, dat$gate, cyt)
+    } else {
+      (ex[[given]] > dat$gate[[given]]) %in% TRUE
+    }
     x <- ex[[cyt]]
-    xOther <- x[other]
+    xCond <- x[cond]
     dplyr::bind_rows(
       data.frame(tube = rep(tube, length(x)), cells = "all cells", x = x),
-      data.frame(
-        tube = rep(tube, length(xOther)),
-        cells = rep("positive for another cytokine", length(xOther)), x = xOther
-      )
+      data.frame(tube = rep(tube, length(xCond)), cells = rep(label, length(xCond)), x = xCond)
     )
   }
   dplyr::bind_rows(one(dat$stim, "stimulated"), one(dat$uns, "unstimulated")) |>
@@ -81,10 +84,10 @@
   lab <- tbl |>
     dplyr::filter(.data$tube == "stimulated", .data$cells != "all cells")
   lab <- lab[!duplicated(lab$donor), c("donor", "n")]
-  out <- stats::setNames(paste0(lab$donor, " (n other+ = ", lab$n, ")"), lab$donor)
+  out <- stats::setNames(paste0(lab$donor, " (n = ", lab$n, ")"), lab$donor)
   missing <- setdiff(unique(tbl$donor), names(out))
   if (length(missing)) {
-    out <- c(out, stats::setNames(paste0(missing, " (n other+ = 0)"), missing))
+    out <- c(out, stats::setNames(paste0(missing, " (n = 0)"), missing))
   }
   out
 }
@@ -147,34 +150,49 @@
   }))
 }
 
-# Densities of `cyt` among all cells and among cells positive for another
-# cytokine, for every donor's stimulated and control tube.
-.acsCytposDensityPlot <- function(tbl, gates, cyt) {
+# `cyt` among all cells (density lines; thousands of cells) and among the
+# conditional subset (histograms of 0.25-wide bins scaled to density, so the
+# tubes are comparable despite their sizes; tens of cells are too few for a
+# kernel density), for every donor's stimulated and control tube.
+.acsCytposDensityPlot <- function(tbl, gates, cyt, binwidth = 0.25) {
   labels <- .acsCytposDonorLabels(tbl)
-  dens <- .acsCytposDensityCurves(tbl)
+  dens <- .acsCytposDensityCurves(tbl[tbl$cells == "all cells", ])
+  cond <- tbl[tbl$cells != "all cells", ]
   gateTbl <- .acsCytposGateTbl(gates, cyt)
   # Each line has its own group, so a cytokine-positive gate equal to the base
   # gate is still drawn on top of it.
-  ggplot(dens, aes(x = .data$x, y = .data$y, colour = .data$tube, linetype = .data$cells)) +
-    geom_line(linewidth = 0.6) +
+  ggplot() +
+    geom_histogram(
+      data = cond,
+      aes(x = .data$x, y = ggplot2::after_stat(density), fill = .data$tube, colour = .data$tube),
+      binwidth = binwidth, boundary = 0, position = "identity", alpha = 0.35, linewidth = 0.3
+    ) +
+    geom_line(
+      data = dens,
+      aes(x = .data$x, y = .data$y, colour = .data$tube),
+      linetype = "dotted", linewidth = 0.6
+    ) +
     geom_vline(
       data = gateTbl[gateTbl$gate == "base gate", ],
       aes(xintercept = .data$x, group = .data$group),
-      colour = "grey20", linetype = "dashed", inherit.aes = FALSE, linewidth = 0.5
+      colour = "grey20", linetype = "dashed", linewidth = 0.5
     ) +
     geom_vline(
       data = gateTbl[gateTbl$gate != "base gate", ],
       aes(xintercept = .data$x, group = .data$group),
-      colour = "#D55E00", inherit.aes = FALSE, linewidth = 0.5
+      colour = "#D55E00", linewidth = 0.5
     ) +
     scale_y_sqrt() +
     scale_colour_manual(values = c(stimulated = "#B2182B", unstimulated = "#2166AC"),
       name = "Tube") +
-    scale_linetype_manual(values = c("all cells" = "dotted",
-      "positive for another cytokine" = "solid"), name = "Cells") +
+    scale_fill_manual(values = c(stimulated = "#B2182B", unstimulated = "#2166AC"),
+      name = "Tube") +
     facet_wrap(~donor, ncol = 4, scales = "free_y",
       labeller = ggplot2::as_labeller(labels)) +
     .analysis_theme() +
-    theme(legend.position = "bottom", legend.box = "vertical") +
-    labs(x = paste0(cyt, " (non-zero values)"), y = "Density (square-root scale)")
+    theme(legend.position = "bottom") +
+    labs(
+      x = paste0(cyt, " (non-zero values)"),
+      y = "Density (square-root scale)"
+    )
 }

@@ -29,7 +29,9 @@ local({
     stimOther <- tbl[tbl$tube == "stimulated" & tbl$cells != "all cells", ]
     testthat::expect_equal(sort(stimOther$x), c(1, 3))
     testthat::expect_equal(unique(tbl$zeroShare[tbl$tube == "stimulated" & tbl$cells == "all cells"]), 1 / 6)
-    testthat::expect_equal(unname(env$.acsCytposDonorLabels(tbl)), "d1 (n other+ = 2)")
+    testthat::expect_equal(unname(env$.acsCytposDonorLabels(tbl)), "d1 (n = 2)")
+    byPartner <- env$.acsCytposDensityTbl(dat, "d1", "TNF", given = "IFNg")
+    testthat::expect_equal(sort(byPartner$x[byPartner$tube == "stimulated" & byPartner$cells == "IFNg+"]), c(0.2, 1, 3))
   })
 
   testthat::test_that("plots build with gate lines for both gate types", {
@@ -38,7 +40,7 @@ local({
     testthat::expect_s3_class(ggplot2::ggplot_build(hex), "ggplot_built")
     dens <- env$.acsCytposDensityPlot(env$.acsCytposDensityTbl(dat, "d1", "IFNg"), gates, "IFNg")
     built <- ggplot2::ggplot_build(dens)
-    xs <- unlist(lapply(built$data[2:3], `[[`, "xintercept"))
+    xs <- unlist(lapply(built$data[3:4], `[[`, "xintercept"))
     testthat::expect_setequal(xs, c(1.5, 0.8))
   })
 })
