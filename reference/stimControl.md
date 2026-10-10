@@ -33,6 +33,8 @@ stimControl(
   locShareCap = 1.5,
   locShareCellCap = 0.5,
   locEnforceShapeThreshold = FALSE,
+  locShiftedPeakRef = FALSE,
+  locShiftedPeakBwMult = 2,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1/6,
   locAntimodeLowRel = 0.25,
@@ -243,6 +245,30 @@ stimControl(
   stimulated-density antimode right of the main negative peak and the
   adjusted stimulated-density tailgate. Restrict later marginal
   filtering to this region. Default: FALSE.
+
+- locShiftedPeakRef:
+
+  logical Handle a stimulated tube whose main peak has moved right
+  because most of its cells respond. The search for responding cells
+  normally starts one third of a left-window width above the higher of
+  the stimulated and unstimulated main peaks. When `TRUE` and the
+  stimulated main peak lies more than `locShiftedPeakBwMult` bandwidths
+  to the right of the unstimulated main peak, the search instead starts
+  above the unstimulated peak, using only the unstimulated tube's
+  left-window width. The bandwidth is the shared bandwidth estimated on
+  `bwNcellMax` cells, without the widening for small tubes from
+  `bwScaleNcell`; a fixed `bw` when supplied; the sample's own bandwidth
+  with `bwScope = "sample"`; and, for adaptive bandwidths, the bandwidth
+  curve at the unstimulated peak. Tubes where the rule applied are
+  flagged in the `locShiftedPeakRef` column of
+  [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md).
+  Default: FALSE.
+
+- locShiftedPeakBwMult:
+
+  numeric Number of bandwidths by which the stimulated main peak must
+  exceed the unstimulated main peak for `locShiftedPeakRef` to apply.
+  Must be positive. Default: 2.
 
 - locDipAlpha:
 
@@ -484,6 +510,12 @@ stimControl()
 #> $locEnforceShapeThreshold
 #> [1] FALSE
 #> 
+#> $locShiftedPeakRef
+#> [1] FALSE
+#> 
+#> $locShiftedPeakBwMult
+#> [1] 2
+#> 
 #> $locDipAlpha
 #> [1] 0.2
 #> 
@@ -642,6 +674,12 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> 
 #> $locEnforceShapeThreshold
 #> [1] FALSE
+#> 
+#> $locShiftedPeakRef
+#> [1] FALSE
+#> 
+#> $locShiftedPeakBwMult
+#> [1] 2
 #> 
 #> $locDipAlpha
 #> [1] 0.2

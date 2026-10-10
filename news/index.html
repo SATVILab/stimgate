@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.30</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.31</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,14 @@
       <small>Source: <a href="https://github.com/SATVILab/stimgate/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.99.31" id="stimgate-09931">stimgate 0.99.31<a class="anchor" aria-label="anchor" href="#stimgate-09931"></a></h2>
+<div class="section level3">
+<h3 id="new-features-0-99-31">New features<a class="anchor" aria-label="anchor" href="#new-features-0-99-31"></a></h3>
+<ul><li>
+<code><a href="../reference/stimControl.html">stimControl()</a></code> gains <code>locShiftedPeakRef</code> (default <code>FALSE</code>) and <code>locShiftedPeakBwMult</code> (default 2) for stimulations where most cells respond. When the stimulated tube’s main peak lies more than <code>locShiftedPeakBwMult</code> bandwidths to the right of the unstimulated main peak, the search for responding cells starts above the unstimulated peak, rather than above the stimulated peak (which is then made of responding cells). <code><a href="../reference/getStimGates.html">getStimGates()</a></code> reports where this happened in a <code>locShiftedPeakRef</code> column. Results are unchanged unless it is switched on.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.30" id="stimgate-09930">stimgate 0.99.30<a class="anchor" aria-label="anchor" href="#stimgate-09930"></a></h2>
 <div class="section level3">

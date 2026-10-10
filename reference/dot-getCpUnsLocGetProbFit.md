@@ -20,6 +20,7 @@ the admissible modelling region.
   chnlSettings,
   applyPreliminaryFilter = TRUE,
   peakX = NULL,
-  windowWidth = NULL
+  windowWidth = NULL,
+  shiftedPeakRef = NULL
 )
 ```
