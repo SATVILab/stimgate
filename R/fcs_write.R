@@ -14,7 +14,7 @@
 #' @param gateTbl data.frame or NULL Gates with `chnl`, `batch`, `ind`, `gate`
 #'   and, for refined gates, `gateCyt`. NULL reads saved gates. Default: NULL.
 #' @param gateTypeCytPos character Positivity rule: "base" uses main gates;
-#'   "cyt" also uses refined gates for cells positive for another marker.
+#'   "cyt" uses the saved refinement or coexpression rule.
 #'   Default: "cyt".
 #' @param mult logical Require positivity for at least two markers. Default: FALSE.
 #' @param combnExc list or NULL Channel combinations to exclude: each vector
@@ -27,6 +27,10 @@
 #'   export. Default: NULL.
 #' @param transChnl character vector or NULL Columns to transform; NULL transforms
 #'   all expression columns. Default: NULL.
+#' @details With coexpression, `coexpression.csv` records pairwise thresholds.
+#'   Stimulated samples use their saved rules. For control exports, the chosen
+#'   `gateUnsMethod` summarises ordinary, lowered and conditioning thresholds
+#'   across the batch's stimulated samples.
 #' @return Invisibly, a tibble with one row per sample and columns `ind`, `batch`,
 #'   `fileName`, `nCellPos`, `written`, `reason`. The `pathDirSave` attribute holds
 #'   the output path. Samples with no positive cells get no FCS file.
@@ -91,6 +95,24 @@ writeStimFCS <- function(
     pathProject = pathProject
   )
 
+  gateTbl <- .coexAttach(gateTbl, pathProject, pop)
+  # Controls retain the documented summary of stimulated gates. Each pairwise
+  # band uses that same summary across the batch's stimulated samples.
+  low <- attr(gateTbl, "coexpression")
+  if (!is.null(low)) {
+    calc <- switch(gateUnsMethod, min = min, max = max, mean = mean,
+      tmean = function(x) mean(x, trim = 0.2), med = stats::median)
+    controlRows <- purrr::map_df(seq_along(indBatchList), function(i) {
+      indices <- indBatchList[[i]]
+      low |> dplyr::filter(.data$ind %in% as.character(indices[-1])) |>
+        dplyr::group_by(.data$pop, .data$batch, .data$chnlCond, .data$markerCond,
+          .data$chnl, .data$marker, .data$gateName) |>
+        dplyr::summarise(dplyr::across(c("gate", "cut", "condCut"), calc),
+          .groups = "drop") |>
+        dplyr::mutate(ind = as.character(indices[[1]]), lowered = (cut < gate) %in% TRUE)
+    })
+    attr(gateTbl, "coexpression") <- dplyr::bind_rows(low, controlRows)
+  }
   chnl <- chnl %||% unique(gateTbl$chnl)
 
   # clear and create directory to save to
@@ -98,6 +120,11 @@ writeStimFCS <- function(
     unlink(pathDirSave, force = TRUE, recursive = TRUE)
   }
   dir.create(pathDirSave, recursive = TRUE)
+  if (!is.null(low)) {
+    thresholds <- attr(gateTbl, "coexpression")
+    utils::write.csv(thresholds[thresholds$chnl %in% chnl, ],
+      file.path(pathDirSave, "coexpression.csv"), row.names = FALSE)
+  }
 
   nFn <- length(.data)
 

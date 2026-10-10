@@ -9,6 +9,7 @@ reference:
   - gateStim
   - stimControl
   - getStimGates
+  - getStimGatesCoexpression
   - getStimGatesDetailed
   - getStimStats
 

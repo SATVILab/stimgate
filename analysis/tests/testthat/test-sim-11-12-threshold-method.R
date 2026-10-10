@@ -83,7 +83,7 @@ test_that("Analysis 11 rejects caches without the threshold method", {
   settings <- env$.simLowSepCacheSettings(grid, 2L, main, 1L,
     list(sim_size = "final"))
   expect_identical(settings$analysis_semantics_version,
-    "sim-low-separation-v6")
+    "sim-low-separation-v7")
   expect_identical(settings$settings$loc_threshold_method, "region")
 
   # A cache made before the change: v1, no method in settings or gates.

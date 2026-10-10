@@ -25,7 +25,8 @@ plotStim(
   chnlGate = NULL,
   markerGate = NULL,
   gateTypeCytPos = "cyt",
-  mult = FALSE
+  mult = FALSE,
+  showGateCyt = TRUE
 )
 }
 \arguments{
@@ -80,11 +81,13 @@ include these in the requested expression columns. Default: NULL.}
 cells; cannot be combined with \code{chnlGate}. Default: NULL.}
 
 \item{gateTypeCytPos}{character Positivity rule: "base" uses the main gate;
-"cyt" also admits cells above a refined gate when another marker clears
-its main gate. Default: "cyt".}
+"cyt" uses the saved refinement or coexpression rule. Default: "cyt".}
 
 \item{mult}{logical Require positivity for at least two gating markers.
 Applies only when \code{chnlGate} or \code{markerGate} is supplied. Default: FALSE.}
+
+\item{showGateCyt}{logical Draw cytokine-positive gates (lowered gates of the
+coexpression method) where available. Default: TRUE.}
 }
 \value{
 A ggplot grid if \code{grid = TRUE}; otherwise a list of bivariate plots

@@ -2,7 +2,7 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
 
 .lowSepEnv <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
-  for (f in c("analysis-runtime.R", "analysis-plot-style.R", "sim-low-separation.R")) {
+  for (f in c("analysis-runtime.R", "analysis-plot-style.R", "coexpression-gates.R", "sim-low-separation.R")) {
     source(file.path(root_dir, "scripts", "r", f), local = env)
   }
   env
@@ -10,9 +10,14 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
 
 .lowSepToyCounts <- function(stim, uns) {
   scen <- tibble::tibble(
-    sim_id = 1L, separation = "low", mean_pos = 4.5,
-    response_level = "higher", prob_response = 0.05, n_cell = 100
+    sim_id = 1L, family = "main", separation = "low", mean_pos = 4.5, mean_pos_ifng = 4.5,
+    response_level = "higher", prob_response = 0.05, response_split = "default",
+    background_relative = 0.2, background_split = "response", n_cell = 100
   )
+  # The co-expression rule makes the same calls as the refinement here.
+  copy_coexpr <- function(x) dplyr::bind_rows(x, dplyr::mutate(x[x$gate_type == "cytpos", ], gate_type = "coexpr"))
+  stim <- copy_coexpr(stim)
+  uns <- copy_coexpr(uns)
   rows <- function(tube, x) {
     tibble::tibble(
       sample = 1L, tube = tube, gate_type = x$gate_type,
@@ -25,9 +30,16 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
 test_that("scenario grid assigns IDs and seeds on the full grid", {
   env <- .lowSepEnv()
   grid <- env$.simLowSepGrid(55700L)
-  expect_equal(nrow(grid), 8L)
-  expect_equal(grid$sim_id, 1:8)
-  expect_setequal(unique(grid$mean_pos), c(4.5, 3.5))
+  expect_equal(nrow(grid), 32L)
+  expect_equal(grid$sim_id, 1:32)
+  # The main grid keeps its original seeds; the families follow it.
+  main <- grid[grid$family == "main", ]
+  expect_equal(main$sim_id, 1:8)
+  expect_equal(main$sim_seed, as.integer(env$.analysis_with_seed(55700L, {
+    sample.int(.Machine$integer.max, 8L)
+  })))
+  expect_setequal(unique(grid$family), names(env$.simLowSepFamilies))
+  expect_setequal(unique(main$mean_pos), c(4.5, 3.5))
   expect_setequal(unique(grid$prob_response), c(0.01, 0.05))
   expect_setequal(unique(grid$n_cell), c(1e5, 5e3))
   expect_identical(grid, env$.simLowSepGrid(55700L))
@@ -111,6 +123,33 @@ test_that("recovering IFNg in TNF+ cells corrects the exclusive single-positive 
   expect_equal(row$n_further + row$n_unchanged, 0L)
 })
 
+test_that("cell-level F1 counts true positives within each quantity", {
+  env <- .lowSepEnv()
+  stim <- tibble::tribble(
+    ~gate_type, ~truth, ~call, ~n,
+    "ordinary", "TNF+IFNg+", "TNF+IFNg+", 4,
+    "ordinary", "TNF+IFNg+", "TNF+IFNg-", 6,
+    "ordinary", "TNF-IFNg-", "TNF-IFNg-", 90,
+    "cytpos", "TNF+IFNg+", "TNF+IFNg+", 10,
+    "cytpos", "TNF-IFNg-", "TNF-IFNg-", 88,
+    "cytpos", "TNF-IFNg-", "TNF+IFNg+", 2
+  )
+  uns <- tibble::tribble(
+    ~gate_type, ~truth, ~call, ~n,
+    "ordinary", "TNF-IFNg-", "TNF-IFNg-", 100,
+    "cytpos", "TNF-IFNg-", "TNF-IFNg-", 100
+  )
+  f1 <- env$.simLowSepF1(.lowSepToyCounts(stim, uns))
+  get <- function(gt, q, col) f1[[col]][f1$gate_type == gt & f1$quantity == q]
+  expect_equal(get("ordinary", "TNF+IFNg+", "f1"), 2 * 4 / (4 + 10))
+  expect_equal(get("cytpos", "TNF+IFNg+", "f1"), 2 * 10 / (12 + 10))
+  expect_equal(get("cytpos", "TNF+IFNg+", "precision"), 10 / 12)
+  # No true and no called cells: undefined, not zero.
+  expect_true(is.na(get("cytpos", "TNF+IFNg-", "f1")))
+  pct <- env$.simLowSepPercentiles(f1, "f1")
+  expect_equal(pct$p50[pct$gate_type == "cytpos" & pct$quantity == "TNF+IFNg+"], 10 / 11)
+})
+
 test_that("count validation rejects disagreement with the package statistics", {
   env <- .lowSepEnv()
   counts <- tibble::tibble(
@@ -148,7 +187,10 @@ test_that("one small scenario gates, validates against the package and plots", {
   row$n_cell <- 2000
   row$prob_response <- 0.05
   res <- env$.simLowSepRunScenario(row, n_sample = 2L)
-  expect_named(res, c("gates", "counts", "cells"))
+  expect_named(res, c("gates", "coex_gates", "counts", "cells"))
+  # Both ordered pairs for every stimulated sample, never above the ordinary gate.
+  expect_equal(nrow(res$coex_gates), 4L)
+  expect_true(all(res$coex_gates$cut <= res$coex_gates$gateB))
   expect_equal(nrow(res$gates), 4L)
   expect_true(all(res$gates$gate_cyt <= res$gates$gate))
   expect_true(all(res$gates$locThresholdMethod == "region"))
@@ -167,9 +209,13 @@ test_that("one small scenario gates, validates against the package and plots", {
   plot_dir <- withr::local_tempdir()
   withr::local_dir(plot_dir)
   plots <- list(
-    env$.simLowSepPlotHex(res$cells, res$gates),
-    env$.simLowSepPlotConditionalDensity(res$cells, res$gates),
-    env$.simLowSepPlotGateShift(res$gates),
+    env$.simLowSepPlotHex(res$cells, res$gates, res$coex_gates),
+    env$.simLowSepPlotConditionalDensity(res$cells, res$gates, res$coex_gates),
+    env$.simLowSepPlotGateShift(res$gates, res$coex_gates),
+    env$.simLowSepPlotPercentiles(env$.simLowSepPercentiles(env$.simLowSepF1(res$counts), "f1"), "F1"),
+    env$.simLowSepPlotPercentiles(
+      env$.simLowSepPercentiles(freq, "prop_bs_est", truth = "prop_bs_truth"), "Frequency", truth = TRUE, scale = 100
+    ),
     env$.simLowSepPlotRecovery(recovery),
     env$.simLowSepPlotFrequencyError(freq)
   )

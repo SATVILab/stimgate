@@ -51,7 +51,7 @@ specifies positive channels, with other selected channels negative.
 Default: NULL.}
 
 \item{gateTypeCytPos}{character Positivity rule: "base" uses main gates;
-"cyt" also uses refined gates for cells positive for another marker.
+"cyt" uses the saved refinement or coexpression rule.
 Default: "cyt".}
 
 \item{mult}{logical Require positivity for at least two markers. Default: FALSE.}
@@ -68,6 +68,12 @@ the output path. Samples with no positive cells get no FCS file.
 \description{
 Select positive cells using saved or supplied gates and write
 one FCS file per sample that has positive cells, plus \code{manifest.csv}.
+}
+\details{
+With coexpression, \code{coexpression.csv} records pairwise thresholds.
+Stimulated samples use their saved rules. For control exports, the chosen
+\code{gateUnsMethod} summarises ordinary, lowered and conditioning thresholds
+across the batch's stimulated samples.
 }
 \examples{
 exampleData <- getExampleData()

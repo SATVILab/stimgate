@@ -56,7 +56,8 @@ Default: stimControl().}
 \item{markerControl}{list or NULL Settings for single markers, named by marker
 label or channel,
 e.g. \code{list(IL2 = list(bw = 0.12, biasUns = 0))}. Accepts \code{\link[=stimControl]{stimControl()}}
-settings except \code{locEnforceShapeThreshold} and \code{calcCytPosGates}, plus
+settings except \code{locEnforceShapeThreshold}, \code{calcCytPosGates},
+\code{cytPosMethod} and the \verb{coex*} settings, plus
 \code{bw}, \code{biasUns} and \code{popGate}. Default: NULL.}
 
 \item{parallel}{logical Use the active \code{\link[future:plan]{future::plan()}} for initial channel

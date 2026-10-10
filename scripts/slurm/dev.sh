@@ -71,7 +71,7 @@ if (( $# > 0 )); then
 fi
 
 # Some analyses read another's results, so submit the one they read first
-# when both run: 13 reads 9, 14b reads 14 and 15b reads 15. The OMIP analyses
+# when both run: 13 and 18 read 9, 14b reads 14 and 15b reads 15. The OMIP analyses
 # also wait for Analysis 1's projr build, which clears the figure folder.
 move_after() {
   local first="$1" second="$2" idx_first=-1 idx_second=-1 i moved
@@ -90,6 +90,7 @@ for omip_script in dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-s
   move_after dev-1-sim-trans.sh "$omip_script"
 done
 move_after dev-9-real-compare-acs-cytof.sh dev-13-real-debug-acs-cytof.sh
+move_after dev-9-real-compare-acs-cytof.sh dev-18-explore-acs-cytof-coexpression-gates.sh
 move_after dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh
 move_after dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh
 
@@ -171,7 +172,8 @@ plot_qmds_for_script() {
 plots_in_sim_job() {
   case "$1" in
     dev-14-real-compare-omip111.sh | dev-14b-real-compare-omip111-shifted-peak.sh | \
-      dev-15-real-compare-omip016.sh | dev-15b-real-compare-omip016-shifted-peak.sh)
+      dev-15-real-compare-omip016.sh | dev-15b-real-compare-omip016-shifted-peak.sh | \
+      dev-18-explore-acs-cytof-coexpression-gates.sh)
       return 0
       ;;
     *) return 1 ;;
@@ -180,11 +182,11 @@ plots_in_sim_job() {
 
 # Simulation jobs that must wait for another launcher's jobs to succeed, as
 # ':'-prefixed job IDs (empty when that launcher is not in this submission).
-# Analysis 13 re-gates from Analysis 9's caches and reads its results; 14b
+# Analyses 13 and 18 read Analysis 9's caches and results; 14b
 # and 15b compare against Analysis 14's and 15's saved results.
 sim_dependency_for_script() {
   case "$1" in
-    dev-13-real-debug-acs-cytof.sh)
+    dev-13-real-debug-acs-cytof.sh | dev-18-explore-acs-cytof-coexpression-gates.sh)
       echo "${script_job_ids[dev-9-real-compare-acs-cytof.sh]:-}"
       ;;
     dev-14b-real-compare-omip111-shifted-peak.sh)

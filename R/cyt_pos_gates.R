@@ -47,6 +47,12 @@
     gnVec <- gnVec[grepl("Adj$", gnVec)]
   }
 
+  if (identical(chnlSettings[[1]]$cytPosMethod, "coexpression")) {
+    selected <- gateTbl |> dplyr::filter(.data$gateName %in% gnVec)
+    .gateCytCoexpression(selected, chnlSettings, indBatchList, .data, pathProject)
+    return(dplyr::mutate(selected, gateCyt = gate))
+  }
+
   purrr::map_df(gnVec, function(gn) {
     gateTblGn <- gateTbl |> dplyr::filter(gateName == gn)
     .debug(

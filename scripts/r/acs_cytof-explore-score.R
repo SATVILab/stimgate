@@ -328,123 +328,6 @@
     labs(x = x, y = y)
 }
 
-# Lowest value a lowered gate may take: the control tube's main negative peak
-# plus `mult` robust SDs (left half-width at half maximum / 1.177, on a
-# Gaussian KDE with the nrd0 bandwidth of the non-zero values), so a gate is
-# never lowered into the bulk of the negatives.
-.acsCoexNegFloor <- function(x, mult = 1.5) {
-  x <- x[is.finite(x) & x > 0]
-  if (length(x) < 10L) {
-    return(0)
-  }
-  d <- stats::density(x, bw = stats::bw.nrd0(x), n = 2048)
-  i <- which.max(d$y)
-  left <- which(d$x < d$x[[i]] & d$y <= d$y[[i]] / 2)
-  sigma <- if (length(left)) (d$x[[i]] - d$x[[max(left)]]) / 1.177 else stats::mad(x)
-  max(0, d$x[[i]] + mult * sigma)
-}
-
-# Purity of a set of stimulated cells: the estimated share that responded,
-# 1 - (control share) / (stimulated share), with shares over each tube's cells
-# (zeros included). Undefined (NA) with no cells in either tube and -Inf with
-# control cells only.
-.acsCoexPurity <- function(s, u, nS, nU) {
-  ifelse(s > 0, 1 - (u / nU) / (s / nS), ifelse(u > 0, -Inf, NA_real_))
-}
-
-# z of the net double-positive count (above both ordinary gates):
-# (s - u nS / nU) / sqrt(s + u (nS / nU)^2).
-.acsCoexDpZ <- function(dat, a, b) {
-  nS <- nrow(dat$stim)
-  nU <- nrow(dat$uns)
-  s <- sum(dat$stim[[a]] > dat$gate[[a]] & dat$stim[[b]] > dat$gate[[b]], na.rm = TRUE)
-  u <- sum(dat$uns[[a]] > dat$gate[[a]] & dat$uns[[b]] > dat$gate[[b]], na.rm = TRUE)
-  (s - u * nS / nU) / sqrt(max(s + u * (nS / nU)^2, 1e-12))
-}
-
-# Lowered gate for marker `b` among cells above `a`'s ordinary gate, and the
-# raised `a` cut for the cells it adds.
-#
-# 1. Nothing moves unless the double-positive response is clear
-#    (`.acsCoexDpZ()` > `zMin`).
-# 2. The distance from b's gate down to its floor (`.acsCoexNegFloor()` of the
-#    control tube) is cut into `nBin` bins. A set of bins passes when its a+
-#    stimulated cells depart from independence (Pearson residual (O - E) /
-#    sqrt(E), E from the stimulated tube's own a+ share and share of cells in
-#    the bins) by at least `rMin` and its purity is at least `frac` times the
-#    double positives'. Working back from the floor, the cut is the first bin
-#    edge where that bin passes on its own and all bins from the gate down to
-#    it pass together.
-# 3. Band trim, purity only: the distance from a's gate down to its floor, in
-#    `nBin` steps, sets slices above a's gate. Working up from a's gate, the a
-#    cut is the first slice edge where that slice of the added band passes on
-#    its own and the band above it passes together. If the band runs out, b's
-#    gate is not lowered.
-#
-# A cell is then b-positive if above b's gate, or above `condCut` on a and
-# `cut` on b.
-.acsCoexLowerGate <- function(dat, a, b, nBin = 20L, rMin = 3.5, frac = 0.75, zMin = 2) {
-  nS <- nrow(dat$stim)
-  nU <- nrow(dat$uns)
-  gA <- dat$gate[[a]]
-  gB <- dat$gate[[b]]
-  floorA <- .acsCoexNegFloor(dat$uns[[a]])
-  floorB <- .acsCoexNegFloor(dat$uns[[b]])
-  z <- .acsCoexDpZ(dat, a, b)
-  out <- list(a = a, b = b, gateA = gA, gateB = gB, cut = gB, condCut = gA,
-    floorA = floorA, floorB = floorB, z = z, purityDp = NA_real_)
-  if (!is.finite(gA) || !is.finite(gB) || !(z > zMin) || floorB >= gB) {
-    return(out)
-  }
-  sAv <- dat$stim[[a]]
-  uAv <- dat$uns[[a]]
-  sB <- dat$stim[[b]]
-  uB <- dat$uns[[b]]
-  sA <- (sAv > gA) %in% TRUE
-  uA <- (uAv > gA) %in% TRUE
-  pA <- mean(sA)
-  pDp <- .acsCoexPurity(sum(sA & sB > gB), sum(uA & uB > gB), nS, nU)
-  out$purityDp <- pDp
-  passBins <- function(lo, hi) {
-    inS <- sB > lo & sB <= hi
-    s <- sum(sA & inS)
-    u <- sum(uA & uB > lo & uB <= hi)
-    e <- nS * pA * mean(inS)
-    s > 0 && (s - e) / sqrt(max(e, 1e-12)) >= rMin &&
-      .acsCoexPurity(s, u, nS, nU) >= frac * pDp
-  }
-  edges <- gB - (gB - floorB) * seq_len(nBin) / nBin
-  upper <- c(gB, edges[-nBin])
-  for (k in rev(seq_len(nBin))) {
-    if (passBins(edges[[k]], upper[[k]]) && passBins(edges[[k]], gB)) {
-      out$cut <- edges[[k]]
-      break
-    }
-  }
-  if (out$cut >= gB) {
-    return(out)
-  }
-  bandS <- sB > out$cut & sB <= gB
-  bandU <- uB > out$cut & uB <= gB
-  passBand <- function(lo, hi) {
-    s <- sum(bandS & sAv > lo & sAv <= hi)
-    u <- sum(bandU & uAv > lo & uAv <= hi)
-    s > 0 && .acsCoexPurity(s, u, nS, nU) >= frac * pDp
-  }
-  step <- max(gA - floorA, 1e-6) / nBin
-  maxA <- max(sAv[bandS & sA])
-  lo <- gA
-  while (lo < maxA && !(passBand(lo, lo + step) && passBand(lo, Inf))) {
-    lo <- lo + step
-  }
-  if (lo >= maxA) {
-    out$cut <- gB
-    return(out)
-  }
-  out$condCut <- lo
-  out
-}
-
 # Cells positive for both markers: above both ordinary gates, or added by
 # either lowered gate (`low[[x]]` lowers x among y+ cells).
 .acsCoexLowerBothPos <- function(ex, dat, low, x, y) {
@@ -458,8 +341,8 @@
 # the rectangle of ordinary gates.
 .acsCoexLowerSummary <- function(dat, x, y, donor, ...) {
   low <- stats::setNames(list(
-    .acsCoexLowerGate(dat, a = y, b = x, ...),
-    .acsCoexLowerGate(dat, a = x, b = y, ...)
+    .coexLowerGate(dat, a = y, b = x, ...),
+    .coexLowerGate(dat, a = x, b = y, ...)
   ), c(x, y))
   sPos <- .acsCoexLowerBothPos(dat$stim, dat, low, x, y)
   uPos <- .acsCoexLowerBothPos(dat$uns, dat, low, x, y)
