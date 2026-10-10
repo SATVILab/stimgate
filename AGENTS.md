@@ -1622,3 +1622,14 @@ reference, with full author 2-D counts retained as context. Never score
 the CD44-restricted frequencies as if they were unrestricted cytokine
 positivity; validate projected reference masks against the raw FCS read
 by R before method execution.
+
+Comparison analyses with a cell-level reference (simulated labels in
+7/8, manual masks in 14/14b and 15/15b) report sensitivity (recall),
+precision, specificity and F1 from TP/FP/FN/TN of the stimulated tube,
+plus Pearson and concordance correlations (CCC, population moments via
+`.acsCytofValidationCcc()`) between estimated and reference frequencies.
+Precision is not specificity. These are computed at render time from
+saved gates and counts, without reruns. OMIP-111 rebuilds StimGate calls
+with the cytokine-positive rule and must reproduce the saved marginal
+counts. ACS (9/10) has frequency-only manual references, so only
+correlations apply.
