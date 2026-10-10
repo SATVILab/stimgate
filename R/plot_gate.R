@@ -24,6 +24,8 @@
 #' @param grid logical Arrange plots in a grid. Default: TRUE.
 #' @param gridNCol integer Grid columns. Default: 2.
 #' @param showGate logical Draw gate lines. Default: TRUE.
+#' @param showGateCyt logical Draw cytokine-positive gates (lowered gates of the
+#'   coexpression method) where available. Default: TRUE.
 #' @param minCell numeric Minimum number of cells needed to plot a sample.
 #'   Default: 10.
 #' @inheritParams getStimExpr
@@ -61,8 +63,12 @@ plotStim <- function(
   chnlGate = NULL,
   markerGate = NULL,
   gateTypeCytPos = "cyt",
-  mult = FALSE
+  mult = FALSE,
+  showGateCyt = TRUE
 ) {
+  if (!is.logical(showGateCyt) || length(showGateCyt) != 1L || is.na(showGateCyt)) {
+    stop("showGateCyt must be a single logical value")
+  }
   if (is.null(marker) && is.null(chnl)) {
     stop("Must specify one of marker or chnl")
   }
@@ -91,6 +97,7 @@ plotStim <- function(
     gateTypeCytPos = gateTypeCytPos,
     mult = mult
   )
+  coexGates <- if (showGate && showGateCyt) .plotCoexGates(pathProject, pop)
   pList <- append(
     .plotGateBv(
       ind = ind,
@@ -104,7 +111,8 @@ plotStim <- function(
       limitsEqual = limitsEqual,
       showGate = showGate,
       minCell = minCell,
-      exArgs = exArgs
+      exArgs = exArgs,
+      coexGates = coexGates
     ),
     .plotGateUv(
       ind = ind,
@@ -117,7 +125,8 @@ plotStim <- function(
       showGate = showGate,
       pathProject = pathProject,
       minCell = minCell,
-      exArgs = exArgs
+      exArgs = exArgs,
+      coexGates = coexGates
     )
   )
   if (length(pList) == 0L) {
@@ -139,7 +148,8 @@ plotStim <- function(
   limitsEqual,
   showGate,
   minCell,
-  exArgs
+  exArgs,
+  coexGates = NULL
 ) {
   if (xor(is.null(marker), is.null(chnl)) && length(marker %||% chnl) == 1L) {
     return(NULL)
@@ -168,7 +178,7 @@ plotStim <- function(
     p <- .axisLimits(p, limitsExpand = limitsExpand, limitsEqual = limitsEqual)
     p <- .plotAddAxisTitle(p, marker, chnl, axisLab) +
       ggtitle(.plotGetLab(ind[[i]], indLab, i))
-    .plotAddGate(p, ind[[i]], marker, chnl, pop, pathProject, showGate)
+    .plotAddGate(p, ind[[i]], marker, chnl, pop, pathProject, showGate, coexGates)
   }) |>
     stats::setNames(.plotGetLab(ind, indLab))
   pList <- Filter(Negate(is.null), pList)
@@ -207,7 +217,17 @@ plotStim <- function(
 }
 
 #' @keywords internal
-.plotAddGate <- function(p, ind, marker, chnl, pop, pathProject, showGate) {
+.plotCoexGates <- function(pathProject, pop) {
+  tryCatch(
+    getStimGatesCoexpression(pathProject, pop = pop),
+    error = function(e) NULL
+  )
+}
+
+#' @keywords internal
+.plotAddGate <- function(
+  p, ind, marker, chnl, pop, pathProject, showGate, coexGates = NULL
+) {
   if (!showGate) {
     return(p)
   }
@@ -242,6 +262,47 @@ plotStim <- function(
       )
     }
   }
+  if (is.null(coexGates)) {
+    return(p)
+  }
+  coexGates <- coexGates[
+    coexGates[["pop"]] %in% pop & coexGates[["ind"]] %in% ind &
+      coexGates[["lowered"]] %in% TRUE & is.finite(coexGates[["cut"]]) &
+      is.finite(coexGates[["condCut"]]),
+  ]
+  if (length(chnl) == 1L) {
+    cuts <- coexGates[["cut"]][coexGates[["chnl"]] == chnl[[1]]]
+    if (length(cuts) > 0L) {
+      p <- p + geom_vline(
+        xintercept = cuts, group = seq_along(cuts),
+        colour = "blue", alpha = 0.6, linetype = "dashed"
+      )
+    }
+  } else {
+    horizontal <- coexGates[["chnlCond"]] == chnl[[1]] &
+      coexGates[["chnl"]] == chnl[[2]]
+    vertical <- coexGates[["chnlCond"]] == chnl[[2]] &
+      coexGates[["chnl"]] == chnl[[1]]
+    seg <- coexGates[horizontal | vertical, ]
+    if (nrow(seg) > 0L) {
+      horizontal <- seg[["chnlCond"]] == chnl[[1]]
+      seg <- tibble::tibble(
+        x = ifelse(horizontal, seg[["condCut"]], seg[["cut"]]),
+        y = ifelse(horizontal, seg[["cut"]], seg[["condCut"]]),
+        xend = ifelse(horizontal, Inf, seg[["cut"]]),
+        yend = ifelse(horizontal, seg[["cut"]], Inf),
+        group = seq_len(nrow(seg))
+      )
+      p <- p + geom_segment(
+        data = seg,
+        aes(
+          x = .data$x, y = .data$y, xend = .data$xend,
+          yend = .data$yend, group = .data$group
+        ),
+        inherit.aes = FALSE, colour = "blue", alpha = 0.6
+      )
+    }
+  }
   p
 }
 
@@ -257,7 +318,8 @@ plotStim <- function(
   showGate,
   pathProject,
   minCell,
-  exArgs
+  exArgs,
+  coexGates = NULL
 ) {
   varLoop <- if (!is.null(marker)) marker else chnl
   pList <- lapply(varLoop, function(v) {
@@ -274,7 +336,8 @@ plotStim <- function(
       showGate = showGate,
       pathProject = pathProject,
       minCell = minCell,
-      exArgs = exArgs
+      exArgs = exArgs,
+      coexGates = coexGates
     )
   }) |>
     stats::setNames(.plotGetLab(varLoop, axisLab))
@@ -297,7 +360,8 @@ plotStim <- function(
   showGate,
   pathProject,
   minCell,
-  exArgs
+  exArgs,
+  coexGates = NULL
 ) {
   if (length(ind) == 0L) {
     return(NULL)
@@ -368,7 +432,7 @@ plotStim <- function(
   p <- .plotAddAxisTitle(p, marker, chnl, axisLab) +
     labs(y = "Density") +
     ggtitle(.plotGetLab(.var, axisLab))
-  .plotAddGate(p, ind, marker, chnl, pop, pathProject, showGate)
+  .plotAddGate(p, ind, marker, chnl, pop, pathProject, showGate, coexGates)
 }
 
 #' @keywords internal
