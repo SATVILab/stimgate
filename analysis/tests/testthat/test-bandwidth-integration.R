@@ -53,6 +53,9 @@ test_that(".simBandwidthBwOne agrees numerically with stimgate:::.bwCalcOne", {
 })
 
 test_that(".simBandwidthBwOne resolves the current stimgate namespace in future workers", {
+  # Fixed expected values need R's default generators; an earlier test
+  # can leave the parallel (L'Ecuyer) generator selected.
+  withr::local_seed(1L, .rng_kind = "Mersenne-Twister", .rng_normal_kind = "Inversion", .rng_sample_kind = "Rejection")
   withr::local_preserve_seed()
   skip_if_not_installed("future")
   skip_if_not_installed("pkgload")

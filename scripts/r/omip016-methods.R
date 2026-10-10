@@ -95,6 +95,8 @@
 }
 
 .omip016GateStim <- function(prep, pathProject, settings) {
+  # Passed by name so the API checks can see the threshold-sharing switch.
+  clusterGates <- settings$clusterGates
   stimgate::gateStim(
     pathProject = pathProject,
     .data = prep$gs,
@@ -111,7 +113,7 @@
       bwMin = settings$bwMin,
       bwMax = settings$bwMax,
       gateCombn = settings$gateCombn,
-      clusterGates = settings$clusterGates,
+      clusterGates = clusterGates,
       calcCytPosGates = settings$calcCytPosGates,
       minCell = settings$minCell,
       locThresholdMethod = settings$locThresholdMethod,

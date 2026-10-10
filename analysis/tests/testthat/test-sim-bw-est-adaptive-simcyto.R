@@ -31,6 +31,9 @@ test_that("analysis/5-sim-bw-est-adaptive.qmd does not source functionsForBenchm
 })
 
 test_that(".simBandwidthEstBwDirectAdaptive preserves simcyto simulation boundary and adaptive outputs", {
+  # Fixed expected values need R's default generators; an earlier test
+  # can leave the parallel (L'Ecuyer) generator selected.
+  withr::local_seed(1L, .rng_kind = "Mersenne-Twister", .rng_normal_kind = "Inversion", .rng_sample_kind = "Rejection")
   withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)

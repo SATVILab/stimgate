@@ -31,6 +31,9 @@ test_that("analysis/4-sim-bw-est-norm.qmd does not source functionsForBenchmarki
 })
 
 test_that(".simBandwidthEstBwDirect normalised path has fixed-seed simcyto parity and stable ordinary-vs-normalised outputs", {
+  # Fixed expected values need R's default generators; an earlier test
+  # can leave the parallel (L'Ecuyer) generator selected.
+  withr::local_seed(1L, .rng_kind = "Mersenne-Twister", .rng_normal_kind = "Inversion", .rng_sample_kind = "Rejection")
   withr::local_preserve_seed()
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_misc, local = env)

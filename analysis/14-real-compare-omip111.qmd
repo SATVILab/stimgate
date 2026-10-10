@@ -184,7 +184,7 @@ comparison_summary <- .omip111Summary(comparison_results)
 ```{r}
 #| label: validation
 #| results: asis
-if (run_plots) {
+if (isTRUE(run_plots)) {
   prepared_inputs <- readRDS(file.path(path_prepared, "inputs.rds"))
   if (!identical(prepared_inputs$manifest, comparison_object$preprocessing)) {
     stop("Prepared inputs differ from the method comparison manifest.")
@@ -225,7 +225,7 @@ and negative net frequencies. No confidence intervals are inferred from the
 #| results: asis
 #| fig-width: 10
 #| fig-height: 7
-if (run_plots) {
+if (isTRUE(run_plots)) {
   figure_dir <- .analysis_fig_dir(c(fig_key, "agreement"), root_dir)
   method_colours <- c(StimGate = "#0072B2", `F-beta` = "#D55E00", Tailgate = "#009E73")
   for (population in c("CD4", "CD8")) {
@@ -288,7 +288,7 @@ or comparator refitting. Set `RUN_DIAGNOSTICS=false` to reuse validated pages.
 #| results: asis
 #| echo: false
 #| out-width: 100%
-if (run_plots) {
+if (isTRUE(run_plots)) {
   diagnostic_dir <- .analysis_fig_dir(c(fig_key, "gate-diagnostics"), root_dir)
   if (run_diagnostics) {
     .acsCytofEnsureCurrentCheckout(root_dir)
@@ -338,7 +338,7 @@ No events in these parent populations exceed the authors' cytokine upper extents
 ```{r}
 #| label: observed-agreement
 #| results: asis
-if (run_plots) {
+if (isTRUE(run_plots)) {
   descriptive_errors <- comparison_results |>
     dplyr::group_by(.data$method) |>
     dplyr::summarise(eligible_outcomes = sum(is.finite(.data$errorPp)),
