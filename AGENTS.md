@@ -462,25 +462,29 @@ plot; one job per QMD). See `analysis/tests/README.md` for commands and
 coverage limits.
 
 The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked
-runs, Analyses 11 and 12 as serial non-chunked simulations, and Analysis
-13 after Analysis 9: `sim_dependency_for_script()` makes 13’s job wait
-`afterok` on 9’s when both are submitted, and `dev.sh` submits 9 first
-whatever the order requested. Keep enabled chunked analyses in the
-`scripts` list and `chunked_qmd_stem_for_script()` mapping, sharing run
-ID, chunk count and shuffle seed across each run. Every simulation
-launcher must propagate render failures. Plot jobs receive the
-submission’s run ID and set `ANALYSIS_EXPECTED_RUN_ID` so cached reads
-reject results from another run; manual renders leave it unset. Plot
-jobs explicitly set all ACS stage controls to false. Promotion locks
-live next to `current/`, shared by every run of the analysis. Analysis 8
-validates pairing and zero-shift agreement on the full collated table
-before promotion and uses one scientific settings list for manifest
-recording and canonical reads. Select Slurm analyses with
-`bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`; validate all target
-arguments before submitting jobs. After the simulation jobs, `dev.sh`
-submits one `scripts/slurm/render-plots.sh` job per analysis that
-renders the real QMD once with `SHOW_MCSE=on`, with simulations off and
-plots on, to `<stem>-mcse_on.html` (render `off` manually when needed)
+runs, Analyses 11 and 12 as serial non-chunked simulations, Analysis 13
+after Analysis 9, and the OMIP analyses 14, 14b, 15 and 15b.
+`sim_dependency_for_script()` makes 13’s job wait `afterok` on 9’s (and
+14b on 14, 15b on 15) when both are submitted, and `dev.sh`
+(`move_after()`) submits the analysis that is read first whatever the
+order requested. OMIP launchers reuse prepared data unless
+`RUN_PREPROCESSING=true`; plot jobs also set `RUN_METHODS=false`. Keep
+enabled chunked analyses in the `scripts` list and
+`chunked_qmd_stem_for_script()` mapping, sharing run ID, chunk count and
+shuffle seed across each run. Every simulation launcher must propagate
+render failures. Plot jobs receive the submission’s run ID and set
+`ANALYSIS_EXPECTED_RUN_ID` so cached reads reject results from another
+run; manual renders leave it unset. Plot jobs explicitly set all ACS
+stage controls to false. Promotion locks live next to `current/`, shared
+by every run of the analysis. Analysis 8 validates pairing and
+zero-shift agreement on the full collated table before promotion and
+uses one scientific settings list for manifest recording and canonical
+reads. Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`,
+or `2a 2b`; validate all target arguments before submitting jobs. After
+the simulation jobs, `dev.sh` submits one
+`scripts/slurm/render-plots.sh` job per analysis that renders the real
+QMD once with `SHOW_MCSE=on`, with simulations off and plots on, to
+`<stem>-mcse_on.html` (render `off` manually when needed)
 (`plot_qmds_for_script()`; 9 also renders 10). It depends `afterok` on
 its own simulation jobs and `afterany` on the submission’s other
 simulation jobs, because projr builds clear projr’s output folder (where
