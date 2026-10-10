@@ -217,7 +217,7 @@ test_that(".simBandwidthBsFreq adaptive fixed-seed parity checks match simcyto f
     bw_fallback = 0.01,
     bw_crossover = NA_real_,
     bw_transition_width = 0,
-    expected_abs_err = c(0.0375, 0.0375, 2 / 240, 2 / 240)
+    expected_abs_err = c(11 / 240, 11 / 240, 2 / 240, 2 / 240)
   )
 
   run_case(

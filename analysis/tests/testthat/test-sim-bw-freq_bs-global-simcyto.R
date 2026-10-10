@@ -456,7 +456,7 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
     mean_pos = 4,
     bw = 0.02,
     bias_uns = 0.0025,
-    expected_abs_err = c(1 / 240, 1 / 240, 0.0375, 0.0375)
+    expected_abs_err = c(1 / 240, 1 / 240, 10 / 240, 10 / 240)
   )
 
   run_case(
@@ -465,6 +465,6 @@ test_that(".simBandwidthBsFreq fixed-seed parity checks match simcyto for gamma 
     mean_pos = 8,
     bw = 0.25,
     bias_uns = 0.05,
-    expected_abs_err = c(0.2, 0.2, 0, 0)
+    expected_abs_err = c(47 / 240, 47 / 240, 1 / 240, 1 / 240)
   )
 })

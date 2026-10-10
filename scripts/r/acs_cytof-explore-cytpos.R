@@ -6,15 +6,15 @@
 # Expression of the six response cytokines for one stimulated tube and its
 # control tube, with Analysis 9's final base and cytokine-positive gates.
 .acsCytposTubeData <- function(gs, sampleMap, gates, sampleId, stim, channelMap) {
-  row <- function(s) {
+  tubeRow <- function(s) {
     out <- sampleMap[sampleMap$SampleID == sampleId & sampleMap$stim == s, ]
     if (nrow(out) != 1L) {
       stop("Expected one ", s, " tube for ", sampleId, "; found ", nrow(out), ".")
     }
     out
   }
-  stimRow <- row(stim)
-  unsRow <- row("uns")
+  stimRow <- tubeRow(stim)
+  unsRow <- tubeRow("uns")
   expr <- function(ind) {
     ex <- flowCore::exprs(flowWorkspace::gh_pop_get_data(gs[[as.integer(ind)]], "root"))
     ex <- ex[, names(channelMap), drop = FALSE]
