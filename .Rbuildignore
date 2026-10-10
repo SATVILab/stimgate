@@ -1,5 +1,6 @@
 ^renv$
 ^renv\.lock$
+^\.claude$
 
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
 ^_raw/data/small/
@@ -23,6 +24,8 @@
 ^NEWS\.md$
 ^README\.html$
 ^Rplots\.pdf$
+^slurm-1426569\.out$
+^slurm-1426617\.out$
 ^\.github/
 ^\.github$
 # End of projr section

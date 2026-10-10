@@ -53,6 +53,8 @@ AGENTS.md
 CHANGES_SUMMARY.md
 README.html
 Rplots.pdf
+slurm-1426569.out
+slurm-1426617.out
 # End of projr section
 
 _tmp/log/sbatch/projr_build_output
@@ -160,3 +162,13 @@ analysis/3-sim-bw-est-base--chunk3-job1412283.qmd
 analysis/3-sim-bw-est-base--chunk4-job1412284.qmd
 analysis/4-sim-bw-est-norm--chunk1-job1412285.qmd
 
+8-sim-compare-freq_bs-batch_files/
+output/
+
+_tmp/log/sbatch/dev-13-real-debug-acs-cytof
+_tmp/log/sbatch/plots/13-real-debug-acs-cytof
+
+_tmp/log/sbatch/dev-11-sim-low-separation-cyt-pos
+_tmp/log/sbatch/dev-12-sim-cluster-gates
+_tmp/log/sbatch/plots/11-sim-low-separation-cyt-pos
+_tmp/log/sbatch/plots/12-sim-cluster-gates
