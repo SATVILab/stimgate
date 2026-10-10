@@ -1069,6 +1069,10 @@ rows before drawing reference lines.
      top under its new version.
 
 16. **Local-FDR threshold method (`locThresholdMethod`)**:
+   Marginal scans leave empty bins pending until a non-empty acceptance and
+   trim acceptance spans [new cut, previous cut) from the left while their raw
+   stim fraction minus raw unstim fraction is non-positive (skip trimming when
+   unstim expression is unavailable).
    `stimControl(locThresholdMethod = "cap")` (default) uses the `"region"`
    gate unless the frequency above it exceeds `locThresholdCap` (1.3) times
    the probability-sum estimate, then moves up to the lowest candidate
