@@ -1112,7 +1112,12 @@ rows before drawing reference lines.
    When on, and the stimulated main peak exceeds the unstimulated main peak
    by more than `locShiftedPeakBwMult` (2) reference bandwidths,
    `.getCpUnsLocProbTblFilter()` starts the response search at the
-   unstimulated peak plus a third of the unstimulated left window only.
+   unstimulated peak plus half its negative-population width, with a minimum
+   offset of one actual local-FDR density bandwidth at that peak.
+   Negative-population width is the distance left from the main peak to the
+   closer of the first interpolated half-height crossing and the first dip
+   at most 75% of peak height and at least one density bandwidth away, falling
+   back to the tube's data minimum only when neither exists.
    The reference bandwidth is the unscaled shared bandwidth (no small-tube
    widening), else the fixed `bw`, the per-sample bandwidth
    (`bwScope = "sample"`) or the adaptive curve at the unstimulated peak

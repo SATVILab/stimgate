@@ -62,7 +62,8 @@ stimControl(
 \arguments{
 \item{calcCytPosGates}{logical Refine gates using cells positive for another
 cytokine. Lower a clustered gate to the leftmost internal antimode between
-the stimulated marginal peak plus one third of its left-window width and
+the stimulated marginal peak plus half its negative-population width
+(at least one marginal density bandwidth) and
 that gate; keep the gate if none exists. Default: TRUE.}
 
 \item{minCell}{numeric Minimum cells required for gating; samples below this
@@ -198,12 +199,15 @@ marginal filtering to this region. Default: FALSE.}
 
 \item{locShiftedPeakRef}{logical Handle a stimulated tube whose main peak
 has moved right because most of its cells respond. The search for
-responding cells normally starts one third of a left-window width above
-the higher of the stimulated and unstimulated main peaks. When \code{TRUE} and
-the stimulated main peak lies more than \code{locShiftedPeakBwMult}
+responding cells normally starts half the larger negative-population width
+above the higher main peak, with a minimum of one local-FDR bandwidth.
+Width is measured left from each peak to its half-height point or first
+clear dip, whichever is closer; if neither exists, to the data minimum.
+When \code{TRUE} and the stimulated main peak lies more than \code{locShiftedPeakBwMult}
 bandwidths to the right of the unstimulated main peak, the search instead
 starts above the unstimulated peak, using only the unstimulated tube's
-left-window width. The bandwidth is the shared bandwidth estimated on
+negative width with the same one-density-bandwidth minimum. The bandwidth
+for triggering this rule is the shared bandwidth estimated on
 \code{bwNcellMax} cells, without the widening for small tubes from
 \code{bwScaleNcell}; a fixed \code{bw} when supplied; the sample's own bandwidth
 with \code{bwScope = "sample"}; and, for adaptive bandwidths, the bandwidth

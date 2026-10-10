@@ -62,6 +62,7 @@ test_that(".getCpUnsLocGetProbSmooth produces monotone fit", {
   attr(data_mod, "locDensityComparison") <- list(diff = rep(0, 100))
   attr(data_mod, "locPeakX") <- 1.2
   attr(data_mod, "locWindowWidth") <- 1.8
+  attr(data_mod, "locWindowWidthInfo") <- list(stim = list(source = "dip"))
 
   smooth_out <- .getCpUnsLocGetProbSmooth(
     dataMod = data_mod,
@@ -103,6 +104,9 @@ test_that(".getCpUnsLocGetProbSmooth produces monotone fit", {
   expect_equal(attr(smooth_out, "locDensityBw"), 0.35)
   expect_equal(attr(smooth_out, "locPeakX"), 1.2)
   expect_equal(attr(smooth_out, "locWindowWidth"), 1.8)
+  expect_equal(
+    attr(smooth_out, "locWindowWidthInfo"), attr(data_mod, "locWindowWidthInfo")
+  )
   expect_equal(
     attr(smooth_out, "locStimDensity"),
     attr(data_mod, "locStimDensity")

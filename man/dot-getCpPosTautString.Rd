@@ -4,7 +4,19 @@
 \alias{.getCpPosTautString}
 \title{Select a cytokine-positive refinement threshold from a taut-string density}
 \usage{
-.getCpPosTautString(ex, inc, chnl, cpOrig, peakX, windowWidth, lower)
+.getCpPosTautString(
+  ex,
+  inc,
+  chnl,
+  cpOrig,
+  peakX,
+  windowWidth,
+  lower,
+  windowWidthInfo = NULL
+)
+}
+\arguments{
+\item{windowWidthInfo}{list or NULL Marginal negative-width diagnostics.}
 }
 \description{
 The leftmost internal antimode strictly between the marginal lower boundary
