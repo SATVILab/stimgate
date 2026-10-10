@@ -732,7 +732,8 @@ the `flowWorkspace` stack from source.
     Output-file lookup and plotting helpers for the bandwidth QMDs.
   - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable
     grid runner, typed error rows, validation and promotion for
-    bandwidth QMDs 2-6, followed by one delimited section of
+    bandwidth QMDs 2-6 (the adaptive-bandwidth QMDs 5 and 6 are archived
+    in `analysis/_archive/`), followed by one delimited section of
     scenario/validation/collation callbacks per analysis.
   - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating,
     comparator, manual-comparison and plotting helpers for analyses 9
@@ -763,6 +764,20 @@ the `flowWorkspace` stack from source.
     [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md).
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for
     simulation.
+  - `sim-compare-tune.R`: Analysis 6 (`6-sim-tune-comparators.qmd`):
+    chooses Tailgate’s tolerance and bias and F-beta’s beta on Analysis
+    7-style data (0.2% response, every transformation and separation,
+    5,000 and 100,000 cells; own seeds). Only the comparators run. A
+    relative tolerance is a fraction of the steepest density slope
+    (log10 grid, 1e-6 to 1e-1), so 1e-2 must equal `autoTol = TRUE`.
+    Settings are judged on tube-level F1 (median, 10th/90th percentiles)
+    and the 10th/90th percentiles of the estimates, and compared with
+    the published and current Analysis 7 settings. Datasets are the
+    parallel unit: each has its own seed and each worker sources the
+    helpers and creates its own F-beta environment, so serial and
+    parallel runs agree. Its single Slurm job (one task per worker) is
+    followed by a plot job, like 11/12; archived launchers live in
+    `scripts/slurm/_archive/` so that `dev.sh 6` selects this analysis.
   - `sim-debug-loc.R`: `.simDebugLoc()` wraps a QMD’s rerun call
     unchanged and uses [`trace()`](https://rdrr.io/r/base/trace.html) to
     record, or browse, the local-FDR gating of one sample (optionally
@@ -1210,40 +1225,42 @@ deduplicates identical rows before drawing reference lines.
 - Resume retries rows whose saved output or marker recorded an error, so
   a run ID with a failed simulation can still complete.
 
-9.  **Shared analysis runners and cached settings**: Bandwidth QMDs 2-6
-    use `.simBandwidthRunRow()`, `.simBandwidthRunGrid()` and
-    `.simBandwidthFinishChunk()`. Assign IDs and seeds on the full grid
-    before dev/quick filters, shuffling or chunking. Biological scenario
-    IDs exclude all method settings, including bias; pre-draw replicate
-    seeds in bandwidth wrappers. Quick mode selects the smallest,
-    cheapest grid that still exercises every figure; dev mode retains
-    its single debugging scenario and takes precedence when both
-    profiles are active. Results for dev and quick runs are kept under
-    `<analysis-key>/dev/` and `<analysis-key>/quick/`; full runs keep
-    the existing analysis key. Full-grid runs take `parameters.sim_size`
-    from `_projr.yml` through `projr::projr_par_get()` and
-    `.analysis_sim_size()`, with an explicit `SIM_SIZE` environment
-    override. QMD frontmatter and Slurm launchers must not supply
-    competing defaults, nor export `SIM_SIZE` unless the caller set it:
-    `_projr.yml` alone selects `"draft"` or `"final"`; draft uses about
-    a quarter of the samples (datasets in 7/8) on the same grid, stored
-    under `<analysis-key>/draft/` and recorded as `sim_size` in required
-    run settings; draft is for iterating, not reporting, and dev/quick
-    take precedence. Report only results from `sim_size: final`. Draft
-    7/8 retain all 20 jointly gated samples per dataset and reduce only
-    replicate datasets; missing `sim_size` in legacy manifests still
-    means final. Empirical local-FDR selection counts cells at or above
-    the selected cell value. Since gates use strict `x > gate`, place
-    the applied gate below that value by the smaller of twice the
-    density bandwidth and half the gap to the highest excluded value in
-    either tube. For adaptive densities, use the shared bandwidth at the
-    selected value. Retain the selected cell value separately for
-    threshold diagnostics. Workers and interactive single-row reruns use
-    the same explicitly seeded row runner; resume retries failed rows by
-    default. Comparison scenarios in QMDs 7/8 use explicit RNG kinds and
-    restore the caller’s RNG state; do not reintroduce `gateCombn`
-    plumbing in the comparison layer. Analysis 1 seeds each row and
-    saves and validates its scientific settings with the cache.
+9.  **Shared analysis runners and cached settings**: Bandwidth QMDs 2-4
+    and the archived 5-6 (`analysis/_archive/`, no longer pursued; their
+    tests read them there) use `.simBandwidthRunRow()`,
+    `.simBandwidthRunGrid()` and `.simBandwidthFinishChunk()`. Assign
+    IDs and seeds on the full grid before dev/quick filters, shuffling
+    or chunking. Biological scenario IDs exclude all method settings,
+    including bias; pre-draw replicate seeds in bandwidth wrappers.
+    Quick mode selects the smallest, cheapest grid that still exercises
+    every figure; dev mode retains its single debugging scenario and
+    takes precedence when both profiles are active. Results for dev and
+    quick runs are kept under `<analysis-key>/dev/` and
+    `<analysis-key>/quick/`; full runs keep the existing analysis key.
+    Full-grid runs take `parameters.sim_size` from `_projr.yml` through
+    `projr::projr_par_get()` and `.analysis_sim_size()`, with an
+    explicit `SIM_SIZE` environment override. QMD frontmatter and Slurm
+    launchers must not supply competing defaults, nor export `SIM_SIZE`
+    unless the caller set it: `_projr.yml` alone selects `"draft"` or
+    `"final"`; draft uses about a quarter of the samples (datasets in
+    7/8) on the same grid, stored under `<analysis-key>/draft/` and
+    recorded as `sim_size` in required run settings; draft is for
+    iterating, not reporting, and dev/quick take precedence. Report only
+    results from `sim_size: final`. Draft 7/8 retain all 20 jointly
+    gated samples per dataset and reduce only replicate datasets;
+    missing `sim_size` in legacy manifests still means final. Empirical
+    local-FDR selection counts cells at or above the selected cell
+    value. Since gates use strict `x > gate`, place the applied gate
+    below that value by the smaller of twice the density bandwidth and
+    half the gap to the highest excluded value in either tube. For
+    adaptive densities, use the shared bandwidth at the selected value.
+    Retain the selected cell value separately for threshold diagnostics.
+    Workers and interactive single-row reruns use the same explicitly
+    seeded row runner; resume retries failed rows by default. Comparison
+    scenarios in QMDs 7/8 use explicit RNG kinds and restore the
+    caller’s RNG state; do not reintroduce `gateCombn` plumbing in the
+    comparison layer. Analysis 1 seeds each row and saves and validates
+    its scientific settings with the cache.
 
 10. **Exact reruns of one simulation row**: Fixed-seed simulation parity
     fixtures must mirror the replicate-seed draw before direct simulator
