@@ -4,7 +4,8 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
   env <- new.env(parent = getNamespace("stimgate"))
   for (f in c(
     "analysis-runtime.R", "acs_cytof-helper.R", "acs_cytof-gate.R", "sim-misc.R",
-    "sim-compare-freq_bs.R", "acs_cytof-methods.R", "omip016-prepare.R", "omip016-methods.R"
+    "sim-compare-freq_bs.R", "acs_cytof-methods.R", "sim-debug-loc.R", "acs_cytof-debug.R",
+    "omip016-prepare.R", "omip016-methods.R"
   )) {
     source(file.path(root_dir, "scripts", "r", f), local = env)
   }

@@ -53,6 +53,8 @@ source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
 source(file.path(scripts_r_dir, "sim-misc.R"))
 source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
 source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
+source(file.path(scripts_r_dir, "sim-debug-loc.R"))
+source(file.path(scripts_r_dir, "acs_cytof-debug.R"))
 source(file.path(scripts_r_dir, "omip016-prepare.R"))
 source(file.path(scripts_r_dir, "omip016-methods.R"))
 
@@ -298,6 +300,9 @@ if (isTRUE(run_comparators)) {
 if (!dir.exists(path_stimgate) || !file.exists(path_comparators)) {
   stop("OMIP-016 method results are missing; render with RUN_SIMULATIONS=true.")
 }
+if (!file.exists(file.path(path_stimgate, "omip016-debug-records.rds"))) {
+  stop("Saved StimGate result lacks its local-FDR records; re-run with RUN_STIMGATE=true.")
+}
 stimgate_manifest <- readRDS(file.path(path_stimgate, "omip016-manifest.rds"))
 comparator_results <- readRDS(path_comparators)
 current_pre <- prep$pre[c("version", "inputContentHash", "settings")]
@@ -455,6 +460,56 @@ if (isTRUE(run_plots)) {
     .analysis_print_save_fig(p, file.path(.analysis_fig_dir(c(fig_key, "gates")),
                                           paste0("gates-", st, ".png")))
   }
+}
+```
+
+### Why StimGate missed most SEB MIP-1beta cells
+
+```{r}
+#| label: mip1b-debug
+mip1b_chnl <- names(prep$pre$responseChannels)[prep$pre$responseChannels == "MIP1b"]
+mip1b_ind <- prep$pre$sampleMap$ind[prep$pre$sampleMap$stim == "seb"]
+mip1b_debug <- .omip016DebugGate(path_stimgate, mip1b_ind, mip1b_chnl, scored)
+mip1b_info <- mip1b_debug$summary
+mip1b_rows <- scored[scored$stim == "seb" & scored$cyt == "MIP1b", ]
+mip1b_sg <- mip1b_rows[mip1b_rows$method == "stimgate", ]
+knitr::kable(data.frame(
+  quantity = c("Own local-FDR gate", "Own response estimate (%)", "Probability smoothing",
+               "Final ordinary gate", "Final cytokine-positive gate", "Final gate reason",
+               "Manual threshold", "Manual-positive cells missed"),
+  value = c(signif(mip1b_info$ownGate, 3), signif(100 * mip1b_info$ownPropRespEst, 2),
+            mip1b_info$smoothing, signif(mip1b_info$finalGate, 3),
+            signif(mip1b_info$finalGateCyt, 3), mip1b_info$finalReason,
+            signif(mip1b_info$manualGate, 3),
+            paste0(mip1b_sg$fn, " of ", mip1b_sg$nManualStim))
+), row.names = FALSE)
+```
+
+StimGate's own local-FDR gate for the SEB MIP-1beta tube sits above
+essentially the whole response. The response probability (panel B) is close
+to one across the MIP-1beta-positive bump, where the expected responding cells
+are (panel C), but post-smoothing filtering anchored on the sparse extreme
+tail, where a handful of cells give a spiky probability curve, and kept only
+the region above the dip that separates that tail from the bump. The tube's
+own response estimate was therefore zero, so it could not donate or receive a
+lowered shared gate beyond the non-responder cell cap, and the final ordinary
+gate stayed near the top of the data. StimGate's reported frequency for this
+tube comes almost entirely from its cytokine-positive gate, applied to
+MIP-1beta cells that are also positive for another marker (most are IFN-gamma
+positive); MIP-1beta single-positive cells are missed.
+
+```{r}
+#| label: fig-mip1b-debug
+#| results: asis
+#| fig-width: 12
+#| fig-height: 10
+# The shared line key is laid out in four columns for a wide figure.
+if (isTRUE(run_plots)) {
+  .analysis_print_save_fig(
+    mip1b_debug$plot,
+    file.path(.analysis_fig_dir(c(fig_key, "stimgate_debug")), "seb-MIP1b-local_fdr.png"),
+    width = 30, height = 25
+  )
 }
 ```
 

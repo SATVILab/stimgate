@@ -3,8 +3,9 @@
 #
 # Requires scripts/r/omip016-prepare.R, scripts/r/acs_cytof-helper.R,
 # scripts/r/acs_cytof-gate.R (.acsCytofSetDebug()), scripts/r/acs_cytof-methods.R
-# (.acsCytofThresholdOne()) and
-# scripts/r/sim-compare-freq_bs.R (the Tailgate/F-beta wrappers).
+# (.acsCytofThresholdOne()), scripts/r/sim-compare-freq_bs.R (the
+# Tailgate/F-beta wrappers), scripts/r/sim-debug-loc.R (.simDebugLoc()) and
+# scripts/r/acs_cytof-debug.R (.acsCytofDebugSlim()).
 
 .omip016Methods <- function() c("stimgate", "tailgate", "fbeta")
 
@@ -65,9 +66,30 @@
   ex[, channels, drop = FALSE]
 }
 
+# The run is wrapped in .simDebugLoc(), which records every tube's initial
+# local-FDR gating without changing the gates, so a gate can be explained
+# afterwards from the same run (slimmed records in omip016-debug-records.rds).
 .omip016RunStimGate <- function(prep, pathProject, settings) {
   restoreDebug <- .acsCytofSetDebug()
   on.exit(restoreDebug(), add = TRUE)
+  sm <- prep$pre$sampleMap
+  records <- .simDebugLoc(
+    .omip016GateStim(prep, pathProject, settings),
+    sample = NULL,
+    tubeInfo = function(ind) {
+      list(sample = 1L, label = sm$stim[[match(ind, sm$ind)]])
+    },
+    onRecord = .acsCytofDebugSlim
+  )
+  saveRDS(unclass(records), file.path(pathProject, "omip016-debug-records.rds"))
+  saveRDS(
+    list(settings = settings, preprocessing = prep$pre[c("version", "inputContentHash", "settings")]),
+    file.path(pathProject, "omip016-manifest.rds")
+  )
+  invisible(pathProject)
+}
+
+.omip016GateStim <- function(prep, pathProject, settings) {
   stimgate::gateStim(
     pathProject = pathProject,
     .data = prep$gs,
@@ -90,11 +112,46 @@
       locThresholdMethod = settings$locThresholdMethod
     )
   )
-  saveRDS(
-    list(settings = settings, preprocessing = prep$pre[c("version", "inputContentHash", "settings")]),
-    file.path(pathProject, "omip016-manifest.rds")
+}
+
+# The recorded initial local-FDR gating of one stimulated tube and channel,
+# drawn as .simDebugLocPlots() panels with the final StimGate gates and the
+# manual threshold added. Returns the plot grid and a one-row summary.
+.omip016DebugGate <- function(pathProject, ind, chnl, scored) {
+  records <- readRDS(file.path(pathProject, "omip016-debug-records.rds"))
+  nm <- paste0("dataset1_ind", ind, "_", chnl)
+  rec <- records[[nm]]
+  if (is.null(rec) || !isTRUE(rec$found)) {
+    stop("No recorded local-FDR gating for tube ", ind, ", channel ", chnl, ".")
+  }
+  rows <- scored[as.character(scored$ind) == as.character(ind) & scored$chnl == chnl, ]
+  sg <- rows[rows$method == "stimgate", ]
+  man <- rows[rows$method == "manual", ]
+  extra <- data.frame(
+    # The line key appends each value.
+    line = c("final gate", "final cyt+ gate", "manual"),
+    x = c(sg$gate, sg$gateCyt, man$gate),
+    colour = c("#D55E00", "#D55E00", "#CC0000"),
+    linetype = c("solid", "dotted", "solid"),
+    linewidth = c(1.1, 0.9, 0.9)
   )
-  invisible(pathProject)
+  plots <- .simDebugLocPlots(rec, extraLines = extra)
+  keep <- plots[c("density", "prob", "respCells")]
+  attr(keep, "lines") <- attr(plots, "lines")
+  summary <- .simDebugLocSummary(rec)
+  list(
+    plot = .simDebugLocPlotGrid(keep),
+    summary = data.frame(
+      ownGate = summary$threshold,
+      ownReason = summary$locReason,
+      ownFilterReason = summary$filterReason,
+      ownPropRespEst = summary$propRespEst,
+      smoothing = attr(rec$dataMod, "locProbSmoothMethod"),
+      finalGate = sg$gate, finalGateCyt = sg$gateCyt,
+      finalReason = sg$thresholdReason, manualGate = man$gate,
+      stringsAsFactors = FALSE
+    )
+  )
 }
 
 # StimGate's final gates as one row per stimulated tube and channel.
