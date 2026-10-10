@@ -7,5 +7,20 @@ antimode exists, the existing gate is retained by the caller.
 ## Usage
 
 ``` r
-.getCpPosTautString(ex, inc, chnl, cpOrig, peakX, windowWidth, lower)
+.getCpPosTautString(
+  ex,
+  inc,
+  chnl,
+  cpOrig,
+  peakX,
+  windowWidth,
+  lower,
+  windowWidthInfo = NULL
+)
 ```
+
+## Arguments
+
+- windowWidthInfo:
+
+  list or NULL Marginal negative-width diagnostics.

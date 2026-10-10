@@ -3,7 +3,9 @@
 The ordinary fit uses the existing preliminary probability filter. The
 shape-restricted fit instead uses every density-grid point remaining
 after the shape threshold, because that threshold has already defined
-the admissible modelling region.
+the admissible modelling region. It retains the ordinary
+negative-population width and its diagnostics rather than measuring the
+truncated distribution.
 
 ## Usage
 
@@ -21,6 +23,13 @@ the admissible modelling region.
   applyPreliminaryFilter = TRUE,
   peakX = NULL,
   windowWidth = NULL,
-  shiftedPeakRef = NULL
+  shiftedPeakRef = NULL,
+  windowWidthInfo = NULL
 )
 ```
+
+## Arguments
+
+- windowWidthInfo:
+
+  list or NULL Ordinary per-tube width diagnostics.

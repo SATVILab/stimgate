@@ -69,8 +69,9 @@ stimControl(
 
   logical Refine gates using cells positive for another cytokine. Lower
   a clustered gate to the leftmost internal antimode between the
-  stimulated marginal peak plus one third of its left-window width and
-  that gate; keep the gate if none exists. Default: TRUE.
+  stimulated marginal peak plus half its negative-population width (at
+  least one marginal density bandwidth) and that gate; keep the gate if
+  none exists. Default: TRUE.
 
 - minCell:
 
@@ -250,17 +251,21 @@ stimControl(
 
   logical Handle a stimulated tube whose main peak has moved right
   because most of its cells respond. The search for responding cells
-  normally starts one third of a left-window width above the higher of
-  the stimulated and unstimulated main peaks. When `TRUE` and the
-  stimulated main peak lies more than `locShiftedPeakBwMult` bandwidths
-  to the right of the unstimulated main peak, the search instead starts
-  above the unstimulated peak, using only the unstimulated tube's
-  left-window width. The bandwidth is the shared bandwidth estimated on
-  `bwNcellMax` cells, without the widening for small tubes from
-  `bwScaleNcell`; a fixed `bw` when supplied; the sample's own bandwidth
-  with `bwScope = "sample"`; and, for adaptive bandwidths, the bandwidth
-  curve at the unstimulated peak. Tubes where the rule applied are
-  flagged in the `locShiftedPeakRef` column of
+  normally starts half the larger negative-population width above the
+  higher main peak, with a minimum of one local-FDR bandwidth. Width is
+  measured left from each peak to its half-height point or first clear
+  dip, whichever is closer; if neither exists, to the data minimum. When
+  `TRUE` and the stimulated main peak lies more than
+  `locShiftedPeakBwMult` bandwidths to the right of the unstimulated
+  main peak, the search instead starts above the unstimulated peak,
+  using only the unstimulated tube's negative width with the same
+  one-density-bandwidth minimum. The bandwidth for triggering this rule
+  is the shared bandwidth estimated on `bwNcellMax` cells, without the
+  widening for small tubes from `bwScaleNcell`; a fixed `bw` when
+  supplied; the sample's own bandwidth with `bwScope = "sample"`; and,
+  for adaptive bandwidths, the bandwidth curve at the unstimulated peak.
+  Tubes where the rule applied are flagged in the `locShiftedPeakRef`
+  column of
   [`getStimGates()`](https://satvilab.github.io/stimgate/reference/getStimGates.md).
   Default: FALSE.
 

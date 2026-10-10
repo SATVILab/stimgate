@@ -88,26 +88,26 @@ getStimGatesDetailed(pathProject)
 #> # A tibble: 20 × 66
 #>    pop   marker   chnl        ind   detailLevel gateCombn threshold locGenerated
 #>    <chr> <I<chr>> <chr>       <chr> <chr>       <chr>         <dbl> <lgl>       
-#>  1 root  MarkerF1 BC1(La139)… 2     batch_share min            4.64 TRUE        
-#>  2 root  MarkerF1 BC1(La139)… 1     batch_share min            4.64 TRUE        
-#>  3 root  MarkerF1 BC1(La139)… 2     condition   NA             4.64 TRUE        
-#>  4 root  MarkerF1 BC1(La139)… 2     sample      NA             4.64 TRUE        
-#>  5 root  MarkerF1 BC1(La139)… 4     batch_share min            4.23 TRUE        
-#>  6 root  MarkerF1 BC1(La139)… 3     batch_share min            4.23 TRUE        
-#>  7 root  MarkerF1 BC1(La139)… 4     condition   NA             4.23 TRUE        
-#>  8 root  MarkerF1 BC1(La139)… 4     sample      NA             4.23 TRUE        
-#>  9 root  MarkerF1 BC1(La139)… 2     cluster_fi… NA             4.64 TRUE        
-#> 10 root  MarkerF1 BC1(La139)… 4     cluster_fi… NA             4.23 TRUE        
+#>  1 root  MarkerF1 BC1(La139)… 2     batch_share min            4.67 TRUE        
+#>  2 root  MarkerF1 BC1(La139)… 1     batch_share min            4.67 TRUE        
+#>  3 root  MarkerF1 BC1(La139)… 2     condition   NA             4.67 TRUE        
+#>  4 root  MarkerF1 BC1(La139)… 2     sample      NA             4.67 TRUE        
+#>  5 root  MarkerF1 BC1(La139)… 4     batch_share min            4.29 TRUE        
+#>  6 root  MarkerF1 BC1(La139)… 3     batch_share min            4.29 TRUE        
+#>  7 root  MarkerF1 BC1(La139)… 4     condition   NA             4.29 TRUE        
+#>  8 root  MarkerF1 BC1(La139)… 4     sample      NA             4.29 TRUE        
+#>  9 root  MarkerF1 BC1(La139)… 2     cluster_fi… NA             4.67 TRUE        
+#> 10 root  MarkerF1 BC1(La139)… 4     cluster_fi… NA             4.29 TRUE        
 #> 11 root  MarkerF2 BC2(Pr141)… 2     batch_share min            4.09 TRUE        
 #> 12 root  MarkerF2 BC2(Pr141)… 1     batch_share min            4.09 TRUE        
 #> 13 root  MarkerF2 BC2(Pr141)… 2     condition   NA             4.09 TRUE        
 #> 14 root  MarkerF2 BC2(Pr141)… 2     sample      NA             4.09 TRUE        
-#> 15 root  MarkerF2 BC2(Pr141)… 4     batch_share min            3.37 TRUE        
-#> 16 root  MarkerF2 BC2(Pr141)… 3     batch_share min            3.37 TRUE        
-#> 17 root  MarkerF2 BC2(Pr141)… 4     condition   NA             3.37 TRUE        
-#> 18 root  MarkerF2 BC2(Pr141)… 4     sample      NA             3.37 TRUE        
+#> 15 root  MarkerF2 BC2(Pr141)… 4     batch_share min            3.40 TRUE        
+#> 16 root  MarkerF2 BC2(Pr141)… 3     batch_share min            3.40 TRUE        
+#> 17 root  MarkerF2 BC2(Pr141)… 4     condition   NA             3.40 TRUE        
+#> 18 root  MarkerF2 BC2(Pr141)… 4     sample      NA             3.40 TRUE        
 #> 19 root  MarkerF2 BC2(Pr141)… 2     cluster_fi… NA             4.09 TRUE        
-#> 20 root  MarkerF2 BC2(Pr141)… 4     cluster_fi… NA             3.37 TRUE        
+#> 20 root  MarkerF2 BC2(Pr141)… 4     cluster_fi… NA             3.40 TRUE        
 #> # ℹ 58 more variables: locGeneratedDirect <lgl>, locSource <chr>,
 #> #   locReason <chr>, locResponder <lgl>, propBsEst <dbl>, locOwnFreq <dbl>,
 #> #   locShareLimit <chr>, locShareProposed <dbl>, detailObject <chr>,
