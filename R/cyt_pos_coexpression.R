@@ -194,7 +194,7 @@
       indices[[1]], batch, pathProject = pathProject)
     floors <- vapply(uns[chnl], .coexNegFloor, numeric(1))
     purrr::map_df(indices[-1], function(ind) {
-      .debug("Coexpression gates for sample: ", ind, "; batch: ", batch)
+      .debug("Coexpression gates for sample", paste0(ind, "; batch: ", batch))
       stim <- .getEx(.data[[ind]], pop, chnl, ind, indices[[1]], batch,
         pathProject = pathProject)
       purrr::map_df(unique(gateTbl$gateName), function(gn) {

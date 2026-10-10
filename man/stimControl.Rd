@@ -56,11 +56,17 @@ stimControl(
   normExcessBwMtd = "hpi3",
   normExcessNcell = 10000L,
   normAdaptiveNcell = 2500L,
-  normMtd = "moments"
+  normMtd = "moments",
+  cytPosMethod = "refine",
+  coexNBin = 20L,
+  coexResidualMin = 3.5,
+  coexPurityFrac = 0.75,
+  coexZMin = 2
 )
 }
 \arguments{
-\item{calcCytPosGates}{logical Refine gates using cells positive for another
+\item{calcCytPosGates}{logical Apply the \code{cytPosMethod} rule. With "refine",
+refine gates using cells positive for another
 cytokine. Lower a clustered gate to the leftmost internal antimode between
 the stimulated marginal peak plus half its negative-population width
 (at least one marginal density bandwidth) and
@@ -303,6 +309,20 @@ component for adaptive normalised bandwidths. Default: 2500.}
 \item{normMtd}{character Normalisation for "Norm" selectors: "moments"
 replaces components with normals having matching moments; "boxcox" uses
 Box-Cox transformations for scalar bandwidths only. Default: "moments".}
+
+\item{cytPosMethod}{character Cytokine-positive rule, "refine" or
+"coexpression"; used only when \code{calcCytPosGates = TRUE}. Default: "refine".}
+
+\item{coexNBin}{integer Number of bins used to lower and trim pairwise gates.
+Default: 20L.}
+
+\item{coexResidualMin}{numeric Minimum Pearson residual beyond independence.
+Default: 3.5.}
+
+\item{coexPurityFrac}{numeric Required fraction of double-positive purity,
+greater than zero and at most one. Default: 0.75.}
+
+\item{coexZMin}{numeric Minimum net double-positive z score. Default: 2.}
 }
 \value{
 A named list of class \code{stimControl}, with one element per setting.
