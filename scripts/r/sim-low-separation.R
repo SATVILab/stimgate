@@ -141,7 +141,10 @@
   means <- ifelse(grid$mean_pos == grid$mean_pos_ifng,
     paste0(grid$separation, " separation (mean ", grid$mean_pos, ")"),
     paste0("TNF mean ", grid$mean_pos, ", IFN\u03b3 mean ", grid$mean_pos_ifng))
-  paste0(means, ", ", resp)
+  # Families other than the main grid share separations and responses, so
+  # they are named in the label.
+  fam <- ifelse(grid$family == "main", "", paste0(.simLowSepFamilies[grid$family], ": "))
+  paste0(fam, means, ", ", resp)
 }
 
 # Cell count without scientific notation, for figure file names.
