@@ -102,7 +102,7 @@ test_that("QMD table exports are guarded and large inline table printers stay ab
               "8-sim-compare-freq_bs-batch.qmd" = ".simCompareMethodOutcomeCounts",
               "6-sim-tune-comparators.qmd" = "knitr::kable(rank_display",
               # One row per population and stimulation (four rows).
-              "17-explore-acs-cytof-coexpression.qmd" = "knitr::kable(just_summary"
+              "17-explore-acs-cytof-coexpression.qmd" = "knitr::kable(low_summary"
             )
             expect_true(basename(file) %in% names(allowed), info = basename(file))
             expect_match(paste(deparse(expr), collapse = ""), allowed[[basename(file)]], fixed = TRUE)

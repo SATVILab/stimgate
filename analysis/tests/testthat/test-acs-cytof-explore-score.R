@@ -73,25 +73,42 @@ local({
     testthat::expect_equal(env$.acsCoexNegFloor(x), 1 + 1.5 * 0.4, tolerance = 0.08)
   })
 
-  testthat::test_that("region growing and F-beta gates follow a stimulation-specific diagonal", {
+  testthat::test_that("lowered gates follow a stimulation-specific diagonal", {
     withr::local_seed(3)
     neg <- function(n) data.frame(IFNg = abs(rnorm(n, 0.4, 0.3)), TNF = abs(rnorm(n, 0.6, 0.4)))
     # Responders: IFNg high, TNF spread from 2 to 5 (mostly below TNF's gate of 4.5).
     resp <- data.frame(IFNg = rnorm(200, 3.5, 0.4), TNF = runif(200, 2, 5))
     gate <- c(IFNg = 2, TNF = 4.5)
     dat <- list(stim = rbind(neg(20000), resp), uns = neg(20000), gate = gate)
-    rect <- 100 * env$.acsScoreRectNet(dat, c("IFNg", "TNF"), "d1")$net
-    g <- env$.acsCoexGrow(dat, "IFNg", "TNF", "d1")
-    testthat::expect_gt(g$summary$binsAdded, 5L)
-    testthat::expect_gt(g$summary$netCalledPct, rect)
-    testthat::expect_lte(g$summary$controlCalled, 2L)
-    f <- env$.acsCoexFbetaGate(dat, a = "IFNg", b = "TNF")
-    testthat::expect_lt(f$gateCytB, 2.5)
-    testthat::expect_gte(f$gateCytB, env$.acsCoexNegFloor(dat$uns$TNF))
-    testthat::expect_gt(env$.acsCoexFbetaSummary(dat, "IFNg", "TNF", "d1")$netCalledPct, rect)
-    # The same co-expression in the control tube: nothing is added.
+    low <- env$.acsCoexLowerGate(dat, a = "IFNg", b = "TNF")
+    testthat::expect_gt(low$z, 2)
+    testthat::expect_lt(low$cut, 2.5)
+    testthat::expect_gte(low$cut, env$.acsCoexNegFloor(dat$uns$TNF))
+    testthat::expect_gte(low$condCut, gate[["IFNg"]])
+    s <- env$.acsCoexLowerSummary(dat, "IFNg", "TNF", "d1")$summary
+    testthat::expect_gt(s$netPct, s$netRectanglePct)
+    testthat::expect_lte(s$controlCalled, 2L)
+    # The same co-expression in the control tube: no double-positive response,
+    # so nothing moves.
     both <- list(stim = rbind(neg(20000), resp), uns = rbind(neg(20000), resp), gate = gate)
-    testthat::expect_equal(env$.acsCoexFbetaGate(both, a = "IFNg", b = "TNF")$gateCytB, 4.5)
-    testthat::expect_lte(env$.acsCoexGrow(both, "IFNg", "TNF", "d2")$summary$binsAdded, 1L)
+    testthat::expect_equal(env$.acsCoexLowerGate(both, a = "IFNg", b = "TNF")$cut, 4.5)
+  })
+
+  testthat::test_that("purity is one with no control cells and undefined with none at all", {
+    testthat::expect_equal(env$.acsCoexPurity(c(4, 4, 0, 0), c(0, 2, 1, 0), 100, 100),
+      c(1, 0.5, -Inf, NA))
+  })
+
+  testthat::test_that("a background band just above the conditioning gate is trimmed", {
+    withr::local_seed(4)
+    neg <- function(n) data.frame(IFNg = abs(rnorm(n, 0.4, 0.3)), TNF = abs(rnorm(n, 0.6, 0.4)))
+    resp <- data.frame(IFNg = rnorm(200, 4, 0.3), TNF = runif(200, 2, 5))
+    # Background in both tubes: IFNg just above its gate with mid TNF.
+    bg <- function() data.frame(IFNg = runif(40, 2, 2.6), TNF = runif(40, 2, 4))
+    gate <- c(IFNg = 2, TNF = 4.5)
+    dat <- list(stim = rbind(neg(20000), resp, bg()), uns = rbind(neg(20000), bg()), gate = gate)
+    low <- env$.acsCoexLowerGate(dat, a = "IFNg", b = "TNF")
+    testthat::expect_lt(low$cut, 4.5)
+    testthat::expect_gt(low$condCut, 2.2)
   })
 })
