@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=12
+#SBATCH --ntasks=10
 #SBATCH --time=12:00:00
 #SBATCH --job-name="dev-6-sim-tune-comparators"
 #SBATCH --partition=ada
