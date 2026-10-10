@@ -1077,9 +1077,13 @@ rows before drawing reference lines.
    condition-level gate at the lower boundary of the region kept by
    post-smoothing filtering (`xSum`). For the shape-enforced route this is the
    largest applied pre-fit, global or marginal cut
-   (`.getCpUnsLocShapeRegionBoundary()`). `"match"` keeps the previous
-   probability-sum matching, including the gate below the selected cell, and
-   must reproduce previous gates exactly. Keep the reasons distinct
+   (`.getCpUnsLocShapeRegionBoundary()`). `"match"` matches the updated
+   probability-sum estimate and places the gate below the selected cell; it
+   need not reproduce previous gates exactly. For all methods, discount the
+   initial `pred > probSmooth` run linearly from weight zero at ratio 0.75 to
+   one at ratio 1, only within half a density bandwidth of the lowest estimate
+   value; remove only zero-weight candidates there, with full weights and no
+   leading-run removal when bandwidth is unavailable. Keep the reasons distinct
    (`local_fdr_region_boundary_selected` versus `local_fdr_threshold_selected`)
    and keep no-response/non-finite cases labelled as fallbacks. Under
    `"region"`, condition diagnostics count frequencies at the applied gate;

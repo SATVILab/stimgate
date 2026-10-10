@@ -104,14 +104,15 @@ test_that("region returns the boundary when matching moves the gate up", {
   expect_identical(attr(region, "locRegionX"), 2.2)
 })
 
-test_that("explicit match reproduces the previous selection", {
+test_that("explicit match uses the shared discounted estimate and selection", {
   fx <- .locMethodFixture()
   pathProject <- withr::local_tempdir()
   viaMethod <- .locMethodGetCp(
     fx, list(locThresholdMethod = "match"),
     pathProject = pathProject
   )
-  # The previous path: probability-sum table, then .getCpUnsLocGetCpActual().
+  # Verify routing through the shared estimator, not parity with legacy gates:
+  # the bounded proportional discount intentionally changes matching too.
   dataThreshold <- pkg_ns$.getCpUnsLocGetCpDataThreshold(
     dataMod = fx$dataMod,
     exTblStimOrig = fx$stim,
@@ -120,7 +121,7 @@ test_that("explicit match reproduces the previous selection", {
     pathProject = pathProject,
     stage = "init"
   )
-  previous <- pkg_ns$.getCpUnsLocGetCpActual(
+  shared <- pkg_ns$.getCpUnsLocGetCpActual(
     dataThreshold = dataThreshold,
     exTblStimNoMin = fx$stim,
     exTblUnsBias = fx$uns,
@@ -130,10 +131,10 @@ test_that("explicit match reproduces the previous selection", {
     exTblUnsOrig = fx$uns,
     densityBw = NULL
   )
-  for (nm in names(previous)) {
-    expect_identical(viaMethod[[nm]], previous[[nm]])
+  for (nm in names(shared)) {
+    expect_identical(viaMethod[[nm]], shared[[nm]])
   }
-  expect_identical(attr(viaMethod, "cpSelected"), attr(previous, "cpSelected"))
+  expect_identical(attr(viaMethod, "cpSelected"), attr(shared, "cpSelected"))
 })
 
 test_that("region diagnostics count at the applied gate", {
@@ -424,4 +425,118 @@ test_that("stimControl validates locThresholdCap", {
   expect_error(stimControl(locThresholdCap = 0.9), "at least 1")
   expect_error(stimControl(locThresholdCap = "1.3"), "at least 1")
   expect_error(stimControl(locThresholdCap = c(1.2, 1.5)), "at least 1")
+})
+
+.locLeadingRunFixture <- function(x, pred, ratio, bw) {
+  fx <- .locMethodFixture()
+  fx$dataMod <- structure(
+    data.frame(IFNg = x, pred = pred, probSmooth = pred * ratio),
+    chnlCut = "IFNg", locDensityBw = bw
+  )
+  fx
+}
+
+.locLeadingRunThreshold <- function(fx) {
+  pkg_ns$.getCpUnsLocGetCpDataThreshold(
+    dataMod = fx$dataMod, exTblStimOrig = fx$stim,
+    exTblStimNoMin = fx$stim, exTblUnsOrig = fx$uns,
+    pathProject = withr::local_tempdir(), stage = "init",
+    densityBw = attr(fx$dataMod, "locDensityBw")
+  )
+}
+
+test_that("tiny disagreement over a long leading run retains candidates", {
+  fx <- .locLeadingRunFixture(0:100, 0.99, 0.997, 2)
+  fx$stim <- structure(data.frame(IFNg = 0:100), chnlCut = "IFNg", ind = 2L)
+  out <- .locLeadingRunThreshold(fx)
+  # The minimum is still excluded, but the old unlimited leading-run drop
+  # would have removed every remaining row. Only x = 1 is discounted here.
+  expect_equal(out$IFNg, 1:100)
+  plain <- sum(fx$dataMod$pred[-1]) / nrow(fx$stim)
+  estimate <- pkg_ns$.getCpUnsLocProbBsEst(out)
+  expect_equal(estimate, (99 - 0.99 * 0.012) / nrow(fx$stim))
+  expect_lt(abs(estimate - plain), 0.0002)
+})
+
+test_that("zero-weight leading rows are removed only within half a bandwidth", {
+  fx <- .locLeadingRunFixture(0:6, 0.8, 0.5, 4)
+  out <- .locLeadingRunThreshold(fx)
+  expect_equal(out$IFNg, 3:6)
+  expect_equal(out$weight, rep(1, 4))
+  expect_equal(pkg_ns$.getCpUnsLocProbBsEst(out), 4 * 0.8 / nrow(fx$stim))
+
+  # Adaptive shared bandwidth at x0 is 4, not the bandwidth farther right.
+  attr(fx$dataMod, "locDensityBw") <- list(
+    grid = c(0, 6), sharedGrid = c(4, 12)
+  )
+  expect_equal(.locLeadingRunThreshold(fx)$IFNg, 3:6)
+})
+
+test_that("partial leading weights are linear and end with the initial run", {
+  fx <- .locLeadingRunFixture(0:4, 0.8, c(0.5, 0.875, 1, 0.5, 0.5), 20)
+  out <- .locLeadingRunThreshold(fx)
+  expect_equal(out$IFNg, 1:4)
+  expect_equal(out$weight, c(0.5, 1, 1, 1))
+  expect_equal(pkg_ns$.getCpUnsLocProbBsEst(out), (0.4 + 3 * 0.8) / nrow(fx$stim))
+})
+
+test_that("cap can select a gate inside the former leading run", {
+  fx <- .locMethodFixture()
+  fx$dataMod$probSmooth <- c(rep(0.4 * 0.997, 7), 0.4)
+  attr(fx$dataMod, "locDensityBw") <- 1
+  pathProject <- withr::local_tempdir()
+  for (method in c("cap", "region", "match")) {
+    out <- .locMethodGetCp(
+      fx, list(locThresholdMethod = method, locThresholdCap = 2),
+      pathProject = pathProject
+    )
+    # Every method uses the same discounted estimate, including match.
+    expect_equal(out$propBsEst, (2 * 0.4 * 0.988 + 5 * 0.4) / 10)
+    if (method == "cap") {
+      # The old drop left only 4.6 as a candidate. The cap can now select 3.0.
+      expect_equal(attr(out, "cpSelected"), 3.0)
+      expect_equal(out$cp, 2.8)
+      expect_identical(out$locReason, "local_fdr_cap_threshold_selected")
+    }
+  }
+})
+
+test_that("unavailable bandwidth keeps full weights and candidates", {
+  bandwidths <- list(
+    NULL, NA_real_, NaN, Inf, -Inf, 0, -1,
+    list(grid = 0:1, sharedGrid = c(NA_real_, -1))
+  )
+  for (bw in bandwidths) {
+    fx <- .locLeadingRunFixture(0:4, 0.8, 0.5, bw)
+    out <- .locLeadingRunThreshold(fx)
+    expect_equal(out$IFNg, 1:4)
+    expect_equal(out$weight, rep(1, 4))
+    expect_equal(pkg_ns$.getCpUnsLocProbBsEst(out), 4 * 0.8 / nrow(fx$stim))
+  }
+})
+
+test_that("minimum exclusion retains its single-row exception", {
+  count <- pkg_ns$.getCpUnsLocGetCpDataThresholdCount
+  fx <- .locLeadingRunFixture(c(0, 0, 1), 0.8, 1, 2)
+  expect_equal(count(fx$dataMod, 2)$IFNg, 1)
+  fx <- .locLeadingRunFixture(0, 0.8, 0.997, 2)
+  out <- count(fx$dataMod, 2)
+  expect_equal(out$IFNg, 0)
+  expect_equal(out$weight, 0.988)
+
+  # Non-positive fits and non-finite ratios in the discount window count zero.
+  fx <- .locLeadingRunFixture(0:3, c(0.8, 0, 0.8, 0.8), 1, 20)
+  fx$dataMod$probSmooth <- c(0.4, -1, -Inf, 0.8)
+  expect_equal(count(fx$dataMod, 20)$IFNg, 3)
+})
+
+
+test_that("the discount window starts after margin exclusion and sorts rows", {
+  fx <- .locLeadingRunFixture(0:6, 0.8, 0.5, 2)
+  attr(fx$dataMod, "minProbXPos") <- 2
+  fx$dataMod <- fx$dataMod[c(7, 3, 1, 6, 4, 2, 5), , drop = FALSE]
+  out <- .locLeadingRunThreshold(fx)
+  # x0 is 2 after margin exclusion, so zero-weight candidates stop at 3.
+  expect_equal(out$IFNg, 4:6)
+  expect_equal(pkg_ns$.getCpUnsLocProbBsEst(out), 3 * 0.8 / nrow(fx$stim))
 })

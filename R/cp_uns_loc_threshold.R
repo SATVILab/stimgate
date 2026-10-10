@@ -96,7 +96,8 @@
           exTblStimNoMin = exTblStimNoMin,
           exTblUnsOrig = exTblUnsOrig,
           stage = stage,
-          pathProject = pathProject
+          pathProject = pathProject,
+          densityBw = densityBw
         )
         .intSave(ind, stageChnl, pathProject, dataThreshold)
         regionX <- suppressWarnings(
@@ -173,6 +174,13 @@
 }
 
 
+#' Build candidate thresholds using a discounted response-probability sum
+#'
+#' All threshold methods share the bounded leading-run discount; the estimate
+#' sums candidate rows' weighted fitted probabilities over the original
+#' stimulated cell count.
+#' @param densityBw numeric, list or NULL Local-FDR density bandwidth; adaptive
+#'   objects use the shared bandwidth at the lowest estimate value. Default: NULL.
 #' @keywords internal
 .getCpUnsLocGetCpDataThreshold <- function(
   dataMod,
@@ -180,15 +188,18 @@
   exTblStimNoMin,
   exTblUnsOrig,
   pathProject,
-  stage
+  stage,
+  densityBw = NULL
 ) {
   # Remove the lower-margin values retained only to anchor the smoother at the
   # point where the final response proportion is calculated, not while the
   # filtering thresholds are identified.
   dataModEstimate <- .getCpUnsLocGetCpDataThresholdExcludeMargin(dataMod)
 
-  dataCount <- .getCpUnsLocGetCpDataThresholdCount(dataModEstimate)
-  probBsEst <- sum(dataCount$pred) / nrow(exTblStimOrig)
+  dataCount <- .getCpUnsLocGetCpDataThresholdCount(
+    dataModEstimate, densityBw = densityBw
+  )
+  probBsEst <- sum(dataCount$weight * dataCount$pred) / nrow(exTblStimOrig)
   .intSaveNm(
     "probBsEstConditionRaw",
     probBsEst,
@@ -224,23 +235,44 @@
   )
 }
 
+#' Discount disagreement at the start of the responding region
+#'
+#' Within half a density bandwidth of the lowest estimate value, the initial
+#' contiguous run with `pred > probSmooth` receives weights increasing linearly
+#' from zero at `probSmooth / pred = 0.75` to one at ratio one. Only zero-weight
+#' rows in that window are removed as candidate gates. The existing exclusion
+#' of minimum-expression rows (except a single row) is retained.
+#' @param dataMod data.frame Estimate rows after lower-margin exclusion.
+#' @param densityBw numeric, list or NULL Density bandwidth. Default: NULL.
+#' @return data.frame Candidate rows with a response-estimate `weight` column.
 #' @keywords internal
-.getCpUnsLocGetCpDataThresholdCount <- function(dataMod) {
+.getCpUnsLocGetCpDataThresholdCount <- function(dataMod, densityBw = NULL) {
   if (!is.data.frame(dataMod) || nrow(dataMod) == 0L) {
     return(dataMod)
   }
 
-  if (nrow(dataMod) == 1L) {
-    minVal <- min(.getCut(dataMod)) - 1
-  } else {
-    minVal <- min(.getCut(dataMod))
-  }
-  dataMod <- dataMod[.getCut(dataMod) > minVal, , drop = FALSE]
   dataMod <- dataMod[order(.getCut(dataMod)), , drop = FALSE]
-  dataMod |>
-    dplyr::mutate(nRow = seq_len(dplyr::n())) |>
-    dplyr::filter(cumsum(pred > probSmooth) != nRow) |> # nolint
-    dplyr::select(-nRow)
+  x <- .getCut(dataMod)
+  x0 <- min(x)
+  bw <- .getCpUnsLocDensityBwAt(x0, densityBw)
+  weight <- rep(1, nrow(dataMod))
+  if (is.finite(bw) && bw > 0) {
+    above <- dataMod$pred > dataMod$probSmooth
+    above[is.na(above)] <- FALSE
+    leading <- cumsum(!above) == 0L
+    discount <- leading & x <= x0 + bw / 2
+    ratio <- dataMod$probSmooth[discount] / dataMod$pred[discount]
+    weight[discount] <- ifelse(
+      dataMod$pred[discount] > 0 & is.finite(ratio),
+      pmax(0, pmin(1, (ratio - 0.75) / 0.25)),
+      0
+    )
+  }
+  # An unavailable bandwidth means full weights and no leading-run removal,
+  # rather than the former unlimited drop.
+  dataMod$weight <- weight
+  minVal <- if (nrow(dataMod) == 1L) x0 - 1 else x0
+  dataMod[x > minVal & weight > 0, , drop = FALSE]
 }
 
 .getCpUnsLocTailPropAtThresholds <- function(x, thresholds, denominator) {
@@ -428,7 +460,35 @@
   )
 }
 
+#' Resolve the shared local-FDR density bandwidth at an expression value
+#'
+#' @param x numeric Expression value.
+#' @param densityBw numeric, list or NULL Density bandwidth. Default: NULL.
+#' @return numeric Scalar bandwidth, or NA when unavailable.
+#' @keywords internal
+.getCpUnsLocDensityBwAt <- function(x, densityBw = NULL) {
+  if (is.list(densityBw)) {
+    grid <- densityBw$grid
+    bwGrid <- densityBw$sharedGrid
+    valid <- if (length(grid) == length(bwGrid)) {
+      is.finite(grid) & is.finite(bwGrid) & bwGrid > 0
+    } else {
+      logical(0)
+    }
+    bw <- if (sum(valid) > 1L) {
+      stats::approx(grid[valid], bwGrid[valid], xout = x, rule = 2)$y
+    } else {
+      NA_real_
+    }
+  } else {
+    bw <- suppressWarnings(as.numeric(densityBw)[1L])
+  }
+  bw
+}
+
 #' Place a gate in the gap below a selected cell value
+#'
+#' Bandwidth resolution is shared with the leading-run response discount.
 #'
 #' @param cp numeric Selected cell value.
 #' @param x numeric Stimulated and unstimulated expression; NULL keeps `cp`.
@@ -443,22 +503,7 @@
   }
   below <- x[is.finite(x) & x < cp]
   halfGap <- if (length(below) > 0L) (cp - max(below)) / 2 else Inf
-  if (is.list(densityBw)) {
-    grid <- densityBw$grid
-    bwGrid <- densityBw$sharedGrid
-    valid <- if (length(grid) == length(bwGrid)) {
-      is.finite(grid) & is.finite(bwGrid) & bwGrid > 0
-    } else {
-      logical(0)
-    }
-    bw <- if (sum(valid) > 1L) {
-      stats::approx(grid[valid], bwGrid[valid], xout = cp, rule = 2)$y
-    } else {
-      NA_real_
-    }
-  } else {
-    bw <- suppressWarnings(as.numeric(densityBw)[1L])
-  }
+  bw <- .getCpUnsLocDensityBwAt(cp, densityBw)
   step <- min(halfGap, if (is.finite(bw) && bw > 0) 2 * bw else Inf)
   if (!is.finite(step)) {
     # No lower cell and no bandwidth: move just below the cell.

@@ -1,3 +1,13 @@
+# stimgate 0.99.32
+
+## Bug fixes
+
+- The local-FDR response estimate no longer discards a long stretch of
+  responding cells where the smoothed probability is only slightly below
+  the monotone fit. The discount is now proportional to the disagreement
+  and limited to half a bandwidth. This can lower some gates chosen by
+  `gateStim()`, calling more cells positive where the threshold cap was binding.
+
 # stimgate 0.99.31
 
 ## New features
