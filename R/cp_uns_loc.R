@@ -378,7 +378,17 @@
       locGenerated = .data$locGenerated %in% TRUE,
       locGeneratedDirect = .data$locGeneratedDirect %in% TRUE,
       locResponder = .data$locResponder %in% TRUE
-    )
+    ) |>
+    .getCpUnsLocMetaAddShiftedPeak(attr(cp, "locShiftedPeakRef"))
+}
+
+# The shifted-peak flag is carried only when the rule was requested.
+#' @keywords internal
+.getCpUnsLocMetaAddShiftedPeak <- function(meta, shiftedPeakRef) {
+  if (!is.null(shiftedPeakRef)) {
+    meta$locShiftedPeakRef <- shiftedPeakRef %in% TRUE
+  }
+  meta
 }
 
 #' @keywords internal
@@ -403,6 +413,9 @@
   attr(cp, "locShareProposed") <- as.numeric(
     meta[["locShareProposed"]] %||% rep(NA_real_, n)
   )
+  if (!is.null(meta[["locShiftedPeakRef"]])) {
+    attr(cp, "locShiftedPeakRef") <- meta[["locShiftedPeakRef"]] %in% TRUE
+  }
   cp
 }
 

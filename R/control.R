@@ -112,6 +112,22 @@
 #'   above the lower of the first stimulated-density antimode right of the main
 #'   negative peak and the adjusted stimulated-density tailgate. Restrict later
 #'   marginal filtering to this region. Default: FALSE.
+#' @param locShiftedPeakRef logical Handle a stimulated tube whose main peak
+#'   has moved right because most of its cells respond. The search for
+#'   responding cells normally starts one third of a left-window width above
+#'   the higher of the stimulated and unstimulated main peaks. When `TRUE` and
+#'   the stimulated main peak lies more than `locShiftedPeakBwMult`
+#'   bandwidths to the right of the unstimulated main peak, the search instead
+#'   starts above the unstimulated peak, using only the unstimulated tube's
+#'   left-window width. The bandwidth is the shared bandwidth estimated on
+#'   `bwNcellMax` cells, without the widening for small tubes from
+#'   `bwScaleNcell`; a fixed `bw` when supplied; the sample's own bandwidth
+#'   with `bwScope = "sample"`; and, for adaptive bandwidths, the bandwidth
+#'   curve at the unstimulated peak. Tubes where the rule applied are flagged
+#'   in the `locShiftedPeakRef` column of [getStimGates()]. Default: FALSE.
+#' @param locShiftedPeakBwMult numeric Number of bandwidths by which the
+#'   stimulated main peak must exceed the unstimulated main peak for
+#'   `locShiftedPeakRef` to apply. Must be positive. Default: 2.
 #' @param locDipAlpha numeric Dip-test p-value cutoff for inspecting density
 #'   antimodes before thresholding. Default: 0.2.
 #' @param locAntimodeHeightFrac numeric Maximum antimode height as a fraction
@@ -223,6 +239,8 @@ stimControl <- function(
   locShareCap = 1.5,
   locShareCellCap = 0.5,
   locEnforceShapeThreshold = FALSE,
+  locShiftedPeakRef = FALSE,
+  locShiftedPeakBwMult = 2,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1 / 6,
   locAntimodeLowRel = 0.25,
@@ -266,6 +284,12 @@ stimControl <- function(
       is.na(locEnforceShapeThreshold)
   ) {
     stop("`locEnforceShapeThreshold` must be TRUE or FALSE")
+  }
+  if (
+    !is.logical(locShiftedPeakRef) || length(locShiftedPeakRef) != 1L ||
+      is.na(locShiftedPeakRef)
+  ) {
+    stop("`locShiftedPeakRef` must be TRUE or FALSE")
   }
 
   if (

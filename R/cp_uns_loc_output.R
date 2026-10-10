@@ -191,6 +191,14 @@
       attr(cpObj, "locCapExceededAbove") %||% NA
     )[1L]
   }
+  shiftedPeakInfo <- attr(cpObj, "locShiftedPeakInfo")
+  if (!is.null(shiftedPeakInfo)) {
+    row$locShiftedPeakRef <- isTRUE(shiftedPeakInfo$applied)
+    row$locShiftedPeakStimX <- as.numeric(shiftedPeakInfo$peakStimX)[1L]
+    row$locShiftedPeakUnsX <- as.numeric(shiftedPeakInfo$peakUnsX)[1L]
+    row$locShiftedPeakBw <- as.numeric(shiftedPeakInfo$bw)[1L]
+    row$locShiftedPeakBwSource <- as.character(shiftedPeakInfo$bwSource)[1L]
+  }
   row
 }
 
@@ -412,6 +420,17 @@
       ~ .x[["propBsEst"]] %||% NA_real_
     )
   )
+  # Present only when the shifted-peak rule was requested.
+  hasShiftedPeak <- any(purrr::map_lgl(
+    cpUnsLocObjList,
+    ~ !is.null(.x[["locShiftedPeakRef"]])
+  ))
+  if (hasShiftedPeak) {
+    meta$locShiftedPeakRef <- purrr::map_lgl(
+      cpUnsLocObjList,
+      ~ isTRUE(.x[["locShiftedPeakRef"]])
+    )
+  }
   .intSaveNm(
     "cpVecBeforeRep",
     cpVec,

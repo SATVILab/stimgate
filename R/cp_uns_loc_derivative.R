@@ -90,7 +90,8 @@
     "locShapeThresholdInfo",
     "locShapeTailgateX",
     "locShapeAntimodeX",
-    "locUnshapedProbCurve"
+    "locUnshapedProbCurve",
+    "locShiftedPeakRef"
   )
   values <- stats::setNames(
     lapply(attrs, function(name) attr(dataMod, name)),

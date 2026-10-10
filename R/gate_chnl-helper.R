@@ -95,7 +95,9 @@
                 gateType,
                 gateCombn, # nolint
                 batch,
-                ind # nolint
+                ind, # nolint
+                # tube's own initial fit; present only when requested
+                dplyr::any_of("locShiftedPeakRef")
               ),
             by = c("ind")
           ) |>
