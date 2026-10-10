@@ -4,10 +4,10 @@
 \alias{.getCpUnsLocGetProbSmoothNewData}
 \title{Construct the minimal prediction data required by the smoother}
 \usage{
-.getCpUnsLocGetProbSmoothNewData(chnl, x)
+.getCpUnsLocGetProbSmoothNewData(x)
 }
 \description{
-The fitted SCAM contains only the expression channel as a predictor, so
-prediction does not require copying every column of dataMod.
+The fitted SCAM has only the expression values, named \code{x}, as a predictor
+(see \code{.fitScam()}), so prediction does not require copying dataMod.
 }
 \keyword{internal}
