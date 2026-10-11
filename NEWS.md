@@ -1,3 +1,19 @@
+# stimgate 0.99.36
+
+## Breaking changes
+
+- `gateStim()`'s cytokine-positive gates now use the co-expression rule by
+  default (`stimControl(cytPosMethod = "coexpression")`). The taut-string
+  refinement used until now remains available with
+  `stimControl(cytPosMethod = "refine")`; `calcCytPosGates = FALSE` still
+  switches both off.
+
+## New features
+
+- `stimControl(coexScreen = FALSE)` tests every pair of cytokines for
+  co-expression, rather than only pairs whose cells above both ordinary gates
+  already show a clear response.
+
 # stimgate 0.99.35
 
 ## New features

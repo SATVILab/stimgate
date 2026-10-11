@@ -1,5 +1,11 @@
 test_that("coexpression controls are validated and global-only", {
-  expect_identical(stimControl()$cytPosMethod, "refine")
+  expect_identical(stimControl()$cytPosMethod, "coexpression")
+  expect_true(stimControl()$coexScreen)
+  for (bad in list(NULL, NA, "TRUE", c(TRUE, FALSE))) {
+    expect_error(stimControl(coexScreen = bad), "coexScreen")
+  }
+  expect_error(.resolveMarkerControl(list(a = list(coexScreen = FALSE)),
+    chnl = "a", chnlLab = c(a = "a")), "coexScreen")
   expect_identical(stimControl(cytPosMethod = "coexpression")$coexNBin, 20L)
   for (bad in list(NULL, NA_character_, "unknown", c("refine", "coexpression"))) {
     expect_error(stimControl(cytPosMethod = bad), "cytPosMethod")
@@ -15,6 +21,26 @@ test_that("coexpression controls are validated and global-only", {
   expect_error(stimControl(coexPurityFrac = 1.1), "coexPurityFrac")
   expect_error(.resolveMarkerControl(list(a = list(cytPosMethod = "coexpression")),
     chnl = "a", chnlLab = c(a = "a")), "cytPosMethod")
+})
+
+test_that("without the screen, a pair is tried even with no double-positive response", {
+  negative <- data.frame(a = seq(0.8, 1.2, length.out = 1000),
+    b = seq(1.2, 0.8, length.out = 1000))
+  # Co-expressing responders sit below b's gate, so none is above both gates.
+  response <- data.frame(a = seq(3.3, 5, length.out = 400),
+    b = seq(2, 3.1, length.out = 400))
+  dat <- list(stim = rbind(negative, response), uns = negative,
+    gate = c(a = 3.2, b = 3.2))
+  screened <- .coexLowerGate(dat, "a", "b")
+  expect_false(screened$z > 2)
+  expect_identical(screened$cut, dat$gate[["b"]])
+  open <- .coexLowerGate(dat, "a", "b", screen = FALSE)
+  expect_lt(open$cut, dat$gate[["b"]])
+  expect_gte(open$cut, open$floorB)
+  # Identical tubes: nothing is pure, so nothing moves.
+  same <- list(stim = rbind(negative, response), uns = rbind(negative, response),
+    gate = c(a = 3.2, b = 3.2))
+  expect_identical(.coexLowerGate(same, "a", "b", screen = FALSE)$cut, 3.2)
 })
 
 test_that("stimulation-specific diagonal lowers gates above the negative floor", {

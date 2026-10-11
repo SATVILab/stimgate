@@ -696,7 +696,7 @@ stimgateMetaReadBatchList <- function(pathProject) {
     setdiff(
       names(formals(stimControl)),
       c("locEnforceShapeThreshold", "calcCytPosGates", "cytPosMethod",
-        "coexNBin", "coexResidualMin", "coexPurityFrac", "coexZMin")
+        "coexNBin", "coexResidualMin", "coexPurityFrac", "coexZMin", "coexScreen")
     ),
     "biasUns", "bw", "popGate"
   )

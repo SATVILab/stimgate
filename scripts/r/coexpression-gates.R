@@ -44,14 +44,17 @@
 # Lowered gate for marker `b` among cells above `a`'s ordinary gate, and the
 # raised `a` cut for the cells it adds.
 #
-# 1. Nothing moves unless the double-positive response is clear
-#    (`.coexDpZ()` > `zMin`).
+# 1. With `screen = TRUE`, nothing moves unless the double-positive response
+#    is clear (`.coexDpZ()` > `zMin`). With `screen = FALSE` every pair is
+#    tried, whatever the double positives show.
 # 2. The distance from b's gate down to its floor (`.coexNegFloor()` of the
 #    control tube) is cut into `nBin` bins. A set of bins passes when its a+
 #    stimulated cells depart from independence (Pearson residual (O - E) /
 #    sqrt(E), E from the stimulated tube's own a+ share and share of cells in
-#    the bins) by at least `rMin` and its purity is at least `frac` times the
-#    double positives'. Working back from the floor, the cut is the first bin
+#    the bins) by at least `rMin` and its purity is positive and at least
+#    `frac` times the double positives' (taken as zero when the double
+#    positives' purity is negative or undefined, as it can be without the
+#    screen). Working back from the floor, the cut is the first bin
 #    edge where that bin passes on its own and all bins from the gate down to
 #    it pass together.
 # 3. Band trim, purity only: the distance from a's gate down to its floor, in
@@ -62,7 +65,8 @@
 #
 # A cell is then b-positive if above b's gate, or above `condCut` on a and
 # `cut` on b.
-.coexLowerGate <- function(dat, a, b, nBin = 20L, rMin = 3.5, frac = 0.75, zMin = 2) {
+.coexLowerGate <- function(dat, a, b, nBin = 20L, rMin = 3.5, frac = 0.75, zMin = 2,
+                           screen = TRUE) {
   nS <- nrow(dat$stim)
   nU <- nrow(dat$uns)
   gA <- dat$gate[[a]]
@@ -72,7 +76,7 @@
   z <- .coexDpZ(dat, a, b)
   out <- list(a = a, b = b, gateA = gA, gateB = gB, cut = gB, condCut = gA,
     floorA = floorA, floorB = floorB, z = z, purityDp = NA_real_)
-  if (!is.finite(gA) || !is.finite(gB) || !(z > zMin) || floorB >= gB) {
+  if (!is.finite(gA) || !is.finite(gB) || (screen && !(z > zMin)) || floorB >= gB) {
     return(out)
   }
   sAv <- dat$stim[[a]]
@@ -84,13 +88,19 @@
   pA <- mean(sA)
   pDp <- .coexPurity(sum(sA & sB > gB), sum(uA & uB > gB), nS, nU)
   out$purityDp <- pDp
+  # With the screen, pDp > 0 whenever this point is reached, so the positive
+  # purity requirement below changes nothing there.
+  purityMin <- frac * max(if (is.finite(pDp)) pDp else 0, 0)
+  pure <- function(s, u) {
+    p <- .coexPurity(s, u, nS, nU)
+    p > 0 && p >= purityMin
+  }
   passBins <- function(lo, hi) {
     inS <- sB > lo & sB <= hi
     s <- sum(sA & inS)
     u <- sum(uA & uB > lo & uB <= hi)
     e <- nS * pA * mean(inS)
-    s > 0 && (s - e) / sqrt(max(e, 1e-12)) >= rMin &&
-      .coexPurity(s, u, nS, nU) >= frac * pDp
+    s > 0 && (s - e) / sqrt(max(e, 1e-12)) >= rMin && pure(s, u)
   }
   edges <- gB - (gB - floorB) * seq_len(nBin) / nBin
   upper <- c(gB, edges[-nBin])
@@ -108,7 +118,7 @@
   passBand <- function(lo, hi) {
     s <- sum(bandS & sAv > lo & sAv <= hi)
     u <- sum(bandU & uAv > lo & uAv <= hi)
-    s > 0 && .coexPurity(s, u, nS, nU) >= frac * pDp
+    s > 0 && pure(s, u)
   }
   step <- max(gA - floorA, 1e-6) / nBin
   maxA <- max(sAv[bandS & sA])
