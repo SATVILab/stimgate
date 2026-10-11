@@ -263,7 +263,7 @@
 #'   `floor`, `floorCond` are the target and conditioning floors; `z` is the net
 #'   double-positive z score; `purityDp` is double-positive purity (NA when the
 #'   initial tests fail); and `lowered` indicates whether `cut < gate`.
-#'   Projects using refinement or with cytokine-positive gating disabled error.
+#'   Projects using the antimode rule or with cytokine-positive gating disabled error.
 #' @examples
 #' \donttest{
 #' exampleData <- getExampleData()

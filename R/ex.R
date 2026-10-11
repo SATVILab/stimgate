@@ -158,7 +158,7 @@
 #' @param markerGate character or NULL Marker labels used to select positive
 #'   cells; cannot be combined with `chnlGate`. Default: NULL.
 #' @param gateTypeCytPos character Positivity rule: "base" uses the main gate;
-#'   "cyt" uses the saved refinement or coexpression rule. Default: "cyt".
+#'   "cyt" uses the saved antimode or coexpression rule. Default: "cyt".
 #' @param mult logical Require positivity for at least two gating markers.
 #'   Applies only when `chnlGate` or `markerGate` is supplied. Default: FALSE.
 #' @param combnExc list or NULL Channel combinations to exclude: each vector

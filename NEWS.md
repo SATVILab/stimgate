@@ -4,9 +4,10 @@
 
 - `gateStim()`'s cytokine-positive gates now use the co-expression rule by
   default (`stimControl(cytPosMethod = "coexpression")`). The taut-string
-  refinement used until now remains available with
-  `stimControl(cytPosMethod = "refine")`; `calcCytPosGates = FALSE` still
-  switches both off.
+  antimode rule used until now is available as
+  `stimControl(cytPosMethod = "antimode")`, which replaces
+  `cytPosMethod = "refine"`; `calcCytPosGates = FALSE` still switches both
+  off.
 
 ## New features
 

@@ -7,7 +7,7 @@ test_that("coexpression controls are validated and global-only", {
   expect_error(.resolveMarkerControl(list(a = list(coexScreen = FALSE)),
     chnl = "a", chnlLab = c(a = "a")), "coexScreen")
   expect_identical(stimControl(cytPosMethod = "coexpression")$coexNBin, 20L)
-  for (bad in list(NULL, NA_character_, "unknown", c("refine", "coexpression"))) {
+  for (bad in list(NULL, NA_character_, "unknown", c("antimode", "coexpression"), "refine")) {
     expect_error(stimControl(cytPosMethod = bad), "cytPosMethod")
   }
   for (nm in c("coexNBin", "coexResidualMin", "coexPurityFrac", "coexZMin")) {

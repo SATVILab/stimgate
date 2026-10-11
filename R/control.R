@@ -2,10 +2,10 @@
 #' @description Set tuning options for [gateStim()]. Start with the defaults;
 #'   set only the options you need to change.
 #' @param cytPosMethod character Cytokine-positive rule, "coexpression" or
-#'   "refine"; used only when `calcCytPosGates = TRUE`. "coexpression" lowers a
+#'   "antimode"; used only when `calcCytPosGates = TRUE`. "coexpression" lowers a
 #'   cytokine's gate, for cells above another cytokine's gate, where the two
 #'   are co-expressed beyond independence and the added cells are mostly
-#'   responders (see [getStimGatesCoexpression()]). "refine" lowers a gate to
+#'   responders (see [getStimGatesCoexpression()]). "antimode" lowers a gate to
 #'   an antimode of the taut-string density among cells positive for another
 #'   cytokine. Default: "coexpression".
 #' @param coexNBin integer Number of bins used to lower and trim pairwise gates.
@@ -20,8 +20,8 @@
 #'   ordinary gates show a clear net response (z above `coexZMin`). With FALSE,
 #'   every pair is tested, and the purity requirement uses zero in place of a
 #'   negative or undefined double-positive purity. Default: TRUE.
-#' @param calcCytPosGates logical Apply the `cytPosMethod` rule. With "refine",
-#'   refine gates using cells positive for another
+#' @param calcCytPosGates logical Apply the `cytPosMethod` rule. With "antimode",
+#'   lower gates using cells positive for another
 #'   cytokine. Lower a clustered gate to the leftmost internal antimode between
 #'   the stimulated marginal peak plus half its negative-population width
 #'   (at least one marginal density bandwidth) and
@@ -300,8 +300,8 @@ stimControl <- function(
   ctrl <- as.list(environment())
 
   if (!is.character(cytPosMethod) || length(cytPosMethod) != 1L ||
-      is.na(cytPosMethod) || !cytPosMethod %in% c("refine", "coexpression")) {
-    stop("`cytPosMethod` must be 'refine' or 'coexpression'.")
+      is.na(cytPosMethod) || !cytPosMethod %in% c("antimode", "coexpression")) {
+    stop("`cytPosMethod` must be 'antimode' or 'coexpression'.")
   }
   if (!is.logical(coexScreen) || length(coexScreen) != 1L || is.na(coexScreen)) {
     stop("`coexScreen` must be TRUE or FALSE.")
