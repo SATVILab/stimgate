@@ -20,45 +20,63 @@ params:
 
 Analysis 17 explored a rule that lowers a cytokine's gate for cells positive
 for another cytokine where the two are co-expressed beyond independence (the
-"co-expression gates"; `scripts/r/coexpression-gates.R`, also available in
+"coexpression gates"; `scripts/r/coexpression-gates.R`, also available in
 StimGate as `stimControl(cytPosMethod = "coexpression")`). Here the rule is
 applied to every ACS population, stimulation and donor, starting from Analysis
 9's ordinary gates, to see what it does at scale and to catch anything
 pathological.
 
+All six cytokines Analysis 9 gates (IFNg, IL2, TNF, IL17, IL6 and IL22) are
+considered jointly: every ordered pair of them is tried in every tube, and
+every tube is described by the same 64 combinations. A cytokine without a gate
+in a tube is negative there.
+
 For each stimulated tube and every ordered pair of cytokines (a, b), b's gate
 is lowered for cells above a's gate when:
 
-1. the cells above both ordinary gates show a clear net response (z > 2);
+1. (screened version only) the cells above both ordinary gates show a clear
+   net response (z > 2);
 2. working back from a floor (the control tube's main negative peak, from
    non-zero values, plus 1.5 robust SDs) in 20 bins, the bins from the ordinary
    gate down to the new gate depart from independence (Pearson residual ≥ 3.5,
-   expected count from the stimulated tube's own marginal shares) and are at
-   least 0.75 times as pure as the double positives (purity = 1 − control
-   share / stimulated share), both for the lowest bin on its own and for all
-   the bins together;
+   expected count from the stimulated tube's own marginal shares) and are
+   pure: purity (1 − control share / stimulated share) is positive and at
+   least 0.75 times the double positives' purity (taken as zero when that is
+   not positive), both for the lowest bin on its own and for all the bins
+   together;
 3. the added band is trimmed along a: a's cut rises (in 20ths of a's
    gate-to-floor distance) until the slice above it, and the band above that,
    are pure enough.
 
 A cell is b-positive if above b's ordinary gate, or above the raised a cut and
 the lowered b gate for any a. Control tubes are classified with their
-stimulated tube's gates. Cytokines without a gate are negative.
+stimulated tube's gates.
+
+Each tube is scored under three rules:
+
+- **ordinary**: Analysis 9's ordinary gates (the baseline);
+- **coexpression (screened)**: the rule above with step 1, so only pairs
+  whose double positives already show a clear response are tried;
+- **coexpression (unscreened)**: the rule without step 1, so every pair is
+  tried whatever the double positives show, and only the independence and
+  purity checks decide.
 
 For each population this document shows:
 
 - background-subtracted frequencies (stimulated minus control) of
   single-positive cells (exactly one cytokine) and multi-positive cells (two or
-  more), ordinary gates against co-expression gates, one point per donor;
+  more), ordinary gates against each coexpression version, one point per
+  donor;
 - for each cytokine, how its single-positive frequency (positive for it alone)
   and multi-positive frequency (positive for it and another) change;
 - a table of possible pathologies per tube (below);
-- hexagon plots of the tubes whose multi-positive frequency changed most, for
-  the pair of cytokines that added the most cells;
+- hexagon plots of the tubes whose multi-positive frequency changed most under
+  each version, for the pair of cytokines that added the most cells;
+- response tests for every combination under each rule (below);
 - COMPASS functionality and polyfunctionality scores fitted separately on the
-  ordinary and the co-expression combination counts.
+  combination counts of each rule.
 
-Possible pathologies flagged per tube:
+Possible pathologies flagged per tube and version:
 
 - **bottom bin**: a gate lowered into the bin next to its floor, so the floor,
   not the data, stopped it;
@@ -67,6 +85,11 @@ Possible pathologies flagged per tube:
 - **multi jump**: the net multi-positive frequency more than tripled (from at
   least 0.01%);
 - **single negative**: the net single-positive frequency driven below −0.05%.
+
+Manual gating is not used here as a measure of accuracy. The ACS manual gates
+set one overall threshold per cytokine, so they miss cells that respond only
+weakly in one cytokine alongside another and under-count multi-positive
+cells; a frequency above the manual one is not an error.
 
 Everything is read from Analysis 9's most recent run; Analysis 9's caches are
 never changed. Results are cached under the projr cache folder
@@ -104,9 +127,14 @@ compass_iterations <- as.integer(Sys.getenv("ACS_COEX_COMPASS_ITERATIONS", "1000
 #| label: settings
 #| include: false
 pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "nk_pre", "b")
+# Every cytokine Analysis 9 gates, considered jointly.
+channel_map <- .acsCytofChannelMap()
 rule_settings <- .acsCoexGatesSettings()
+rule_vec <- .acsCoexGatesRules()
+alpha <- 0.05
 run_settings <- list(
-  semantics = .acsCoexGatesSemantics, rule = rule_settings, pops = pop_vec
+  semantics = .acsCoexGatesSemantics, rule = rule_settings, rules = rule_vec,
+  markers = unname(channel_map), pops = pop_vec
 )
 compass_settings <- c(run_settings, list(iterations = compass_iterations, replications = 8L, seed = 100L))
 ```
@@ -120,7 +148,6 @@ path_scratch_base <- projr::projr_path_get("cache", "acs_cytof", "scratch", crea
 cache_dir <- projr::projr_path_get_dir(
   "cache", "acs_cytof_coexpression", create = run_simulations || run_compass, format = "absolute"
 )
-channel_map <- .acsCytofChannelMap()
 path_pop <- function(pop) file.path(cache_dir, paste0(pop, ".rds"))
 path_compass <- file.path(cache_dir, "compass.rds")
 ```
@@ -131,7 +158,7 @@ path_compass <- file.path(cache_dir, "compass.rds")
 # One population at a time; each is written atomically once complete.
 if (isTRUE(run_simulations)) {
   for (pop in pop_vec) {
-    message("Co-expression gates: ", pop)
+    message("Coexpression gates (screened and unscreened): ", pop)
     paths <- .acsCytofPopulationPaths(pop, "unused", path_gs_base, path_scratch_base)
     res <- .acsCoexGatesPopulation(pop, paths, channel_map, rule_settings, workers = n_workers)
     .write_rds_atomic(list(settings = run_settings, result = res), path_pop(pop))
@@ -159,6 +186,12 @@ counts_all <- do.call(rbind, lapply(res_all, `[[`, "counts"))
 freq_all <- .acsCoexGatesFreq(counts_all)
 paired_all <- .acsCoexGatesPaired(.acsCoexGatesSingleMulti(freq_all))
 flags_all <- .acsCoexGatesFlags(low_all, paired_all, rule_settings)
+# Response tests for every combination and marginal, per rule.
+test_counts_all <- .acsCoexGatesTestCounts(counts_all)
+tests_all <- .acsCoexGatesResponseTests(test_counts_all, alpha = alpha)
+compare_all <- .acsCoexGatesResponseCompare(tests_all)
+response_summary_all <- .acsCoexGatesResponseSummary(tests_all, compare_all)
+contamination_all <- .acsCoexGatesContamination(test_counts_all)
 ```
 
 ```{r}
@@ -166,10 +199,10 @@ flags_all <- .acsCoexGatesFlags(low_all, paired_all, rule_settings)
 #| include: false
 if (isTRUE(run_compass)) {
   # One fit per population, stimulation and rule, forked over the workers.
-  # Both rules use the same categories (`.acsCoexGatesCompassKeep()`).
+  # Every rule uses the same categories (`.acsCoexGatesCompassKeep()`).
   fit_jobs <- do.call(rbind, lapply(pop_vec, function(pop) {
     stims <- sort(unique(counts_all$stim[counts_all$pop == pop]))
-    expand.grid(pop = pop, stim = stims, rule = c("ordinary", "coexpr"), stringsAsFactors = FALSE)
+    expand.grid(pop = pop, stim = stims, rule = rule_vec, stringsAsFactors = FALSE)
   }))
   fit_one <- function(i) {
     job <- fit_jobs[i, ]
@@ -208,32 +241,131 @@ if (!is.null(compass) && !identical(compass$settings, compass_settings)) compass
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots)) {
-  cat("Tubes per population (stimulated tubes with a control tube), median net single- and",
-    "multi-positive frequencies (%) with the ordinary and co-expression gates, the number of",
-    "ordered pairs lowered per tube (median) and tubes with each flag.\n\n")
+  cat("Per population and coexpression version: tubes (stimulated tubes with a control tube),",
+    "median net single- and multi-positive frequencies (%) with the ordinary gates and with",
+    "that version, the number of ordered pairs lowered per tube (median) and tubes with each",
+    "flag.\n\n")
   any_tbl <- paired_all[paired_all$cytokine == "any", ]
   overview <- do.call(rbind, lapply(pop_vec, function(pop) {
-    s <- any_tbl[any_tbl$pop == pop & any_tbl$type == "single", ]
-    m <- any_tbl[any_tbl$pop == pop & any_tbl$type == "multi", ]
-    f <- flags_all[flags_all$pop == pop, ]
-    data.frame(pop = pop, tubes = nrow(f),
-      singleOrd = round(100 * stats::median(s$propBsOrdinary), 3),
-      singleCoex = round(100 * stats::median(s$propBsCoexpr), 3),
-      multiOrd = round(100 * stats::median(m$propBsOrdinary), 3),
-      multiCoex = round(100 * stats::median(m$propBsCoexpr), 3),
-      pairsLowered = stats::median(f$nLowered),
-      bottomBin = sum(f$flagBottomBin), control = sum(f$flagControl),
-      multiJump = sum(f$flagMultiJump), singleNegative = sum(f$flagSingleNegative))
+    do.call(rbind, lapply(setdiff(rule_vec, "ordinary"), function(rule) {
+      s <- any_tbl[any_tbl$pop == pop & any_tbl$rule == rule & any_tbl$type == "single", ]
+      m <- any_tbl[any_tbl$pop == pop & any_tbl$rule == rule & any_tbl$type == "multi", ]
+      f <- flags_all[flags_all$pop == pop & flags_all$rule == rule, ]
+      data.frame(pop = pop, version = rule, tubes = nrow(f),
+        singleOrd = round(100 * stats::median(s$propBsOrdinary), 3),
+        singleCoex = round(100 * stats::median(s$propBsCoexpr), 3),
+        multiOrd = round(100 * stats::median(m$propBsOrdinary), 3),
+        multiCoex = round(100 * stats::median(m$propBsCoexpr), 3),
+        pairsLowered = stats::median(f$nLowered),
+        bottomBin = sum(f$flagBottomBin), control = sum(f$flagControl),
+        multiJump = sum(f$flagMultiJump), singleNegative = sum(f$flagSingleNegative))
+    }))
   }))
   print(knitr::kable(overview, row.names = FALSE))
   .analysis_report_table(flags_all, c(fig_key, "tube-flags.csv"),
-    "Per tube: pairs lowered, cells added and pathology flags.", root_dir)
+    "Per tube and coexpression version: pairs lowered, cells added and pathology flags.", root_dir)
   .analysis_report_table(low_all, c(fig_key, "lowered-gates.csv"),
-    "Per tube and ordered cytokine pair: ordinary, lowered and raised gates, floors, z and purity.",
+    "Per tube, coexpression version and ordered cytokine pair: ordinary, lowered and raised gates, floors, z and purity.",
+    root_dir, quiet = TRUE)
+  .analysis_report_table(counts_all, c(fig_key, "combination-counts.csv"),
+    "Per tube, rule and tube type: cell counts of every combination of the six cytokines.",
     root_dir, quiet = TRUE)
   .analysis_report_table(paired_all, c(fig_key, "single-multi-frequencies.csv"),
-    "Per tube: single- and multi-positive background-subtracted frequencies, ordinary and co-expression gates.",
+    "Per tube: single- and multi-positive background-subtracted frequencies, ordinary gates and each coexpression version.",
     root_dir, quiet = TRUE)
+}
+```
+
+## Response tests
+
+For each rule, population, stimulation and combination (every exclusive
+combination of the six cytokines with at least one positive, and each
+cytokine on its own whatever the others, "(any)"), two questions:
+
+- **per donor**: does the stimulated tube have a larger share of cells in the
+  combination than the control tube? One-sided Fisher's exact test at
+  `r alpha`, not adjusted; reported as the number of donors with a
+  significant response.
+- **across donors**: is the stimulated frequency larger than the control
+  frequency? One-sided paired Wilcoxon signed-rank test of stimulated minus
+  control frequency (a paired t-test as a secondary check), with the
+  Benjamini-Hochberg adjustment across all combinations within each
+  population, stimulation and rule. A combination is called responding when
+  its adjusted Wilcoxon p-value is below `r alpha`. Combinations where every
+  donor's difference is zero cannot be tested and are left out of the
+  adjustment.
+
+```{r}
+#| label: response-summary
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  cat("Combinations called responding (adjusted Wilcoxon), summed over stimulations, per",
+    "population and rule; in brackets those called responding by that rule only.\n\n")
+  rs <- stats::aggregate(cbind(nTested, nResponding, nOnlyThisRule) ~ pop + rule + type,
+    response_summary_all, sum)
+  rs$value <- paste0(rs$nResponding, " (", rs$nOnlyThisRule, ")")
+  rs_wide <- stats::reshape(rs[c("pop", "type", "rule", "value")], idvar = c("pop", "type"),
+    timevar = "rule", direction = "wide")
+  names(rs_wide) <- sub("^value[.]", "", names(rs_wide))
+  rs_wide <- rs_wide[order(match(rs_wide$pop, pop_vec), rs_wide$type), c("pop", "type", rule_vec)]
+  print(knitr::kable(rs_wide, row.names = FALSE))
+  .analysis_report_table(response_summary_all, c(fig_key, "response-summary.csv"),
+    "Per population, stimulation, rule and type of combination: combinations tested, called responding (Wilcoxon and t-test) and called responding by that rule only.",
+    root_dir)
+  .analysis_report_table(tests_all, c(fig_key, "response-tests.csv"),
+    "Per population, stimulation, rule and combination: donors with a significant Fisher's test, frequencies, and raw and adjusted Wilcoxon and t-test p-values.",
+    root_dir, quiet = TRUE)
+  .analysis_report_table(test_counts_all, c(fig_key, "response-test-counts.csv"),
+    "Per donor, rule and combination: stimulated and control counts and frequencies tested.",
+    root_dir, quiet = TRUE)
+
+  changed <- compare_all[compare_all$changed, ]
+  .analysis_report_table(changed, c(fig_key, "response-changed.csv"),
+    "Combinations whose response call differs between the rules.", root_dir)
+  only_unscreened <- compare_all[compare_all$unscreenedOnly, ]
+  cat("\n\n", nrow(only_unscreened), " population, stimulation and combination sets are called",
+    " responding by the unscreened rule only.", sep = "")
+  if (nrow(only_unscreened)) {
+    shown <- only_unscreened[c("pop", "stim", "type", "combn", "pWilcoxAdj_ordinary",
+      "pWilcoxAdj_screened", "pWilcoxAdj_unscreened", "nDonorFisher_unscreened")]
+    shown$combn <- .acsCoexGatesCombnLabel(shown$combn, shown$type)
+    shown[grep("^pWilcox", names(shown))] <- lapply(shown[grep("^pWilcox", names(shown))], signif, 2)
+    if (nrow(shown) <= 15L) {
+      cat("\n\n")
+      print(knitr::kable(shown, row.names = FALSE))
+    }
+    .analysis_report_table(only_unscreened, c(fig_key, "response-unscreened-only.csv"),
+      "Combinations called responding by the unscreened rule only.", root_dir)
+  }
+}
+```
+
+### Control-tube cells added
+
+The lowered gates are applied to the control tube with the stimulated tube's
+gates. Cells they add there are background: the table gives the
+cytokine-positive calls each version adds over the ordinary gates (summed over
+cytokines) per million cells in each tube, summed over donors and
+stimulations, and the control rate as a share of the stimulated rate (roughly
+the share of the added calls the background accounts for).
+
+```{r}
+#| label: contamination
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  ct <- stats::aggregate(cbind(cellsStim, cellsUns, addedStim, addedUns) ~ pop + rule,
+    contamination_all, sum)
+  ct$stimPerMillion <- round(1e6 * ct$addedStim / ct$cellsStim, 1)
+  ct$controlPerMillion <- round(1e6 * ct$addedUns / ct$cellsUns, 1)
+  ct$controlShare <- round(ifelse(ct$addedStim > 0, ct$controlPerMillion / ct$stimPerMillion, NA), 3)
+  ct <- ct[order(match(ct$pop, pop_vec), ct$rule),
+    c("pop", "rule", "addedStim", "addedUns", "stimPerMillion", "controlPerMillion", "controlShare")]
+  print(knitr::kable(ct, row.names = FALSE))
+  .analysis_report_table(contamination_all, c(fig_key, "control-added.csv"),
+    "Per population, stimulation and coexpression version: cytokine-positive calls added over the ordinary gates in each tube.",
+    root_dir)
 }
 ```
 
@@ -249,26 +381,44 @@ if (isTRUE(run_plots)) {
     pop_paired <- paired_all[paired_all$pop == pop, ]
     cat("\n\n## ", pop, "\n\n", sep = "")
     cat("\n\n### Single- and multi-positive frequencies\n\n")
+    cat("Blue: coexpression (screened); purple: coexpression (unscreened).\n\n")
     .analysis_print_save_fig(.acsCoexGatesScatterPlot(pop_paired),
       file.path(fig_dir, "single-multi-scatter.png"), width = 30, height = 16)
     cat("\n\n### Change for each cytokine\n\n")
     .analysis_print_save_fig(.acsCoexGatesDiffPlot(pop_paired),
-      file.path(fig_dir, "cytokine-change.png"), width = 30, height = 16)
+      file.path(fig_dir, "cytokine-change.png"), width = 30, height = 24)
 
-    cat("\n\n### Tubes that changed most\n\n")
-    cat("The eight tubes with the largest change in net multi-positive frequency; for each,",
-      "the lowered pair that added the most stimulated cells (x: the cytokine the cells are",
-      "positive for; y: the cytokine whose gate is lowered).\n\n")
-    f <- flags_all[flags_all$pop == pop, ]
-    f <- f[order(-abs(f$multiBsCoexpr - f$multiBsOrdinary)), ]
-    f <- utils::head(f[f$nLowered > 0, ], 8L)
-    if (nrow(f)) {
-      paths <- .acsCytofPopulationPaths(pop, "unused", path_gs_base, path_scratch_base)
-      gs <- flowWorkspace::load_gs(paths$gs, backend_readonly = TRUE)
-      sample_map <- .acsCytofReadPreprocessing(paths$gs, gs)$sampleMap
-      gates <- stimgate::getStimGates(paths$stimgate)
+    cat("\n\n### Response tests\n\n")
+    cat("-log10 of the adjusted Wilcoxon p-value for each combination called responding",
+      "by any rule in any stimulation, and for each cytokine on its own ((any)); dots mark",
+      "combinations called responding, grey ones could not be tested.\n\n")
+    pop_tests <- tests_all[tests_all$pop == pop, ]
+    hm <- .acsCoexGatesResponseHeatmap(pop_tests)
+    n_rows <- length(levels(hm$data$label))
+    .analysis_print_save_fig(hm, file.path(fig_dir, "response-heatmap.png"),
+      width = 30, height = 8 + 0.5 * n_rows, allow_tall = TRUE)
+
+    paths <- .acsCytofPopulationPaths(pop, "unused", path_gs_base, path_scratch_base)
+    gs <- NULL
+    for (rule in setdiff(rule_vec, "ordinary")) {
+      cat("\n\n### Tubes that changed most: ", .acsCoexGatesRuleLabels[[rule]], "\n\n", sep = "")
+      cat("The eight tubes with the largest change in net multi-positive frequency under this",
+        "version; for each, the lowered pair that added the most stimulated cells (x: the",
+        "cytokine the cells are positive for; y: the cytokine whose gate is lowered).\n\n")
+      f <- flags_all[flags_all$pop == pop & flags_all$rule == rule, ]
+      f <- f[order(-abs(f$multiBsCoexpr - f$multiBsOrdinary)), ]
+      f <- utils::head(f[f$nLowered > 0, ], 8L)
+      if (!nrow(f)) {
+        cat("No gate was lowered.\n\n")
+        next
+      }
+      if (is.null(gs)) {
+        gs <- flowWorkspace::load_gs(paths$gs, backend_readonly = TRUE)
+        sample_map <- .acsCytofReadPreprocessing(paths$gs, gs)$sampleMap
+        gates <- stimgate::getStimGates(paths$stimgate)
+      }
       tubes <- lapply(seq_len(nrow(f)), function(i) {
-        lw <- low_all[low_all$pop == pop & low_all$stim == f$stim[[i]] &
+        lw <- low_all[low_all$pop == pop & low_all$rule == rule & low_all$stim == f$stim[[i]] &
           low_all$donor == f$donor[[i]] & low_all$lowered, ]
         lw <- lw[which.max(lw$addedStim), ]
         list(
@@ -278,7 +428,7 @@ if (isTRUE(run_plots)) {
         )
       })
       .analysis_print_save_fig(.acsCoexGatesTubeHexPlot(tubes),
-        file.path(fig_dir, "most-changed-hex.png"), width = 30, height = 34)
+        file.path(fig_dir, paste0("most-changed-hex-", rule, ".png")), width = 30, height = 34)
     }
   }
 }
@@ -287,12 +437,12 @@ if (isTRUE(run_plots)) {
 ## COMPASS
 
 COMPASS (`SimpleCOMPASS`, `r compass_iterations` iterations, 8 replications,
-seed 100) is fitted separately for each population and stimulation on the
-combination counts from the ordinary gates and from the co-expression gates.
-Both fits use the same categories: the all-negative one and those with at
-least 5 stimulated cells in at least 3 donors under either rule (the rare
-ones carry no information and slow the sampler). Each point is a donor's score
-with the two sets of counts.
+seed 100) is fitted separately for each population, stimulation and rule on
+that rule's combination counts. Every fit uses the same categories: the
+all-negative one and those with at least 5 stimulated cells in at least 3
+donors under any rule (the rare ones carry no information and slow the
+sampler). Each point is a donor's score with the ordinary gates (x) and with
+a coexpression version (y; blue screened, purple unscreened).
 
 ```{r}
 #| label: compass-plots
@@ -312,10 +462,10 @@ if (isTRUE(run_plots)) {
     .analysis_print_save_fig(.acsCoexGatesCompassPlot(compass$scores, "pfs"),
       file.path(fig_dir, "polyfunctionality.png"), width = 36, height = 30)
     .analysis_report_table(compass$scores, c(fig_key, "compass-scores.csv"),
-      "COMPASS functionality and polyfunctionality scores per donor, ordinary and co-expression gates.",
+      "COMPASS functionality and polyfunctionality scores per donor and rule.",
       root_dir)
     .analysis_report_table(compass$subsets, c(fig_key, "compass-subsets.csv"),
-      "COMPASS mean posterior response probability per subset, ordinary and co-expression gates.",
+      "COMPASS mean posterior response probability per subset and rule.",
       root_dir)
   }
 }

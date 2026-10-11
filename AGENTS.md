@@ -635,12 +635,27 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `acs_cytof-coexpression-gates.R`: Analysis 18
     (`18-explore-acs-cytof-coexpression-gates.qmd`), read-only on Analysis 9:
     the co-expression gates on every population, stimulation and donor from
-    Analysis 9's ordinary gates; single- and multi-positive background-subtracted
-    frequencies before and after, per-tube pathology flags, hexagon plots of
-    the most-changed tubes, and SimpleCOMPASS on both sets of combination
+    Analysis 9's ordinary gates, over every ordered pair of all six cytokines
+    jointly (a cytokine without a gate stays in the combinations as negative,
+    so every tube has the same 64). Three rules: `ordinary` (baseline),
+    `screened` (`screen = TRUE`) and `unscreened` (`screen = FALSE`); lowered
+    pairs are identical where the screen passes. Per rule: lowered-gate
+    tables, combination counts in both tubes, single- and multi-positive
+    background-subtracted frequencies, per-tube pathology flags, hexagon plots
+    of the most-changed tubes per variant, and SimpleCOMPASS on every rule's
     counts (all-negative category last; shared categories with at least 5
-    stimulated cells in 3 donors). Results are cached in the projr cache
-    `acs_cytof_coexpression/`; `ACS_COEX_WORKERS` forks tubes and COMPASS
+    stimulated cells in 3 donors under any rule). Response tests per
+    population, stimulation, rule and combination (exclusive combinations
+    with a positive marker plus each marginal): per-donor one-sided Fisher
+    (`phyper`, unadjusted, counted at 0.05) and across-donor one-sided paired
+    Wilcoxon (primary; t-test secondary), BH-adjusted within each
+    population/stimulation/rule; all-zero differences are untested (NA),
+    left out of the adjustment and never responding. Control-tube calls added
+    over the ordinary gates are reported per variant. ACS manual gating
+    under-counts (one threshold per cytokine), so Analysis 18 never scores
+    agreement with it as accuracy. Results are cached in the projr cache
+    `acs_cytof_coexpression/` (semantics `acs-coexpression-gates-v2`);
+    `ACS_COEX_WORKERS` forks tubes and COMPASS
     fits. Not in `dev.sh`'s default list: run it with `dev.sh 18` (waits for 9).
   - `omip016-prepare.R` / `omip016-methods.R`: Analysis 15
     (`15-real-compare-omip016.qmd`, FlowRepository FR-FCM-ZZ2T). The deposited
