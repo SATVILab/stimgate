@@ -13,7 +13,7 @@ test_that("stimControl returns a documented stimControl object", {
   expect_identical(control$biasUnsFactor, 1)
   expect_true(control$excMin)
   expect_null(control$cpMin)
-  expect_true(control$calcCytPosGates)
+  expect_null(control$calcCytPosGates)
   expect_identical(control$minCell, 1e2)
   expect_identical(control$bwMtd, "nrd0")
   expect_identical(control$bwNcellMax, 1e4)
@@ -59,7 +59,8 @@ test_that("stimControl rejects invalid settings eagerly", {
   expect_error(stimControl(normDensityN = 0))
   expect_error(stimControl(excMin = NULL))
   expect_error(stimControl(bwMtd = NULL))
-  expect_error(stimControl(calcCytPosGates = "yes"))
+  # calcCytPosGates is a gateStim() argument, not a stimControl() setting.
+  expect_error(stimControl(calcCytPosGates = FALSE), "unused argument")
   expect_error(stimControl(minCell = 0))
   expect_error(stimControl(locEnforceShapeThreshold = "yes"))
   expect_no_error(stimControl(bwMtd = "sj", locProbCol = "probSmooth"))
@@ -128,7 +129,8 @@ test_that("markerControl accepts marker and channel names", {
     .data = gs,
     batchList = exampleData$batchList,
     marker = exampleData$marker,
-    control = stimControl(calcCytPosGates = FALSE, clusterGates = FALSE),
+    calcCytPosGates = FALSE,
+    control = stimControl(clusterGates = FALSE),
     markerControl = markerControl
   )
 
@@ -187,4 +189,22 @@ test_that("markerControl rejects unknown names and settings", {
   expect_error(gateWith(stats::setNames(list(list(bwAdj = 0)), markerChnl)))
 
   expect_false(dir.exists(pathProject))
+})
+
+test_that("gateStim validates calcCytPosGates", {
+  exampleData <- getExampleData()
+  withr::defer(unlink(dirname(exampleData$pathGs), recursive = TRUE))
+  gs <- flowWorkspace::load_gs(exampleData$pathGs)
+  for (bad in list("yes", NA, c(TRUE, FALSE))) {
+    expect_error(
+      gateStim(
+        pathProject = file.path(withr::local_tempdir(), "project"),
+        .data = gs,
+        batchList = exampleData$batchList,
+        marker = exampleData$marker,
+        calcCytPosGates = bad
+      ),
+      "calcCytPosGates"
+    )
+  }
 })

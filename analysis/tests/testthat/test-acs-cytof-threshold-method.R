@@ -47,8 +47,9 @@ qmd10_path <- file.path(
     load_gs = function(...) as.list(1:5), .package = "flowWorkspace"
   )
   testthat::local_mocked_bindings(
-    gateStim = function(pathProject, ..., control) {
+    gateStim = function(pathProject, ..., calcCytPosGates, control) {
       seen$control <- control
+      seen$calcCytPosGates <- calcCytPosGates
       invisible(pathProject)
     },
     stimgateMetaReadSettingsChnls = function(...) {
@@ -63,7 +64,10 @@ qmd10_path <- file.path(
   )
   if (!is.null(requested)) args$locThresholdMethod <- requested
   out <- do.call(env$.acsCytofRunPopulation, args)
-  list(control = seen$control, paths = out$paths)
+  list(
+    control = seen$control, calcCytPosGates = seen$calcCytPosGates,
+    paths = out$paths
+  )
 }
 
 test_that("the ACS runner forwards and records locThresholdMethod", {
@@ -80,7 +84,7 @@ test_that("the ACS runner forwards and records locThresholdMethod", {
     expect_identical(run$control$locThresholdMethod, expected)
     expect_true(run$control$clusterGates)
     # One gate per cytokine, as the manual gates and comparators set.
-    expect_false(run$control$calcCytPosGates)
+    expect_false(run$calcCytPosGates)
     manifest <- readRDS(file.path(run$paths$stimgate, "acs-manifest.rds"))
     expect_identical(manifest$settings$locThresholdMethod, expected)
     expect_no_error(env$.acsCytofValidateStimGateMethod(manifest, expected))

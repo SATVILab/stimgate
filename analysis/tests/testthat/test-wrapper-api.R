@@ -79,12 +79,14 @@ test_that("analysis calls use the gateStim and stimControl argument contracts", 
   for (script in scripts) check_calls(parse(script))
 })
 
-test_that("scripts pass bw to gateStim and calcCytPosGates/minCell to stimControl", {
+test_that("scripts pass bw and calcCytPosGates to gateStim and minCell to stimControl", {
   gate_args <- names(formals(stimgate::gateStim))
   control_args <- names(formals(stimgate::stimControl))
   expect_true("bw" %in% gate_args)
-  expect_false(any(c("calcCytPosGates", "minCell") %in% gate_args))
-  expect_true(all(c("calcCytPosGates", "minCell") %in% control_args))
+  expect_true("calcCytPosGates" %in% gate_args)
+  expect_false("minCell" %in% gate_args)
+  expect_true("minCell" %in% control_args)
+  expect_false("calcCytPosGates" %in% control_args)
   expect_false("bw" %in% control_args)
 
   check_split <- function(node) {
@@ -93,13 +95,12 @@ test_that("scripts pass bw to gateStim and calcCytPosGates/minCell to stimContro
       target <- paste(deparse(node[[1L]]), collapse = "")
       forwarded <- names(as.list(node)[-1L])
       if (target %in% c("gateStim", "stimgate::gateStim")) {
-        expect_false(
-          any(c("calcCytPosGates", "minCell") %in% forwarded),
-          info = target
-        )
+        expect_false("minCell" %in% forwarded, info = target)
+        # Analysis gating states the cytokine-positive switch explicitly.
+        expect_true("calcCytPosGates" %in% forwarded, info = target)
       }
       if (target == "stimgate::stimControl") {
-        expect_false("bw" %in% forwarded, info = target)
+        expect_false(any(c("bw", "calcCytPosGates") %in% forwarded), info = target)
       }
     }
     for (i in seq_along(node)) {

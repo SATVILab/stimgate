@@ -288,8 +288,9 @@ test_that("an automatic biasUns scales with the sample's bandwidth", {
     withr::with_seed(1, gateStim(
       pathProject, gs, exampleData$batchList,
       marker = exampleData$marker[[1]], biasUns = biasUns,
+      calcCytPosGates = FALSE,
       control = stimControl(
-        clusterGates = FALSE, calcCytPosGates = FALSE, bwNcellMax = 1e5
+        clusterGates = FALSE, bwNcellMax = 1e5
       )
     ))
     settings <- stimgateMetaReadSettingsChnls(pathProject)[[1]]

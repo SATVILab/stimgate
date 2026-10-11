@@ -151,7 +151,11 @@
         .analysis_with_seed(settings$seed, .simDebugLoc(
           stimgate::gateStim(
             pathProject = project, .data = data, batchList = batches,
-            marker = markers, biasUns = NULL, control = do.call(stimgate::stimControl, settings$control)
+            marker = markers, biasUns = NULL, calcCytPosGates = isTRUE(settings$control$calcCytPosGates),
+            control = do.call(
+              stimgate::stimControl,
+              settings$control[setdiff(names(settings$control), "calcCytPosGates")]
+            )
           ),
           sample = NULL, tubeInfo = function(ind) list(sample = sampleMap$mouse[[as.integer(ind)]]),
           onRecord = function(rec) {

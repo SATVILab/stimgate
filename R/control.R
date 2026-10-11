@@ -1,21 +1,25 @@
 #' @title Tune stimulation gating
 #' @description Set tuning options for [gateStim()]. Start with the defaults;
 #'   set only the options you need to change.
-#' @param cytPosMethod character Cytokine-positive rule, "refine" or
-#'   "coexpression"; used only when `calcCytPosGates = TRUE`. Default: "refine".
+#' @param cytPosMethod character Cytokine-positive rule, "coexpression" or
+#'   "antimode"; used only when [gateStim()]'s `calcCytPosGates` is TRUE. "coexpression" lowers a
+#'   cytokine's gate, for cells above another cytokine's gate, where the two
+#'   are co-expressed beyond independence and the added cells are mostly
+#'   responders (see [getStimGatesCoexpression()]). "antimode" lowers a gate to
+#'   an antimode of the taut-string density among cells positive for another
+#'   cytokine. Default: "coexpression".
 #' @param coexNBin integer Number of bins used to lower and trim pairwise gates.
 #'   Default: 20L.
 #' @param coexResidualMin numeric Minimum Pearson residual beyond independence.
 #'   Default: 3.5.
 #' @param coexPurityFrac numeric Required fraction of double-positive purity,
 #'   greater than zero and at most one. Default: 0.75.
-#' @param coexZMin numeric Minimum net double-positive z score. Default: 2.
-#' @param calcCytPosGates logical Apply the `cytPosMethod` rule. With "refine",
-#'   refine gates using cells positive for another
-#'   cytokine. Lower a clustered gate to the leftmost internal antimode between
-#'   the stimulated marginal peak plus half its negative-population width
-#'   (at least one marginal density bandwidth) and
-#'   that gate; keep the gate if none exists. Default: TRUE.
+#' @param coexZMin numeric Minimum net double-positive z score, used when
+#'   `coexScreen = TRUE`. Default: 2.
+#' @param coexScreen logical Lower a pair's gate only when the cells above both
+#'   ordinary gates show a clear net response (z above `coexZMin`). With FALSE,
+#'   every pair is tested, and the purity requirement uses zero in place of a
+#'   negative or undefined double-positive purity. Default: TRUE.
 #' @param minCell numeric Minimum cells required for gating; samples below this
 #'   count are skipped. Default: 100.
 #' @param biasUnsFactor numeric Automatic `biasUns` (when `biasUns` is NULL)
@@ -228,7 +232,6 @@
 #' stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #' @export
 stimControl <- function(
-  calcCytPosGates = TRUE,
   minCell = 1e2,
   biasUnsFactor = 1,
   excMin = TRUE,
@@ -280,17 +283,21 @@ stimControl <- function(
   normExcessNcell = 10000L,
   normAdaptiveNcell = 2500L,
   normMtd = "moments",
-  cytPosMethod = "refine",
+  cytPosMethod = "coexpression",
   coexNBin = 20L,
   coexResidualMin = 3.5,
   coexPurityFrac = 0.75,
-  coexZMin = 2
+  coexZMin = 2,
+  coexScreen = TRUE
 ) {
   ctrl <- as.list(environment())
 
   if (!is.character(cytPosMethod) || length(cytPosMethod) != 1L ||
-      is.na(cytPosMethod) || !cytPosMethod %in% c("refine", "coexpression")) {
-    stop("`cytPosMethod` must be 'refine' or 'coexpression'.")
+      is.na(cytPosMethod) || !cytPosMethod %in% c("antimode", "coexpression")) {
+    stop("`cytPosMethod` must be 'antimode' or 'coexpression'.")
+  }
+  if (!is.logical(coexScreen) || length(coexScreen) != 1L || is.na(coexScreen)) {
+    stop("`coexScreen` must be TRUE or FALSE.")
   }
   for (nm in c("coexNBin", "coexResidualMin", "coexPurityFrac", "coexZMin")) {
     value <- ctrl[[nm]]
@@ -302,12 +309,6 @@ stimControl <- function(
     }
   }
 
-  if (
-    !is.logical(calcCytPosGates) || length(calcCytPosGates) != 1L ||
-      is.na(calcCytPosGates)
-  ) {
-    stop("`calcCytPosGates` must be a single logical value (TRUE/FALSE).")
-  }
   if (!is.numeric(minCell) || length(minCell) != 1L || minCell <= 0) {
     stop("`minCell` must be a positive number.")
   }

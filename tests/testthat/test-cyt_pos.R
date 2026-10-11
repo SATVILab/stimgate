@@ -1,4 +1,4 @@
-test_that("cytPos gates are refined when the canonical example data exercises the branch", {
+test_that("antimode cytPos gates are lowered on the example data", {
   exampleData <- getExampleData()
   gs <- flowWorkspace::load_gs(exampleData$pathGs)
   pathProject <- file.path(tempdir(), "stimgate_cytpos_example")
@@ -9,7 +9,8 @@ test_that("cytPos gates are refined when the canonical example data exercises th
     pathProject = pathProject,
     popGate = "root",
     batchList = exampleData$batchList,
-    marker = exampleData$marker
+    marker = exampleData$marker,
+    control = stimControl(cytPosMethod = "antimode")
   )
 
   gateTbl <- getStimGates(pathProject)

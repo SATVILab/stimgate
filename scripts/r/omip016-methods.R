@@ -104,6 +104,7 @@
     batchList = prep$pre$batchList,
     chnl = names(prep$pre$responseChannels),
     biasUns = settings$biasUns,
+    calcCytPosGates = settings$calcCytPosGates,
     control = stimgate::stimControl(
       biasUnsFactor = settings$biasUnsFactor,
       bwMtd = settings$bwMtd,
@@ -114,7 +115,6 @@
       bwMax = settings$bwMax,
       gateCombn = settings$gateCombn,
       clusterGates = clusterGates,
-      calcCytPosGates = settings$calcCytPosGates,
       minCell = settings$minCell,
       locThresholdMethod = settings$locThresholdMethod,
       locShiftedPeakRef = isTRUE(settings$locShiftedPeakRef)

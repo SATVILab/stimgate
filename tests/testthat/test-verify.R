@@ -10,7 +10,6 @@ test_that("stimControl validates every tuning setting eagerly", {
     list("excMin", "yes", FALSE),
     list("biasUnsFactor", 0, 2),
     list("cpMin", "a", 0.1),
-    list("calcCytPosGates", "yes", FALSE),
     list("minCell", 0, 1e2),
     list("bwAdj", 0, 2),
     list("bwCluster", -1, 0.5),

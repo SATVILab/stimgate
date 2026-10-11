@@ -98,16 +98,26 @@ test_that("QMD table exports are guarded and large inline table printers stay ab
             # six outcome columns. The OMIP real-data reports (one donor or a
             # few mice) print small inline tables of their single dataset.
             # Analysis 6 prints its five best settings per method (ten rows).
-            allowed <- c(
+            allowed <- list(
               "8-sim-compare-freq_bs-batch.qmd" = ".simCompareMethodOutcomeCounts",
               "6-sim-tune-comparators.qmd" = "knitr::kable(rank_display",
               # One row per population and stimulation (four rows).
               "17-explore-acs-cytof-coexpression.qmd" = "knitr::kable(low_summary",
-              # One row per ACS population (six rows).
-              "18-explore-acs-cytof-coexpression-gates.qmd" = "knitr::kable(overview"
+              # One row per ACS population (six rows); responding counts per
+              # population and combination type (12 rows); control-tube calls
+              # per population and rule (18 rows); unscreened-only calls when
+              # at most 15.
+              "18-explore-acs-cytof-coexpression-gates.qmd" = c(
+                "knitr::kable(overview", "knitr::kable(rs_wide", "knitr::kable(ct",
+                "knitr::kable(shown"
+              )
             )
             expect_true(basename(file) %in% names(allowed), info = basename(file))
-            expect_match(paste(deparse(expr), collapse = ""), allowed[[basename(file)]], fixed = TRUE)
+            call_text <- paste(deparse(expr), collapse = "")
+            expect_true(
+              any(vapply(allowed[[basename(file)]], grepl, logical(1), x = call_text, fixed = TRUE)),
+              info = paste(basename(file), call_text)
+            )
           }
         }
         for (child in as.list(expr)[if (is.call(expr)) -1L else seq_along(expr)]) visit(child, guarded)

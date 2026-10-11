@@ -141,8 +141,9 @@
       pathProject = path, .data = data$gs, batchList = data$batches,
       popGate = "root", marker = "MarkerF1", bw = settings$bw,
       biasUns = settings$bias_uns,
+      calcCytPosGates = FALSE,
       control = stimgate::stimControl(
-        clusterGates = TRUE, calcCytPosGates = FALSE,
+        clusterGates = TRUE,
         bwCluster = settings$bw, locEnforceShapeThreshold = FALSE,
         locThresholdMethod = loc_threshold_method
       )

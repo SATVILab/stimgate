@@ -168,9 +168,11 @@ output/
 _tmp/log/sbatch/dev-13-real-debug-acs-cytof
 _tmp/log/sbatch/plots/13-real-debug-acs-cytof
 
-_tmp/log/sbatch/dev-11-sim-low-separation-cyt-pos
+_tmp/log/sbatch/11a-sim-low-separation-cyt-pos
+_tmp/log/sbatch/11b-sim-low-separation-batch
 _tmp/log/sbatch/dev-12-sim-cluster-gates
-_tmp/log/sbatch/plots/11-sim-low-separation-cyt-pos
+_tmp/log/sbatch/plots/11a-sim-low-separation-cyt-pos
+_tmp/log/sbatch/plots/11b-sim-low-separation-batch
 _tmp/log/sbatch/plots/12-sim-cluster-gates
 _tmp/log/sbatch/dev-14-real-compare-omip111
 _tmp/log/sbatch/dev-14b-real-compare-omip111-shifted-peak

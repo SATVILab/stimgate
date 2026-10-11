@@ -13,6 +13,7 @@ gateStim(
   popGate = "root",
   biasUns = NULL,
   bw = NULL,
+  calcCytPosGates = TRUE,
   control = stimControl(),
   markerControl = NULL,
   parallel = FALSE
@@ -50,13 +51,18 @@ Positive shifts make gating more conservative. Default: NULL.}
 \item{bw}{numeric or NULL Fixed density bandwidth; NULL estimates it
 automatically. Per-marker values go in \code{markerControl}. Default: NULL.}
 
+\item{calcCytPosGates}{logical Also call a cytokine positive, for cells
+positive for another cytokine, above a lower cytokine-positive gate found
+by \code{control}'s \code{cytPosMethod} (co-expression by default; see
+\code{\link[=stimControl]{stimControl()}}). FALSE keeps one gate per cytokine. Default: TRUE.}
+
 \item{control}{stimControl Tuning settings from \code{\link[=stimControl]{stimControl()}}.
 Default: stimControl().}
 
 \item{markerControl}{list or NULL Settings for single markers, named by marker
 label or channel,
 e.g. \code{list(IL2 = list(bw = 0.12, biasUns = 0))}. Accepts \code{\link[=stimControl]{stimControl()}}
-settings except \code{locEnforceShapeThreshold}, \code{calcCytPosGates},
+settings except \code{locEnforceShapeThreshold},
 \code{cytPosMethod} and the \verb{coex*} settings, plus
 \code{bw}, \code{biasUns} and \code{popGate}. Default: NULL.}
 
@@ -125,6 +131,6 @@ matrices <- lapply(seq_along(gs), function(i) {
 })
 gateStim(
   tempfile("matrix_gating_"), matrices, exampleData$batchList,
-  chnl = exampleData$chnl, control = stimControl(calcCytPosGates = FALSE)
+  chnl = exampleData$chnl, calcCytPosGates = FALSE
 )
 }

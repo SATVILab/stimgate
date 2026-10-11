@@ -25,12 +25,16 @@
 #'   Positive shifts make gating more conservative. Default: NULL.
 #' @param bw numeric or NULL Fixed density bandwidth; NULL estimates it
 #'   automatically. Per-marker values go in `markerControl`. Default: NULL.
+#' @param calcCytPosGates logical Also call a cytokine positive, for cells
+#'   positive for another cytokine, above a lower cytokine-positive gate found
+#'   by `control`'s `cytPosMethod` (co-expression by default; see
+#'   [stimControl()]). FALSE keeps one gate per cytokine. Default: TRUE.
 #' @param control stimControl Tuning settings from [stimControl()].
 #'   Default: stimControl().
 #' @param markerControl list or NULL Settings for single markers, named by marker
 #'   label or channel,
 #'   e.g. `list(IL2 = list(bw = 0.12, biasUns = 0))`. Accepts [stimControl()]
-#'   settings except `locEnforceShapeThreshold`, `calcCytPosGates`,
+#'   settings except `locEnforceShapeThreshold`,
 #'   `cytPosMethod` and the `coex*` settings, plus
 #'   `bw`, `biasUns` and `popGate`. Default: NULL.
 #' @param parallel logical Use the active [future::plan()] for initial channel
@@ -87,7 +91,7 @@
 #' })
 #' gateStim(
 #'   tempfile("matrix_gating_"), matrices, exampleData$batchList,
-#'   chnl = exampleData$chnl, control = stimControl(calcCytPosGates = FALSE)
+#'   chnl = exampleData$chnl, calcCytPosGates = FALSE
 #' )
 #' @export
 gateStim <- function(
@@ -99,6 +103,7 @@ gateStim <- function(
   popGate = "root",
   biasUns = NULL,
   bw = NULL,
+  calcCytPosGates = TRUE,
   control = stimControl(),
   markerControl = NULL,
   parallel = FALSE
@@ -168,7 +173,14 @@ gateStim <- function(
   }
   batchList <- .resolveBatchList(batchList, .data)
 
-  calcCytPosGates <- control$calcCytPosGates
+  if (
+    !is.logical(calcCytPosGates) || length(calcCytPosGates) != 1L ||
+      is.na(calcCytPosGates)
+  ) {
+    stop("`calcCytPosGates` must be a single logical value (TRUE/FALSE).")
+  }
+  # Downstream settings read the switch from the control object.
+  control$calcCytPosGates <- calcCytPosGates
 
   if (!is.logical(parallel) || length(parallel) != 1L || is.na(parallel)) {
     stop("`parallel` must be TRUE or FALSE")

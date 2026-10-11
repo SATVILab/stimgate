@@ -14,7 +14,7 @@
 #' @param gateTbl data.frame or NULL Gates with `chnl`, `batch`, `ind`, `gate`
 #'   and, for refined gates, `gateCyt`. NULL reads saved gates. Default: NULL.
 #' @param gateTypeCytPos character Positivity rule: "base" uses main gates;
-#'   "cyt" uses the saved refinement or coexpression rule.
+#'   "cyt" uses the saved antimode or coexpression rule.
 #'   Default: "cyt".
 #' @param mult logical Require positivity for at least two markers. Default: FALSE.
 #' @param combnExc list or NULL Channel combinations to exclude: each vector

@@ -358,6 +358,7 @@
     # NULL or NA biasUns: StimGate sets it to biasUnsFactor times the
     # shared bandwidth, i.e. the bandwidth itself with factor 1.
     biasUns = if (length(biasUns) == 1L && is.na(biasUns)) NULL else biasUns,
+    calcCytPosGates = FALSE,
     control = stimgate::stimControl(
       biasUnsFactor = biasUnsFactor,
       bwMtd = bwMtd,
@@ -368,7 +369,6 @@
       bwMax = "none",
       gateCombn = "min",
       clusterGates = TRUE,
-      calcCytPosGates = FALSE,
       minCell = 100,
       locThresholdMethod = locThresholdMethod
     )

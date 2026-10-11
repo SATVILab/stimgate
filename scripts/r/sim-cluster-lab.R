@@ -133,8 +133,9 @@
     stimgate::gateStim(
       pathProject = path_project, .data = data$matrices,
       batchList = data$batch_list, chnl = "Marker", bw = 0.3, biasUns = 0.3,
+      calcCytPosGates = FALSE,
       control = stimgate::stimControl(
-        clusterGates = TRUE, calcCytPosGates = FALSE, bwCluster = 0.3,
+        clusterGates = TRUE, bwCluster = 0.3,
         bwMin = "none", bwMax = "none",
         locThresholdMethod = loc_threshold_method
       )

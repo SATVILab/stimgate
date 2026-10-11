@@ -49,14 +49,17 @@
 # Lowered gate for marker `b` among cells above `a`'s ordinary gate, and the
 # raised `a` cut for the cells it adds.
 #
-# 1. Nothing moves unless the double-positive response is clear
-#    (`.coexDpZ()` > `zMin`).
+# 1. With `screen = TRUE`, nothing moves unless the double-positive response
+#    is clear (`.coexDpZ()` > `zMin`). With `screen = FALSE` every pair is
+#    tried, whatever the double positives show.
 # 2. The distance from b's gate down to its floor (`.coexNegFloor()` of the
 #    control tube) is cut into `nBin` bins. A set of bins passes when its a+
 #    stimulated cells depart from independence (Pearson residual (O - E) /
 #    sqrt(E), E from the stimulated tube's own a+ share and share of cells in
-#    the bins) by at least `rMin` and its purity is at least `frac` times the
-#    double positives'. Working back from the floor, the cut is the first bin
+#    the bins) by at least `rMin` and its purity is positive and at least
+#    `frac` times the double positives' (taken as zero when the double
+#    positives' purity is negative or undefined, as it can be without the
+#    screen). Working back from the floor, the cut is the first bin
 #    edge where that bin passes on its own and all bins from the gate down to
 #    it pass together.
 # 3. Band trim, purity only: the distance from a's gate down to its floor, in
@@ -67,7 +70,8 @@
 #
 # A cell is then b-positive if above b's gate, or above `condCut` on a and
 # `cut` on b.
-.coexLowerGate <- function(dat, a, b, nBin = 20L, rMin = 3.5, frac = 0.75, zMin = 2) {
+.coexLowerGate <- function(dat, a, b, nBin = 20L, rMin = 3.5, frac = 0.75, zMin = 2,
+                           screen = TRUE) {
   nS <- nrow(dat$stim)
   nU <- nrow(dat$uns)
   gA <- dat$gate[[a]]
@@ -77,7 +81,8 @@
   z <- .coexDpZ(dat, a, b)
   out <- list(a = a, b = b, gateA = gA, gateB = gB, cut = gB, condCut = gA,
     floorA = floorA, floorB = floorB, z = z, purityDp = NA_real_)
-  if (!is.finite(gA) || !is.finite(gB) || !(z > zMin) || floorB >= gB) {
+  if (nS == 0L || nU == 0L || !is.finite(gA) || !is.finite(gB) ||
+      (screen && !isTRUE(z > zMin)) || floorB >= gB) {
     return(out)
   }
   sAv <- dat$stim[[a]]
@@ -89,13 +94,19 @@
   pA <- mean(sA)
   pDp <- .coexPurity(sum(sA & sB > gB), sum(uA & uB > gB), nS, nU)
   out$purityDp <- pDp
+  # With the screen, pDp > 0 whenever this point is reached, so the positive
+  # purity requirement below changes nothing there.
+  purityMin <- frac * max(if (is.finite(pDp)) pDp else 0, 0)
+  pure <- function(s, u) {
+    p <- .coexPurity(s, u, nS, nU)
+    is.finite(p) && p > 0 && p >= purityMin
+  }
   passBins <- function(lo, hi) {
-    inS <- sB > lo & sB <= hi
+    inS <- (sB > lo & sB <= hi) %in% TRUE
     s <- sum(sA & inS)
-    u <- sum(uA & uB > lo & uB <= hi)
+    u <- sum(uA & (uB > lo & uB <= hi) %in% TRUE)
     e <- nS * pA * mean(inS)
-    s > 0 && (s - e) / sqrt(max(e, 1e-12)) >= rMin &&
-      .coexPurity(s, u, nS, nU) >= frac * pDp
+    s > 0 && (s - e) / sqrt(max(e, 1e-12)) >= rMin && pure(s, u)
   }
   edges <- gB - (gB - floorB) * seq_len(nBin) / nBin
   upper <- c(gB, edges[-nBin])
@@ -108,15 +119,18 @@
   if (out$cut >= gB) {
     return(out)
   }
-  bandS <- sB > out$cut & sB <= gB
-  bandU <- uB > out$cut & uB <= gB
+  bandS <- (sB > out$cut & sB <= gB) %in% TRUE
+  bandU <- (uB > out$cut & uB <= gB) %in% TRUE
   passBand <- function(lo, hi) {
-    s <- sum(bandS & sAv > lo & sAv <= hi)
-    u <- sum(bandU & uAv > lo & uAv <= hi)
-    s > 0 && .coexPurity(s, u, nS, nU) >= frac * pDp
+    s <- sum(bandS & (sAv > lo & sAv <= hi) %in% TRUE)
+    u <- sum(bandU & (uAv > lo & uAv <= hi) %in% TRUE)
+    s > 0 && pure(s, u)
   }
-  step <- max(gA - floorA, 1e-6) / nBin
-  maxA <- max(sAv[bandS & sA])
+  maxA <- max(sAv[bandS & sA], na.rm = TRUE)
+  # Steps are 1/nBin of a's gate-to-floor distance; with the floor at or
+  # above a's gate, use the added band's range on a instead, so the loop
+  # stays bounded.
+  step <- if (gA > floorA) (gA - floorA) / nBin else max(maxA - gA, 1e-6) / nBin
   lo <- gA
   while (lo < maxA && !(passBand(lo, lo + step) && passBand(lo, Inf))) {
     lo <- lo + step
@@ -207,7 +221,7 @@
             uns = lapply(chnl, function(m) (uns[[m]] > gate[[m]]) %in% TRUE) |> stats::setNames(chnl)))
         low <- .coexLowerGates(dat, nBin = settings$coexNBin,
           rMin = settings$coexResidualMin, frac = settings$coexPurityFrac,
-          zMin = settings$coexZMin)
+          zMin = settings$coexZMin, screen = settings$coexScreen %||% TRUE)
         tibble::tibble(pop = rep(pop, nrow(low)), batch = rep(batch, nrow(low)),
           ind = rep(as.character(ind), nrow(low)),
           chnlCond = low$a, markerCond = unname(labs[low$a]),
@@ -242,9 +256,10 @@
 #'   Control expression is raw (without `biasUns`). The floor is the control's
 #'   main nonzero negative peak plus 1.5 robust standard deviations, estimated
 #'   with an nrd0 Gaussian density on 2048 points. Lowering requires a net
-#'   double-positive response, excess coexpression beyond independence, and
-#'   adequate purity; the added band is trimmed along the conditioning channel.
-#'   The four `coex*` controls in [stimControl()] set these tests and bin counts.
+#'   double-positive response (unless `coexScreen = FALSE`), excess
+#'   coexpression beyond independence, and adequate purity; the added band is
+#'   trimmed along the conditioning channel. The `coex*` controls in
+#'   [stimControl()] set these tests and bin counts.
 #' @return A tibble with one row per stimulated sample and ordered channel pair:
 #'   `pop`, `batch`, `ind`; `chnlCond`, `markerCond` identify the conditioning
 #'   cytokine; `chnl`, `marker` identify the target cytokine; `gate`, `cut`,
@@ -252,7 +267,7 @@
 #'   `floor`, `floorCond` are the target and conditioning floors; `z` is the net
 #'   double-positive z score; `purityDp` is double-positive purity (NA when the
 #'   initial tests fail); and `lowered` indicates whether `cut < gate`.
-#'   Projects using refinement or with cytokine-positive gating disabled error.
+#'   Projects using the antimode rule or with cytokine-positive gating disabled error.
 #' @examples
 #' \donttest{
 #' exampleData <- getExampleData()

@@ -259,18 +259,18 @@ test_that("gateStim applies the region gate on both filtering routes", {
     )
     control <- if (is.null(method)) {
       stimControl(
-        clusterGates = FALSE, calcCytPosGates = FALSE,
+        clusterGates = FALSE,
         locEnforceShapeThreshold = shape
       )
     } else {
       stimControl(
-        clusterGates = FALSE, calcCytPosGates = FALSE,
+        clusterGates = FALSE,
         locEnforceShapeThreshold = shape, locThresholdMethod = method
       )
     }
     withr::with_seed(1, gateStim(
       pathProject, gs, exampleData$batchList,
-      marker = marker, control = control
+      marker = marker, calcCytPosGates = FALSE, control = control
     ))
   }
 

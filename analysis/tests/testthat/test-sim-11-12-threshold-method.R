@@ -50,72 +50,65 @@ test_that("saved threshold methods must equal the requested method", {
   }
 })
 
-test_that("Analysis 11 forwards the threshold method to stimControl()", {
+test_that("Analysis 11 forwards the threshold and cytokine-positive settings", {
   testthat::skip_if_not_installed("simcyto")
   env <- .threshold_method_env("sim-low-separation.R")
   withr::local_preserve_seed()
   seen <- NULL
-  env$gateStim <- function(..., control) {
-    seen <<- control$locThresholdMethod
+  env$gateStim <- function(..., calcCytPosGates, control) {
+    seen <<- list(method = control$locThresholdMethod, cyt_pos = calcCytPosGates,
+      cyt_pos_method = control$cytPosMethod)
     stop("captured threshold control")
   }
+  env$stimControl <- function(...) list(...)
   row <- env$.simLowSepGrid(55700L)[1, ]
   row$n_cell <- 200
   for (method in c("region", "match")) {
     seen <- NULL
-    settings <- env$.simLowSepMainSettings(loc_threshold_method = method)
+    settings <- env$.simLowSepMainSettings(loc_threshold_method = method, n_sample = 1L)
     expect_identical(settings$loc_threshold_method, method)
-    expect_error(env$.simLowSepRunScenario(row, 1L, settings),
-      "captured threshold control")
-    expect_identical(seen, method)
+    expect_error(env$.simLowSepScenario(row, settings), "captured threshold control")
+    expect_identical(seen, list(method = method, cyt_pos = TRUE, cyt_pos_method = "antimode"))
   }
   settings$loc_threshold_method <- NULL
-  expect_error(env$.simLowSepRunScenario(row, 1L, settings),
-    "set explicitly")
+  expect_error(env$.simLowSepScenario(row, settings), "set explicitly")
+  settings <- env$.simLowSepMainSettings(loc_threshold_method = "cap", n_sample = 1L)
+  settings$cyt_pos_method <- "coexpression"
+  expect_error(env$.simLowSepScenario(row, settings), "antimode")
 })
 
-test_that("Analysis 11 rejects caches without the threshold method", {
+test_that("Analysis 11 validation rejects gates without the requested method", {
   env <- .threshold_method_env("sim-low-separation.R")
-  withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA)
-  path <- withr::local_tempfile(fileext = ".rds")
-  grid <- env$.simLowSepGrid(1L)
-  main <- env$.simLowSepMainSettings(loc_threshold_method = "region")
-  settings <- env$.simLowSepCacheSettings(grid, 2L, main, 1L,
-    list(sim_size = "final"))
-  expect_identical(settings$analysis_semantics_version,
-    "sim-low-separation-v7")
-  expect_identical(settings$settings$loc_threshold_method, "region")
-
-  # A cache made before the change: v1, no method in settings or gates.
-  old_main <- main[setdiff(names(main), "loc_threshold_method")]
-  old <- env$.simLowSepCacheSettings(grid, 2L, old_main, 1L,
-    list(sim_size = "final"))
-  old$analysis_semantics_version <- "sim-low-separation-v1"
-  env$.simLowSepWriteCache(list(gates = tibble::tibble(gate = 1)), old, path)
-  expect_error(env$.simLowSepReadCache(path, settings, c("sim", "test")),
-    "different settings")
-
-  # Matching settings but gate rows without the method are also rejected.
-  env$.simLowSepWriteCache(list(gates = tibble::tibble(gate = 1)), settings,
-    path)
-  expect_error(env$.simLowSepReadCache(path, settings, c("sim", "test")),
-    "locThresholdMethod")
-  env$.simLowSepWriteCache(
-    list(gates = tibble::tibble(gate = 1, locThresholdMethod = "match")),
-    settings, path
-  )
-  expect_error(env$.simLowSepReadCache(path, settings, c("sim", "test")),
-    "locThresholdMethod")
+  gates <- function(method) {
+    tibble::tibble(sample = 1L, marker = c("TNF", "IFNg"), gate = 1, gate_cyt = 1,
+      locThresholdMethod = method)
+  }
+  tbl <- tibble::tibble(sim_id = 1:2, n_sample_run = 1L,
+    gates = list(gates("cap"), gates("region")),
+    coex_gates = list(tibble::tibble(x = 1:4), tibble::tibble(x = 1:4)),
+    counts = list(tibble::tibble(x = 1:128), tibble::tibble(x = 1:128)),
+    cells = list(NULL, NULL))
+  problems <- env$.simLowSepValidator(1L, "cap")(tbl)
+  expect_length(problems, 1L)
+  expect_match(problems, "locThresholdMethod for sim_id: 2")
+  tbl$gates[[2]]$locThresholdMethod <- NULL
+  expect_match(env$.simLowSepValidator(1L, "cap")(tbl), "sim_id: 2")
 })
 
-test_that("QMD 11 sets the threshold method explicitly to cap", {
-  qmd <- .threshold_method_read_qmd("11-sim-low-separation-cyt-pos.qmd")
-  code <- paste(.threshold_method_qmd_chunk(qmd, "main-settings"),
-    collapse = "\n")
-  expect_match(code,
-    '.simLowSepMainSettings(loc_threshold_method = "cap")', fixed = TRUE)
-  cache <- paste(.threshold_method_qmd_chunk(qmd, "simulate"), collapse = "\n")
-  expect_match(cache, "settings = main_settings", fixed = TRUE)
+test_that("QMDs 11a and 11b set the threshold method explicitly to cap", {
+  for (name in c("11a-sim-low-separation-cyt-pos.qmd", "11b-sim-low-separation-batch.qmd")) {
+    qmd <- .threshold_method_read_qmd(name)
+    code <- paste(.threshold_method_qmd_chunk(qmd, "main-settings"),
+      collapse = "\n")
+    expect_match(code,
+      '.simLowSepMainSettings(loc_threshold_method = "cap", n_sample = sizes$n_sample)',
+      fixed = TRUE, info = name)
+    grid <- paste(.threshold_method_qmd_chunk(qmd, "grid"), collapse = "\n")
+    expect_match(grid, "scenario_settings = main_settings", fixed = TRUE, info = name)
+    sim <- paste(.threshold_method_qmd_chunk(qmd, "simulate"), collapse = "\n")
+    expect_match(sim, "settings = main_settings", fixed = TRUE, info = name)
+    expect_match(sim, "main_settings$loc_threshold_method", fixed = TRUE, info = name)
+  }
 })
 
 test_that("Analysis 12 wrappers forward the threshold method", {

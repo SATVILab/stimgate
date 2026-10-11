@@ -181,10 +181,16 @@
         }), sampleMap$sample)
         pathStim <- file.path(pathTmp, strain, population, "stimgate")
         message("Running StimGate: ", strain, " ", population)
-        control <- do.call(stimgate::stimControl, settings$control)
+        # calcCytPosGates is a gateStim() argument; the other settings are
+        # stimControl() settings.
+        control <- do.call(
+          stimgate::stimControl,
+          settings$control[setdiff(names(settings$control), "calcCytPosGates")]
+        )
         .analysis_with_seed(settings$seed, stimgate::gateStim(
           pathProject = pathStim, .data = data, batchList = batchList,
-          marker = markers, biasUns = NULL, control = control
+          marker = markers, biasUns = NULL, calcCytPosGates = isTRUE(settings$control$calcCytPosGates),
+          control = control
         ))
         gates <- stimgate::getStimGates(pathStim)
         gates <- gates[gates$gateName == "loc_minClust", ]
