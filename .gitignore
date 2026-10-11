@@ -185,3 +185,12 @@ _tmp/log/sbatch/plots/15b-real-compare-omip016-shifted-peak
 _tmp/log/sbatch/dev-6-sim-tune-comparators
 _tmp/log/sbatch/plots/6-sim-tune-comparators
 _tmp/log/sbatch/dev-17-explore-acs-cytof-coexpression
+_tmp/log/sbatch/11a-sim-low-separation-cyt-pos/chunk-1
+_tmp/log/sbatch/11a-sim-low-separation-cyt-pos/chunk-2
+_tmp/log/sbatch/11a-sim-low-separation-cyt-pos/chunk-3
+_tmp/log/sbatch/11a-sim-low-separation-cyt-pos/chunk-4
+_tmp/log/sbatch/11b-sim-low-separation-batch/chunk-1
+_tmp/log/sbatch/11b-sim-low-separation-batch/chunk-2
+_tmp/log/sbatch/11b-sim-low-separation-batch/chunk-3
+_tmp/log/sbatch/11b-sim-low-separation-batch/chunk-4
+_tmp/log/sbatch/dev-18-explore-acs-cytof-coexpression-gates

@@ -35,6 +35,10 @@
       "test-sim-compare-recorded-errors.R",
       "test-analysis-sim-size.R", "test-qmd7-presentation.R"
     ),
+    "7b-sim-compare-null.qmd" = c(
+      "test-sim-compare-null.R", "test-sim-compare-freq_bs-simcyto.R",
+      "test-analysis-mcse.R", "test-sim-compare-recorded-errors.R"
+    ),
     "8-sim-compare-freq_bs-batch.qmd" = c(
       "test-signed-percentile-plots.R",
       "test-sim-compare-freq_bs-batch.R", "test-sim-compare-classification.R",

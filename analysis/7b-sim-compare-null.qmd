@@ -1,0 +1,729 @@
+---
+title: Compare background-subtracted frequency approaches when nothing responds
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  analysis_run_id: null
+  simulation_seed: 22345
+  sim_grid_chunk_index: 1
+  sim_grid_n_chunks: 1
+  run_simulations: true
+  run_plots: false
+  show_mcse: "on"
+---
+
+This analysis repeats Analysis 7's comparison of StimGate, F-beta and Tailgate
+when the stimulation causes no response at all. The true background-subtracted
+frequency is then zero, so every non-zero estimate is an error, and a method
+should report a frequency close to zero rather than find a response.
+
+## Set-up
+
+```{r}
+#| label: setup
+#| include: false
+library(ggplot2)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(furrr)
+library(progressr)
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-mcse.R"))
+analysis_qmd <- "analysis/7b-sim-compare-null.qmd"
+
+run_simulations <- .as_flag(.get_qmd_param_env(
+  "run_simulations",
+  "RUN_SIMULATIONS",
+  FALSE
+))
+analysis_run_id <- .get_qmd_param_env(
+  "analysis_run_id",
+  "ANALYSIS_RUN_ID",
+  NULL
+)
+analysis_key <- c("sim", "compare", "null")
+simulation_seed <- as.integer(.get_qmd_param_env(
+  "simulation_seed",
+  "SIMULATION_SEED",
+  12345L
+))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
+comparison_semantics_version <- "compare-null-v1"
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+# "draft" (current default) or "final" sample/dataset counts; dev and quick win.
+sim_size <- .analysis_sim_size()
+analysis_key <- .analysis_mode_key(analysis_key)
+fig_key <- .analysis_mode_key("7b-sim-compare-null")
+run_plots <- .as_flag(.get_qmd_param_env(
+  "run_plots",
+  "RUN_PLOTS",
+  TRUE
+))
+# Monte Carlo error bars on the summary plots (see analysis-mcse.R).
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "on"))
+show_mcse <- mcse_mode != "off"
+sim_grid_chunk_index <- as.integer(
+  .get_qmd_param_env("sim_grid_chunk_index", "SIM_GRID_CHUNK_INDEX", 1L)
+)
+sim_grid_n_chunks <- as.integer(
+  .get_qmd_param_env("sim_grid_n_chunks", "SIM_GRID_N_CHUNKS", 1L)
+)
+.validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
+sim_chunk_label <- .sim_chunk_label(sim_grid_chunk_index, sim_grid_n_chunks)
+
+desc_path <- file.path(root_dir, "DESCRIPTION")
+
+if (
+  file.exists(desc_path) &&
+    grepl("Package: stimgate", readLines(desc_path, n = 1))
+) {
+  devtools::load_all(root_dir)
+} else {
+  stop("Expected the stimgate DESCRIPTION at the repository root: ", root_dir)
+}
+
+if (isTRUE(run_plots)) {
+  .analysis_require_packages(c("simcyto", "scales"))
+}
+
+if (isTRUE(run_simulations)) {
+  .analysis_require_packages(c("cytoUtils", "openCyto", "flowStats", "simcyto"))
+}
+
+# Source simulation helpers in dependency order:
+# 1. sim-misc.R: general simulation utilities and transformation lookups
+# 2. sim-bandwidth.R: location details reader and bandwidth helpers
+# 3. sim-compare-freq_bs.R: comparison functions requiring the helpers above
+# 4. sim-compare-null.R: this analysis's grid, summaries and figures
+for (fn in c(
+  "sim-misc.R",
+  "sim-bandwidth.R",
+  "sim-bandwidth-analysis-io.R",
+  "sim-bandwidth-analysis-plot.R",
+  "acs_cytof-plot_cyt.R",
+  "sim-compare-freq_bs.R",
+  "sim-compare-null.R"
+)) {
+  source(file.path(scripts_r_dir, fn))
+}
+
+```
+
+## Scientific settings
+
+### Aim
+
+Analysis 7 measures how well each method estimates a response that is there.
+Here no cell responds: the stimulated tube is drawn from the same distribution
+as the unstimulated tube. Two situations are covered:
+
+1. Neither tube has any cytokine-positive cells: both are all negative cells.
+2. Both tubes have the same share of cytokine-positive (background) cells,
+   either low (0.01%) or higher (1%). The positive cells follow the same
+   distribution as Analysis 7's responding cells, so they look like a response
+   in each tube on its own, but they are no more common in the stimulated tube.
+
+Every method setting is Analysis 7's (see that analysis for the reasons):
+StimGate with automatic `nrd0` bandwidths shared per marker, its unstimulated
+bias equal to the shared bandwidth, threshold clustering and the capped
+local-FDR threshold method; Tailgate with automatic tolerance and a bias of
+0.1; F-beta with the standard settings. Tailgate without the bias ("Tailgate
+(default settings)") is kept in the tables.
+
+### Simulation settings
+
+As in Analysis 7, each scenario simulates 20 datasets of 20 samples in final
+runs and 5 datasets of 20 samples in draft runs (`SIM_SIZE=draft`), the samples
+of a dataset are gated together, and the dataset is the unit for uncertainty.
+The cell counts, transformations and separations (positions of the positive
+cells) are Analysis 7's. Cell counts are exact (`probExact = TRUE`), so both
+tubes have the same number of positive cells and the true net frequency is
+exactly zero. Scenarios that would duplicate another are left out: with no
+positive cells the separation does nothing, so only one separation is run, and
+a 0.01% background rounds to no cells at 1,000 and 5,000 cells per tube, so it
+is run only at 20,000 (2 positive cells per tube) and 100,000 (10).
+
+```{r}
+#| label: actual-settings
+n_cell_stim_vec <- c(1e3, 5e3, 2e4, 1e5)
+# No response; the background share of positive cells is the same in both tubes.
+prob_background_vec <- .simCompareNullBackgrounds
+
+mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
+
+transformation_vec <- c("gaussian", "gamma", "skew")
+sample_perturbation_sd_vec <- 0
+condition_perturbation_sd_vec <- 0
+cluster_perturbation_sd_vec <- 0
+n_cell_uns_relative_to_stim_vec <- 1
+
+# StimGate bandwidth settings.
+stimgate_bw_mtd <- "nrd0"
+stimgate_bw_scope <- "cytokine"
+# StimGate's unstimulated-sample bias equals its shared bandwidth:
+# with biasUns = NULL, gateStim() uses bwShared * biasUnsFactor.
+stimgate_bias_uns_factor <- 1
+stimgate_bw_ncell_max <- 1e4
+# Tubes with fewer cells are upsampled to this many before bandwidth selection.
+stimgate_bw_ncell_min <- 1e4
+stimgate_bw_fallback <- "auto"
+stimgate_bw_min <- "none"
+stimgate_bw_max <- "none"
+
+# StimGate method settings for the full method comparison.
+# Cluster refinement is enabled to represent the full one-marker procedure.
+# Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
+cluster_gates <- TRUE
+loc_enforce_shape_threshold <- FALSE
+# Condition-level local-FDR gate: the region boundary, moved up only where
+# its frequency exceeds 1.3 times the probability-sum estimate ("cap").
+stimgate_loc_threshold_method <- "cap"
+calc_cyt_pos_gates <- FALSE
+# Each dataset of `n_sample_sim` samples is gated together (shared settings
+# and cluster gates), so the dataset is the unit for uncertainty. Draft keeps
+# the samples per dataset and uses a quarter of the datasets (at least 5).
+n_sample_sim <- if (analysis_quick) 1L else 20L
+n_iter_sim <- if (analysis_quick) 1L else c(final = 20L, draft = 5L)[[sim_size]]
+
+fbeta_beta <- 0.8
+fbeta_theta <- 2
+fbeta_width <- 10
+path_fbeta <- file.path(
+  root_dir,
+  "scripts",
+  "python",
+  "fbeta.py"
+)
+if (isTRUE(run_simulations)) {
+  if (!file.exists(path_fbeta)) {
+    stop("F-beta comparison script not found: ", path_fbeta)
+  }
+  .simCompareFbetaEnvironment(pathFbeta = path_fbeta)
+}
+
+tailgate_adjust <- 1
+tailgate_method <- "firstDeriv"
+tailgate_tol <- 1e-2
+tailgate_auto_tol <- TRUE
+# Tailgate's cutpoint is moved up by this amount, as StimGate's gates are
+# moved up by its bias. The unbiased cutpoint is kept as "tailgate_default".
+tailgate_bias <- 0.1
+tailgate_x <- "stim"
+```
+
+## Simulation
+
+Each biological scenario has its own seed, assigned on the full grid before
+quick/dev filters or chunking. Each replicate dataset has a seed drawn before
+any method runs.
+
+### Simulation grid
+
+```{r}
+#| label: compare-grid
+#| include: false
+sim_grid <- tidyr::expand_grid(
+  mean_pos_settings_tbl,
+  prob_response = 0,
+  prob_background = prob_background_vec,
+  n_cell = n_cell_stim_vec,
+  bw_mtd = stimgate_bw_mtd,
+  bw_scope = stimgate_bw_scope,
+  bw_ncell_max = stimgate_bw_ncell_max,
+  bw_ncell_min = stimgate_bw_ncell_min,
+  bw_fallback = stimgate_bw_fallback,
+  bw_min = stimgate_bw_min,
+  bw_max = stimgate_bw_max,
+  sample_perturbation_sd = sample_perturbation_sd_vec,
+  condition_perturbation_sd = condition_perturbation_sd_vec,
+  cluster_perturbation_sd = cluster_perturbation_sd_vec,
+  n_cell_uns_relative_to_stim = n_cell_uns_relative_to_stim_vec
+) |>
+  dplyr::mutate(
+    bias_uns = NA_real_,
+    bias_uns_factor = stimgate_bias_uns_factor
+  ) |>
+  dplyr::select(
+    transformation,
+    prob_response,
+    prob_background,
+    n_cell,
+    mean_pos_setting,
+    mean_pos,
+    bw_mtd,
+    bw_scope,
+    bw_ncell_max,
+    bw_ncell_min,
+    bw_fallback,
+    bw_min,
+    bw_max,
+    bias_uns,
+    bias_uns_factor,
+    sample_perturbation_sd,
+    condition_perturbation_sd,
+    cluster_perturbation_sd,
+    n_cell_uns_relative_to_stim
+  ) |>
+  # Drop duplicates: separation is irrelevant without positive cells, and a
+  # background that rounds to no cells is the no-background scenario.
+  dplyr::filter(
+    !(prob_background == 0 & mean_pos_setting != "high"),
+    !(prob_background > 0 & round(n_cell * prob_background) < 1)
+  ) |>
+  .simCompareNullSeedGrid(simulation_seed)
+
+# Keep every seeded row available for an exact interactive rerun.
+sim_grid_full <- sim_grid
+
+# Quick mode: smallest grid covering every figure; dev takes precedence.
+if (analysis_quick) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell %in% c(5e3, 2e4),
+      transformation %in% c("gaussian", "gamma"),
+      mean_pos_setting == "high"
+    )
+}
+
+if (analysis_dev) {
+  sim_grid <- sim_grid |>
+    dplyr::filter(
+      n_cell == 2e4,
+      prob_background == 1e-2,
+      mean_pos_setting == "high",
+      transformation == "gaussian"
+    )
+}
+
+sim_grid_all <- sim_grid
+analysis_grid_spec <- sim_grid_all
+
+if (sim_grid_n_chunks > 1L && nrow(sim_grid_all) > 0L) {
+  sim_grid <- sim_grid_all |>
+    dplyr::filter(
+      ((dplyr::row_number() - 1L) %% sim_grid_n_chunks) + 1L ==
+        sim_grid_chunk_index
+    )
+}
+
+sim_grid
+print(paste0("Total simulation scenarios: ", nrow(sim_grid)))
+```
+
+Run the simulations in parallel, with progress reporting. Each scenario has a
+deterministic seed recorded in `sim_seed`, so its simulation is stable
+across worker scheduling and grid chunking.
+
+```{r}
+#| label: compare-parallel
+#| include: false
+n_workers <- max(1, .simGetCores())
+
+analysis_result_params <- list(
+  comparison_semantics_version = comparison_semantics_version,
+  simulation_seed = simulation_seed,
+  analysis_grid_spec = analysis_grid_spec,
+  analysis_quick = analysis_quick,
+  analysis_dev = analysis_dev,
+  sim_size = sim_size,
+  n_cell_stim_vec = n_cell_stim_vec,
+  prob_response = 0,
+  prob_background_vec = prob_background_vec,
+  transformation_vec = transformation_vec,
+  mean_pos_settings_tbl = mean_pos_settings_tbl,
+  sample_perturbation_sd_vec = sample_perturbation_sd_vec,
+  condition_perturbation_sd_vec = condition_perturbation_sd_vec,
+  cluster_perturbation_sd_vec = cluster_perturbation_sd_vec,
+  n_cell_uns_relative_to_stim_vec = n_cell_uns_relative_to_stim_vec,
+  stimgate_bias_uns_factor = stimgate_bias_uns_factor,
+  prob_exact = TRUE,
+  cov_ev_min = 1.5,
+  cov_ev_max = 1.5,
+  n_sample_sim = n_sample_sim,
+  n_iter_sim = n_iter_sim,
+  stimgate_bw_mtd = stimgate_bw_mtd,
+  stimgate_bw_scope = stimgate_bw_scope,
+  stimgate_bw_ncell_max = stimgate_bw_ncell_max,
+  stimgate_bw_ncell_min = stimgate_bw_ncell_min,
+  stimgate_bw_fallback = stimgate_bw_fallback,
+  stimgate_bw_min = stimgate_bw_min,
+  stimgate_bw_max = stimgate_bw_max,
+  cluster_gates = cluster_gates,
+  loc_enforce_shape_threshold = loc_enforce_shape_threshold,
+  stimgate_loc_threshold_method = stimgate_loc_threshold_method,
+  calc_cyt_pos_gates = calc_cyt_pos_gates,
+  fbeta_beta = fbeta_beta,
+  fbeta_theta = fbeta_theta,
+  fbeta_width = fbeta_width,
+  tailgate_adjust = tailgate_adjust,
+  tailgate_method = tailgate_method,
+  tailgate_tol = tailgate_tol,
+  tailgate_auto_tol = tailgate_auto_tol,
+  tailgate_bias = tailgate_bias,
+  tailgate_x = tailgate_x
+)
+
+
+compare_raw <- tibble::tibble()
+
+if (isTRUE(run_simulations)) {
+  run_ctx <- .analysis_run_context(
+    analysis_key = analysis_key,
+    run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
+    path_root = root_dir,
+    params = c(
+      list(
+        run_simulations = run_simulations,
+        run_plots = run_plots,
+        sim_grid_chunk_index = sim_grid_chunk_index,
+        sim_grid_n_chunks = sim_grid_n_chunks
+      ),
+      analysis_result_params
+    ),
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks
+  )
+
+  path_progress_file <- run_ctx$progress_file
+  dir_output <- run_ctx$chunk_output_dir
+  dir.create(dir_output, recursive = TRUE, showWarnings = FALSE)
+  dir.create(dirname(path_progress_file), recursive = TRUE, showWarnings = FALSE)
+
+  path_rds <- file.path(
+    run_ctx$staging_collated_dir,
+    if (sim_grid_n_chunks > 1L) {
+      sprintf("compare_raw_chunk_%s.rds", sim_chunk_label)
+    } else {
+      "compare_raw.rds"
+    }
+  )
+
+  if (interactive()) {
+    progressr::handlers(global = TRUE)
+  }
+
+  if (nrow(sim_grid) > 0L) {
+    compare_raw <- .simCompareFreqBsGrid(
+      sim_grid = sim_grid,
+      nSample = n_sample_sim,
+      nIter = n_iter_sim,
+      nMarker = 1,
+      nCondition = 2,
+      nCluster = 2,
+      probExact = TRUE,
+      covEvMin = 1.5,
+      covEvMax = 1.5,
+      clusterGates = cluster_gates,
+      locEnforceShapeThreshold = loc_enforce_shape_threshold,
+      locThresholdMethod = stimgate_loc_threshold_method,
+      calcCytPosGates = calc_cyt_pos_gates,
+      pathFbeta = path_fbeta,
+      fbetaBeta = fbeta_beta,
+      fbetaTheta = fbeta_theta,
+      fbetaWidth = fbeta_width,
+      tailgateAdjust = tailgate_adjust,
+      tailgateAutoTol = tailgate_auto_tol,
+      tailgateBias = tailgate_bias,
+      tailgateMethod = tailgate_method,
+      tailgateTol = tailgate_tol,
+      tailgateX = tailgate_x,
+      parallel = (n_workers > 1L),
+      workers = n_workers,
+      dirCache = dir_output,
+      pathProgress = path_progress_file,
+      dirJobs = run_ctx$chunk_jobs_dir,
+      progressHeading = "NULL-RESPONSE COMPARISON SIMULATION PROGRESS",
+      resume = TRUE,
+      retryErrors = TRUE,
+      sim_grid_chunk_index = if (sim_grid_n_chunks > 1L) {
+        sim_grid_chunk_index
+      } else {
+        NULL
+      },
+      sim_grid_n_chunks = if (sim_grid_n_chunks > 1L) {
+        sim_grid_n_chunks
+      } else {
+        NULL
+      }
+    )
+
+    .write_rds_atomic(compare_raw, path_rds)
+  } else {
+    message("No simulations assigned to this chunk.")
+  }
+
+  chunk_check <- .simCompareGridOutputStatus(
+    compare_raw,
+    sim_grid = sim_grid,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim
+  )
+  chunk_collate_ok <- isTRUE(chunk_check$collate_ok)
+  chunk_validation_ok <- isTRUE(chunk_check$validation_ok)
+  n_failed <- length(chunk_check$failed_ids)
+  n_completed <- length(chunk_check$completed_ids)
+
+  validation_error <- if (!chunk_collate_ok) {
+    paste0(
+      "Chunk collation does not match the assigned simulation grid. Missing sim_id: ",
+      paste(chunk_check$missing_ids, collapse = ", "),
+      "; extra sim_id: ",
+      paste(chunk_check$extra_ids, collapse = ", "),
+      "."
+    )
+  } else if (length(chunk_check$failed_ids) > 0L) {
+    paste0(
+      "Chunk contains incomplete, non-finite or errored primary method results for sim_id: ",
+      paste(chunk_check$failed_ids, collapse = ", "),
+      "."
+    )
+  } else {
+    NULL
+  }
+
+  .analysis_mark_chunk(
+    run_ctx = run_ctx,
+    total_sims = nrow(sim_grid),
+    completed_sims = n_completed,
+    failed_sims = n_failed,
+    collate_ok = chunk_collate_ok,
+    validation_ok = chunk_validation_ok,
+    error_message = validation_error
+  )
+
+  if (!isTRUE(chunk_validation_ok)) {
+    stop(validation_error)
+  }
+
+  .simComparePromoteIfReady(
+    run_ctx = run_ctx,
+    sim_grid_all = sim_grid_all,
+    total_sims = nrow(sim_grid),
+    completed_sims = n_completed,
+    failed_sims = n_failed,
+    nSample = n_sample_sim,
+    nIter = n_iter_sim
+  )
+
+  if (sim_grid_n_chunks > 1L) {
+    message(
+      "Completed this simulation chunk. ",
+      "Render with run_simulations = FALSE after all chunks are promoted ",
+      "to inspect summaries or write plots."
+    )
+    knitr::knit_exit()
+  }
+} else {
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key,
+    path_root = root_dir,
+    qmd_path = analysis_qmd
+  )
+  message("Skipping simulations; using canonical promoted results.")
+}
+```
+
+## Collation
+
+```{r}
+#| label: compare-collate
+#| echo: false
+#| results: asis
+# Without `run_ctx` (simulation chunk not run in this session), read the
+# canonical promoted results under `current/`.
+if (!exists("run_ctx")) {
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key, path_root = root_dir, qmd_path = analysis_qmd
+  )
+}
+
+path_rds <- .analysis_current_file(
+  run_ctx = run_ctx,
+  relative_path = c("collated", "compare_raw.rds"),
+  required_params = analysis_result_params
+)
+compare_raw <- .analysis_read_rds(path_rds, analysis_key, analysis_qmd)
+
+if (any(compare_raw$propRespTruth[compare_raw$method %in% .simCompareMethods] != 0)) {
+  stop("Every simulated net frequency must be exactly zero in this analysis.")
+}
+null_errors <- .simCompareNullErrors(compare_raw)
+scenario_cols <- c("transformation", "mean_pos_setting", "mean_pos",
+  "prob_background", "n_cell", "method")
+null_summary <- .simCompareNullSummary(null_errors, scenario_cols,
+  mcse = show_mcse && isTRUE(run_plots))
+null_provenance <- .simCompareNullProvenance(null_errors,
+  setdiff(scenario_cols, "method"))
+
+if (!isTRUE(run_plots)) {
+  message("run_plots is false, so stopping after collation.")
+  knitr::knit_exit()
+}
+
+if (isTRUE(run_plots)) {
+  .analysis_report_table(null_summary,
+    c(fig_key, paste0("mcse_", mcse_mode), "null-error-summary.csv"),
+    "Signed and absolute frequency errors (percentage points) by scenario and method.",
+    path_root = root_dir)
+}
+plot_dir <- .analysis_fig_dir(fig_key, path_root = root_dir)
+```
+
+## Results
+
+The error is the estimated background-subtracted frequency minus the true
+one, which is zero, in percentage points (pp): an error of 0.01 pp is one
+extra positive cell per 10,000 in the stimulated tube. Statistics pool every
+sample of every dataset in a scenario (tube-level distributions). With Monte
+Carlo intervals on (`show_mcse`), error bars are 95% bootstrap intervals that
+resample whole datasets, so they reflect the datasets, not the tubes, as the
+independent unit; at least five datasets and 95% finite bootstrap draws are
+required. Comparator runtime errors are missing outcomes, not zero errors;
+`n_finite` in the summary table counts the samples with an estimate.
+
+Figures show StimGate, Tailgate (with its bias) and F-beta; Tailgate at its
+default settings is in the CSV tables only. Panels have their own y ranges.
+Without positive cells there is no separation setting, so those figures have
+one panel per transformation.
+
+```{r}
+#| label: null-figures
+#| echo: false
+#| results: asis
+fig_methods <- c("stimgate", "tailgate", "fbeta")
+fig_specs <- list(
+  list(stat = "error_median", name = "median_error",
+    heading = "Median error",
+    text = "The median signed error: a typical sample's estimate.",
+    y = "Median error (pp)", zero = TRUE),
+  list(stat = "error_p90", name = "p90_error",
+    heading = "90th percentile of the error",
+    text = paste("The 90th percentile of the signed error: one sample in ten",
+      "overestimates by more than this (an apparent response)."),
+    y = "90th percentile of error (pp)", zero = TRUE),
+  list(stat = "abs_error_p90", name = "p90_abs_error",
+    heading = "90th percentile of the absolute error",
+    text = paste("The 90th percentile of the absolute error, in either",
+      "direction: one sample in ten is further from zero than this."),
+    y = "90th percentile of |error| (pp)", zero = FALSE)
+)
+for (bg in prob_background_vec) {
+  .analysis_heading(.simCompareNullBackgroundLabel(bg), 3L)
+  d_bg <- null_summary |>
+    dplyr::filter(prob_background == bg, method %in% fig_methods)
+  for (spec in fig_specs) {
+    .analysis_heading(spec$heading, 4L)
+    cat(spec$text, "\n\n")
+    .analysis_print_save_fig(
+      .simCompareNullPlot(d_bg, spec$stat, spec$y, zero_line = spec$zero,
+        by_separation = bg > 0),
+      file.path(plot_dir, spec$name,
+        paste0("null_", spec$name, "_background_", format(bg, scientific = TRUE), ".png")),
+      width = 20, height = 22, mcse_mode = mcse_mode
+    )
+  }
+}
+```
+
+### Share of samples with a positive estimate
+
+A positive estimate is an apparent response. Shares are over the samples
+with an estimate, by scenario and method.
+
+```{r}
+#| label: null-share-positive
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  .analysis_report_table(
+    null_summary |>
+      dplyr::select(transformation, mean_pos_setting, prob_background, n_cell,
+        method, n_sample, n_finite, share_positive) |>
+      dplyr::mutate(share_positive = round(share_positive, 3)),
+    c(fig_key, paste0("mcse_", mcse_mode), "null-share-positive.csv"),
+    "Share of samples with a positive estimated frequency.", path_root = root_dir)
+}
+```
+
+### How StimGate set its gates
+
+StimGate can report that it found no response: its local-FDR step then
+returns no threshold and a fallback gate is used. The table counts, per
+scenario, samples whose gate came from local FDR directly, from another
+sample through threshold sharing, or from a fallback.
+
+```{r}
+#| label: null-provenance
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  .analysis_report_table(null_provenance,
+    c(fig_key, paste0("mcse_", mcse_mode), "stimgate-gate-provenance.csv"),
+    "StimGate gate provenance by scenario (samples).", path_root = root_dir)
+}
+```
+
+## Rerun one scenario
+
+A single scenario can be rerun with the production settings and RNG.
+Run the setup, settings and grid chunks first.
+
+```{r}
+#| label: rerun-one-simulation
+#| include: false
+#| eval: false
+sim_id_rerun <- 1L
+row_rerun <- sim_grid_full[sim_grid_full$sim_id == sim_id_rerun, , drop = FALSE]
+stopifnot(nrow(row_rerun) == 1L)
+compare_one <- .simCompareRunScenario(
+  row = row_rerun,
+  nSample = n_sample_sim,
+  nIter = n_iter_sim,
+  nMarker = 1,
+  nCondition = 2,
+  nCluster = 2,
+  probExact = TRUE,
+  covEvMin = 1.5,
+  covEvMax = 1.5,
+  clusterGates = cluster_gates,
+  locEnforceShapeThreshold = loc_enforce_shape_threshold,
+  locThresholdMethod = stimgate_loc_threshold_method,
+  calcCytPosGates = calc_cyt_pos_gates,
+  pathFbeta = path_fbeta,
+  fbetaBeta = fbeta_beta,
+  fbetaTheta = fbeta_theta,
+  fbetaWidth = fbeta_width,
+  tailgateAdjust = tailgate_adjust,
+  tailgateAutoTol = tailgate_auto_tol,
+  tailgateBias = tailgate_bias,
+  tailgateMethod = tailgate_method,
+  tailgateTol = tailgate_tol,
+  tailgateX = tailgate_x,
+  resume = FALSE
+)
+```
+
+```{r}
+
+```

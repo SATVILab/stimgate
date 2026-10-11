@@ -15,6 +15,7 @@ scripts=(
   "dev-4-sim-bw-est-norm.sh"
   "dev-6-sim-tune-comparators.sh"
   "dev-7-sim-compare-freq_bs.sh"
+  "dev-7b-sim-compare-null.sh"
   "dev-8-sim-compare-freq_bs-batch.sh"
   "dev-9-real-compare-acs-cytof.sh"
   "dev-11a-sim-low-separation-cyt-pos.sh"
@@ -126,6 +127,9 @@ chunked_qmd_stem_for_script() {
       ;;
     dev-7-sim-compare-freq_bs.sh)
       echo "7-sim-compare-freq_bs"
+      ;;
+    dev-7b-sim-compare-null.sh)
+      echo "7b-sim-compare-null"
       ;;
     dev-8-sim-compare-freq_bs-batch.sh)
       echo "8-sim-compare-freq_bs-batch"
