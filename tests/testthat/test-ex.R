@@ -298,7 +298,9 @@ test_that("getStimExpr and plotStim filter using saved stimulation gates", {
     pathProject = pathProject,
     popGate = "root",
     batchList = exampleData$batchList,
-    marker = exampleData$marker
+    marker = exampleData$marker,
+    # The expected cells below follow the antimode rule's gateCyt.
+    control = stimControl(cytPosMethod = "antimode")
   ))
 
   gateTbl <- getStimGates(pathProject)
