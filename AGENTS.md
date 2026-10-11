@@ -399,7 +399,7 @@ the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-onl
 the QMDs end to end in quick mode instead (simulate, then plot; one job per QMD). See
 `analysis/tests/README.md` for commands and coverage limits.
 
-The default Slurm job list includes Analysis 2a, 2b, 7, 8, 11a and 11b as chunked runs,
+The default Slurm job list includes Analysis 2a, 2b, 7, 7b, 8, 11a and 11b as chunked runs,
 Analysis 12 as a serial non-chunked simulation, Analyses 13
 and 17 after Analysis 9, and the OMIP analyses 14, 14b, 15 and 15b. Analysis 17
 only draws plots: like the OMIP analyses it renders with plots on in its own
@@ -682,6 +682,17 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     (`x > gate`, or `x > gateCyt` when ordinarily positive for another marker)
     and must reproduce `getStimStats()`.
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
+  - `sim-compare-null.R`: Analysis 7b (`7b-sim-compare-null.qmd`): Analysis 7's
+    methods and settings with no response (`prob_response = 0`) and the same
+    absolute background in both tubes (`prob_background`: none, 0.01%, 1%;
+    `.simCompareFreqBs(probBackground =)` replaces the response-relative
+    background). Exact counts make the true net frequency zero. Scenarios that
+    duplicate another (separation without positive cells, a background that
+    rounds to no cells) are dropped before seeding. Reports pooled median and
+    10th/90th percentile signed errors, median and 90th percentile absolute
+    errors (percentage points, not relative), the share of positive estimates
+    and StimGate's gate provenance; its method settings block must stay
+    identical to Analysis 7's.
   - `sim-compare-tune.R`: Analysis 6 (`6-sim-tune-comparators.qmd`): chooses
     Tailgate's tolerance and bias and F-beta's beta on Analysis 7-style data
     (0.2% response, every transformation and separation, 5,000 and 100,000

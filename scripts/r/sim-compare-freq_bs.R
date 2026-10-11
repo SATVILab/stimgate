@@ -1536,6 +1536,10 @@
   clusterPerturbationSd,
   backgroundRelativeToResponse,
   ncellUnsRelativeToStim,
+  # Absolute share of positive (background) cells in both tubes; when given,
+  # it replaces probResponse * backgroundRelativeToResponse, so a zero
+  # response can still have background positives (Analysis 7b).
+  probBackground = NULL,
   covEvMin = 1,
   covEvMax = 2,
   clusterGates = FALSE,
@@ -1620,7 +1624,11 @@
       ncol = 1
     )
     clusterLabelVec <- c("gn", "gp")
-    probResponseUns <- probResponse * backgroundRelativeToResponse
+    probResponseUns <- if (is.null(probBackground) || is.na(probBackground)) {
+      probResponse * backgroundRelativeToResponse
+    } else {
+      probBackground
+    }
     probVecUns <- c(1 - probResponseUns, probResponseUns)
     probResponseVecByStimCondition <- list(c(-probResponse, probResponse))
 
@@ -1798,6 +1806,7 @@
         conditionPerturbationSd = conditionPerturbationSd,
         clusterPerturbationSd = clusterPerturbationSd,
         backgroundRelativeToResponse = backgroundRelativeToResponse,
+        probBackground = probBackground %||% NA_real_,
         ncellUnsRelativeToStim = ncellUnsRelativeToStim,
         fbetaBeta = fbetaBeta,
         fbetaTheta = fbetaTheta,
@@ -2612,6 +2621,11 @@
           row$n_cell_uns_relative_to_stim[[1]]
         } else {
           1
+        },
+        probBackground = if ("prob_background" %in% names(row)) {
+          row$prob_background[[1]]
+        } else {
+          NULL
         },
         covEvMin = covEvMin,
         covEvMax = covEvMax,
