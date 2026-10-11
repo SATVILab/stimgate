@@ -17,7 +17,8 @@ scripts=(
   "dev-7-sim-compare-freq_bs.sh"
   "dev-8-sim-compare-freq_bs-batch.sh"
   "dev-9-real-compare-acs-cytof.sh"
-  "dev-11-sim-low-separation-cyt-pos.sh"
+  "dev-11a-sim-low-separation-cyt-pos.sh"
+  "dev-11b-sim-low-separation-batch.sh"
   "dev-12-sim-cluster-gates.sh"
   "dev-13-real-debug-acs-cytof.sh"
   "dev-14-real-compare-omip111.sh"
@@ -30,7 +31,7 @@ scripts=(
 # Validate the entire selection before submitting any jobs.
 if [[ "${1:-}" == "--help" ]]; then
   echo "Usage: bash scripts/slurm/dev.sh [analysis ID or launcher filename ...]"
-  echo "Examples: dev.sh 2a; dev.sh 2b; dev.sh 2a 2b"
+  echo "Examples: dev.sh 2a; dev.sh 2b; dev.sh 2a 2b; dev.sh 11a 11b"
   echo "Simulation size: parameters.sim_size in _projr.yml (draft or final)."
   echo "SIM_SIZE overrides it for this submission. Draft results are kept separately."
   echo "Example: SIM_SIZE=final bash scripts/slurm/dev.sh 2a"
@@ -125,6 +126,12 @@ chunked_qmd_stem_for_script() {
     dev-8-sim-compare-freq_bs-batch.sh)
       echo "8-sim-compare-freq_bs-batch"
       ;;
+    dev-11a-sim-low-separation-cyt-pos.sh)
+      echo "11a-sim-low-separation-cyt-pos"
+      ;;
+    dev-11b-sim-low-separation-batch.sh)
+      echo "11b-sim-low-separation-batch"
+      ;;
     *)
       echo ""
       ;;
@@ -144,9 +151,6 @@ plot_qmds_for_script() {
     # Analysis 10 only presents analysis 9's saved results.
     dev-9-real-compare-acs-cytof.sh)
       echo "analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd"
-      ;;
-    dev-11-sim-low-separation-cyt-pos.sh)
-      echo "analysis/11-sim-low-separation-cyt-pos.qmd"
       ;;
     dev-12-sim-cluster-gates.sh)
       echo "analysis/12-sim-cluster-gates.qmd"

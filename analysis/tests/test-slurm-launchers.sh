@@ -44,12 +44,19 @@ run_selection() {
 }
 
 run_selection
-for stem in 6-sim-tune-comparators 11-sim-low-separation-cyt-pos 12-sim-cluster-gates; do
+for stem in 6-sim-tune-comparators 12-sim-cluster-gates; do
   [[ $(grep -c "dev-${stem}.sh" "$SLURM_TEST_LOG") -eq 1 ]]
   plot=$(grep -F "plots-${stem}|" "$SLURM_TEST_LOG")
   [[ "$plot" == *"PLOT_QMD_FILES=analysis/${stem}.qmd,ANALYSIS_RUN_ID=slurm-test-run,RUN_SIMULATIONS=false,RUN_PLOTS=true|"* ]]
 done
 [[ $(grep -c 'dev-2b-' "$SLURM_TEST_LOG") -eq 2 ]]
+# Analyses 11a and 11b are chunked, each with one plot render.
+for stem in 11a-sim-low-separation-cyt-pos 11b-sim-low-separation-batch; do
+  [[ $(grep -c "dev-${stem}.sh" "$SLURM_TEST_LOG") -eq 2 ]]
+  plot=$(grep -F "plots-${stem}|" "$SLURM_TEST_LOG")
+  [[ "$plot" == *"PLOT_QMD_FILES=analysis/${stem}.qmd,ANALYSIS_RUN_ID=slurm-test-run,RUN_SIMULATIONS=false,RUN_PLOTS=true|"* ]]
+done
+! grep -Fq -- 'dev-11-sim-low-separation-cyt-pos' "$SLURM_TEST_LOG"
 for chunk in 1 2; do
   bias_job=$(grep -F "2b-sim-bias_uns-freq_bs/chunk-${chunk}|" "$SLURM_TEST_LOG")
   [[ "$bias_job" == *"PROJECT_ROOT=$project_root,ANALYSIS_RUN_ID=slurm-test-run,SIM_GRID_CHUNK_INDEX=$chunk,SIM_GRID_N_CHUNKS=2,SIM_GRID_SHUFFLE_SEED=123,RUN_SIMULATIONS=true,RUN_PLOTS=false|"* ]]
@@ -58,7 +65,7 @@ done
 ! grep -Fq -- 'SIM_SIZE=' "$SLURM_TEST_LOG"
 grep -Fq -- 'SIM_SIZE: parameters.sim_size in _projr.yml' "$test_dir/output"
 
-for analysis_id in 2a 2b 7 8; do
+for analysis_id in 2a 2b 7 8 11a 11b; do
   run_selection "$analysis_id"
   # Two chunk jobs and one plot render.
   [[ $(wc -l < "$SLURM_TEST_LOG") -eq 3 ]]
@@ -205,8 +212,8 @@ for launcher in dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shif
   grep -Fq -- "$launcher" "$SLURM_TEST_LOG"
 done
 
-# Analyses 6/11/12 each submit one serial simulation and one dependent plot job.
-for stem in 6-sim-tune-comparators 11-sim-low-separation-cyt-pos 12-sim-cluster-gates; do
+# Analyses 6 and 12 each submit one serial simulation and one dependent plot job.
+for stem in 6-sim-tune-comparators 12-sim-cluster-gates; do
   run_selection "${stem%%-*}"
   [[ $(wc -l < "$SLURM_TEST_LOG") -eq 2 ]]
   sim=$(grep -F "dev-${stem}.sh" "$SLURM_TEST_LOG")
@@ -269,7 +276,8 @@ fi
 [[ ! -s "$SLURM_TEST_LOG" ]]
 grep -Fq -- 'Unknown analysis target: missing' "$test_dir/output"
 
-for stem in 2a-stim-bw-freq_bs-global 2b-stim-bias_uns-freq_bs 3-sim-bw-est-base 4-sim-bw-est-norm 7-sim-compare-freq_bs 8-sim-compare-freq_bs-batch; do
+for stem in 2a-stim-bw-freq_bs-global 2b-stim-bias_uns-freq_bs 3-sim-bw-est-base 4-sim-bw-est-norm 7-sim-compare-freq_bs 8-sim-compare-freq_bs-batch \
+  11a-sim-low-separation-cyt-pos 11b-sim-low-separation-batch; do
   : > "$SLURM_TEST_LOG"
   bash "$project_root/scripts/slurm/dev-${stem}.sh" 2 > "$test_dir/output" 2>&1
   # Launcher filenames use 'stim'; the corresponding QMD uses 'sim'.

@@ -45,9 +45,11 @@ test_that("QMD selection accepts defaults, aliases, sets and deduplicates", {
   expect_identical(select(c("1", "1-sim-trans", "analysis/1-sim-trans.qmd"), targets), targets[1])
   expect_identical(select("analysis\\10-real-compare-acs-cytof-validation.qmd", targets), targets[10])
   expect_identical(select("2c", targets), targets[11])
-  expect_identical(select("11", targets), targets[12])
-  expect_identical(select("12", targets), targets[13])
-  expect_identical(select("13", targets), targets[14])
+  expect_identical(select("11a", targets), targets[12])
+  expect_identical(select("11b", targets), targets[13])
+  expect_identical(select("11a 11b", targets), targets[12:13])
+  expect_identical(select("12", targets), targets[14])
+  expect_identical(select("13", targets), targets[15])
 })
 
 test_that("QMD selection rejects explicit empty and unknown requests", {

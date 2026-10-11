@@ -384,10 +384,10 @@ re-gating time (largest, closest and random StimGate-manual differences).
 Analysis 13 represents an `all` population selection as NULL; resolve it to
 the run populations before intersecting, and return typed empty HTML keys
 when no candidate combinations remain.
-Analysis 11 applies the ordinary and cytokine-positive gates from one
-`gateStim()` run to the same cells and requires its recomputed cytokine-positive
-combination counts to equal `getStimStats()`; keep that check when changing
-the positivity rule. Analysis 2 is
+Analyses 11a/11b apply the ordinary, antimode cytokine-positive and both
+co-expression (screened/unscreened) gates from one `gateStim()` run to the same
+cells and require the recomputed antimode combination counts to equal
+`getStimStats()`; keep that check when changing the positivity rule. Analysis 2 is
 split into `2a` (bandwidth performance) and `2b` (bias tuning), with separate
 runner targets. `2c` (`2c-sim-test.qmd`) runs chosen settings, including
 stimulated-tube mismatch, through the 2a code path with the `.simDebugLoc()`
@@ -399,8 +399,8 @@ the full research analyses. The `analysis-qmd-tests.yaml` workflow is manual-onl
 the QMDs end to end in quick mode instead (simulate, then plot; one job per QMD). See
 `analysis/tests/README.md` for commands and coverage limits.
 
-The default Slurm job list includes Analysis 2a, 2b, 7 and 8 as chunked runs,
-Analyses 11 and 12 as serial non-chunked simulations, Analysis 13
+The default Slurm job list includes Analysis 2a, 2b, 7, 8, 11a and 11b as chunked runs,
+Analysis 12 as a serial non-chunked simulation, Analysis 13
 after Analysis 9, and the OMIP analyses 14, 14b, 15 and 15b. `sim_dependency_for_script()`
 makes 13's job wait `afterok` on 9's (and 14b on 14, 15b on 15) when both are
 submitted, and `dev.sh` (`move_after()`) submits the analysis that is read first
@@ -629,7 +629,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `coexpression-gates.R`: the reference implementation of the co-expression
     gates for any number of markers (`.coexLowerGate()`, `.coexLowerGates()`
     over every ordered pair, `.coexPositive()`, `.coexCombnCounts()`), shared
-    by Analyses 11, 17 and 18. The package's
+    by Analyses 11a, 11b, 17 and 18. The package's
     `stimControl(cytPosMethod = "coexpression")` must reproduce it exactly
     (`test-coexpression-gates-package.R`); change both together.
   - `acs_cytof-coexpression-gates.R`: Analysis 18
@@ -684,17 +684,30 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     settings. Datasets are the parallel unit: each has its own seed and each
     worker sources the helpers and creates its own F-beta environment, so
     serial and parallel runs agree. Its single Slurm job (one task per
-    worker) is followed by a plot job, like 11/12; archived launchers live in
+    worker) is followed by a plot job, like 12; archived launchers live in
     `scripts/slurm/_archive/` so that `dev.sh 6` selects this analysis.
   - `sim-debug-loc.R`: `.simDebugLoc()` wraps a QMD's rerun call unchanged and uses `trace()` to record, or browse, the local-FDR gating of one sample (optionally every later one too); `.simDebugLocPlots()` / `.simDebugLocSummary()` plot and summarise it. Records are counted and named per tube and channel (`dataset<k>_ind<i>_<channel>`); `sample = NULL, ind = NULL` records every tube, `tubeInfo` maps a GatingSet index to real donor/stimulus labels, and `onRecord` handles each record as soon as it is gated (e.g. saves it) so large real-data runs keep only small summaries. Plot and info helpers must work with `truth`/`sim` NULL.
   - `sim-debug-compare.R`: `.simDebugCompare()` runs F-beta and Tailgate on a `.simDebugLoc()` sample as Analyses 7/8 do; `.simDebugFigure()` combines simulation settings with each method's plots, settings and result on one x range.
-  - `sim-low-separation.R`: Analysis 11 (`11-sim-low-separation-cyt-pos.qmd`): two-marker
-    low-separation simulations gated once per dataset, comparing ordinary,
-    cytokine-positive (refinement) and co-expression gates on the same cells
-    against simulated labels, over scenario families appended after the
-    original grid (its IDs and seeds unchanged; the families draw seeds from
-    `simulation_seed + 1`). Reports cell-level F1 per quantity and
-    10th/50th/90th percentiles of estimated against true frequencies.
+  - `sim-low-separation.R`: Analyses 11a (`11a-sim-low-separation-cyt-pos.qmd`)
+    and 11b (`11b-sim-low-separation-batch.qmd`): two-marker low-separation
+    simulations on the 2a runner (`.simBandwidthRunRow()` etc.; one row per
+    scenario and dataset `iter`, `sim_id = (scenario_id - 1) * 20 + iter`,
+    staged, chunked and promoted). Each dataset is gated once and four rules
+    (`ordinary`, `antimode`, `coex_screened`, `coex_unscreened`, with shared
+    labels/colours) are compared on the same cells against simulated labels;
+    the co-expression rules are applied post hoc with `.coexLowerGates()`.
+    Scenario families are appended after the original grid, each block with
+    its own seed stream (`simulation_seed`, `+ 1`, `+ 2`), so earlier IDs and
+    seeds never change; dataset seeds come from the scenario seed. 11b crosses
+    a baseline subset with stimulated TNF- IFNg- mean shifts (0, 0.025, 0.05,
+    0.2) and 10% SD inflation, applied by simcyto to that component only and
+    sharing the baseline's data seed (11a's), reported in `mean_shift/` and
+    `sd_inflation/`. Reports F1, frequency percentiles pooled over datasets,
+    what each rule gates, and response tests (per-sample one-sided Fisher,
+    per-dataset paired Wilcoxon/t) with false-positive rates where the
+    settings imply no net response; Fisher rates use whole-dataset bootstrap
+    intervals and dataset rates Clopper-Pearson intervals (Monte Carlo
+    layers, `show_mcse`).
   - `sim-cluster-lab.R` / `sim-cluster-weak.R`: Analysis 12 (`12-sim-cluster-gates.qmd`):
     threshold-sharing clusters under a between-lab location shift, and
     original versus cluster-adjusted gates for weak-response samples.
@@ -1082,7 +1095,7 @@ Keep the ordinary-method plots unchanged when that table is unavailable.
    gates (Analyses 9/10/13, 14/14b and 15/15b) run StimGate with
    `calcCytPosGates = FALSE`: the manual gates and the comparators set one gate
    per cytokine, so a second, conditional StimGate gate would score a different
-   rule. Analysis 11, which studies the refinement, keeps it on. The scoring code
+   rule. Analyses 11a/11b, which study the cytokine-positive gates, keep them on. The scoring code
    keeps the cytokine-positive counting rule, which reduces to `x > gate` when
    `gateCyt` equals `gate`.
 

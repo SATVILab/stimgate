@@ -1,0 +1,361 @@
+---
+title: Low separation and the cytokine-positive gates under batch mismatch (11b)
+format:
+  html:
+    embed-resources: true
+    toc: true
+knitr:
+  opts_chunk:
+    fig.retina: 1
+execute:
+  warning: false
+  message: false
+params:
+  analysis_run_id: null
+  simulation_seed: 55700
+  sim_grid_chunk_index: 1
+  sim_grid_n_chunks: 1
+  sim_grid_shuffle_seed: 20260707
+  run_simulations: true
+  run_plots: false
+  show_mcse: "on"
+  sim_retry_errors: true
+---
+
+Analysis 11a compares four rules for calling cells positive on the same gated cells (ordinary gates, StimGate's antimode cytokine-positive gates, and co-expression gates with and without the double-positive screen) when stimulated and unstimulated tubes differ only by the response. This analysis asks what happens when they also differ by a batch effect: the stimulated tube's negative cells are shifted or widened relative to the unstimulated tube, as in Analysis 2b. A mismatch is not a response, so any extra positive cells it causes, and any test that then finds a response where there is none, are errors.
+
+## Set-up
+
+```{r}
+#| label: setup
+#| include: false
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(tibble)
+  library(dplyr)
+  library(purrr)
+  library(tidyr)
+  library(furrr)
+  library(progressr)
+})
+
+root_dir <- normalizePath(if (file.exists("DESCRIPTION")) "." else "..", winslash = "/")
+stopifnot(file.exists(file.path(root_dir, "DESCRIPTION")))
+knitr::opts_knit$set(root.dir = root_dir)
+
+scripts_r_dir <- file.path(root_dir, "scripts", "r")
+source(file.path(scripts_r_dir, "analysis-runtime.R"))
+source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-mcse.R"))
+analysis_qmd <- "analysis/11b-sim-low-separation-batch.qmd"
+
+sim_grid_chunk_index <- as.integer(.get_qmd_param_env("sim_grid_chunk_index", "SIM_GRID_CHUNK_INDEX", 1L))
+sim_grid_n_chunks <- as.integer(.get_qmd_param_env("sim_grid_n_chunks", "SIM_GRID_N_CHUNKS", 1L))
+sim_grid_shuffle_seed <- as.integer(.get_qmd_param_env("sim_grid_shuffle_seed", "SIM_GRID_SHUFFLE_SEED", 20260707L))
+simulation_seed <- as.integer(.get_qmd_param_env("simulation_seed", "SIMULATION_SEED", 55700L))
+if (is.na(simulation_seed)) {
+  stop("simulation_seed must be coercible to an integer.")
+}
+run_simulations <- .as_flag(.get_qmd_param_env("run_simulations", "RUN_SIMULATIONS", FALSE))
+run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
+# Monte Carlo intervals on the rejection-rate figures (see analysis-mcse.R).
+mcse_mode <- .analysis_mcse_mode(.get_qmd_param_env("show_mcse", "SHOW_MCSE", "on"))
+show_mcse <- mcse_mode != "off"
+sim_retry_errors <- .as_flag(.get_qmd_param_env("sim_retry_errors", "SIM_RETRY_ERRORS", TRUE))
+analysis_run_id <- .get_qmd_param_env("analysis_run_id", "ANALYSIS_RUN_ID", NULL)
+
+analysis_semantics_version <- "sim-low-separation-batch-v1"
+analysis_dev <- .analysis_is_dev()
+analysis_quick <- .analysis_is_quick() && !analysis_dev
+sim_size <- .analysis_sim_size()
+analysis_key <- .analysis_mode_key(c("sim", "low_separation", "batch"))
+fig_key <- .analysis_mode_key("11b-sim-low-separation-batch")
+
+.validate_sim_grid_chunk_settings(sim_grid_chunk_index, sim_grid_n_chunks)
+
+devtools::load_all(root_dir, quiet = TRUE)
+for (fn in c(
+  "sim-misc.R",
+  "sim-bandwidth.R",
+  "sim-bandwidth-analysis-io.R",
+  "sim-bandwidth-analysis-run.R",
+  "coexpression-gates.R",
+  "sim-low-separation.R"
+)) {
+  source(file.path(scripts_r_dir, fn))
+}
+```
+
+## Scientific settings
+
+Everything except the mismatch is as in Analysis 11a: two cytokines on the Gaussian transformation, positive cells centred at 4.5 ("low" separation) with variance 1.5, 100,000 or 5,000 cells per tube, gates from `gateStim()` with threshold clustering, the capped local-FDR threshold method (`locThresholdMethod = "cap"`) and the antimode gates (`gateStim(calcCytPosGates = TRUE)`, `stimControl(cytPosMethod = "antimode")`), and both co-expression rules applied afterwards to the ordinary gates. The baseline scenarios are a subset of Analysis 11a's families, at low separation, every response level and both cell counts:
+
+- **Main grid**: 1% or 5% response, 60% of responders TNF+ IFNγ+, 25% TNF+ only and 15% IFNγ+ only.
+- **Responders single-positive only**: no double-positive response.
+- **Weak double-positive response**: 6% of responders TNF+ IFNγ+, so a net double-positive frequency of 0.048% or 0.24%.
+- **Responders double-positive only**.
+- **No response**: both tubes have the same 1% background.
+- **No response, co-expressing background**: both tubes have the same 1% background, all TNF+ IFNγ+.
+
+Each baseline scenario keeps Analysis 11a's scenario ID (`base_scenario_id`) and data seeds, so its no-mismatch rows reproduce Analysis 11a's datasets.
+
+```{r}
+#| label: main-settings
+sizes <- .simLowSepSizes(sim_size, quick = analysis_quick, dev = analysis_dev)
+main_settings <- .simLowSepMainSettings(loc_threshold_method = "cap", n_sample = sizes$n_sample)
+scenario_grid_full <- .simLowSepBatchGrid(simulation_seed)
+mismatch_tbl <- .simLowSepBatchMismatch()
+```
+
+## Two kinds of stimulated-negative mismatch
+
+The mismatch changes only the **stimulated tube's TNF- IFNγ- cells** (its all-negative component), on both markers; the unstimulated tube and the stimulated tube's positive cells are unchanged. It follows Analysis 2b's Gaussian settings:
+
+- **Mean shift**: the stimulated negatives move right by 0.025, 0.05 or 0.2 (0 is the no-mismatch baseline).
+- **SD inflation**: the stimulated negatives' spread around their mean grows by 10%.
+
+The two are reported in separate sections and figure folders (`mean_shift/` and `sd_inflation/`); the SD-inflation figures repeat the no-mismatch baseline for reference. A rightward shift moves the whole negative peak, which StimGate's peak-based start of the local-FDR region can partly follow; a wider spread leaves the peak in place but adds stimulated negative cells in the right shoulder, where gates sit. Either may push extra negative cells above the ordinary gates, and a lowered gate sits closer to the negatives, so the lowering rules may be more exposed. Whether they are is what this analysis measures.
+
+The mismatch is deterministic, so all mismatch settings of a baseline scenario use the same simulated draws (common random numbers): differences between settings come from the mismatch, not from different data.
+
+## Simulation
+
+Each simulation row is one dataset of one scenario (baseline × mismatch): `r sizes$n_sample` samples gated together. Final runs simulate 20 datasets of 12 samples per scenario and draft runs the first 5; quick and dev runs use 2 datasets of 3 samples and are smoke checks only. Datasets are the independent unit.
+
+```{r}
+#| label: grid
+#| include: false
+sim_grid_full <- .simLowSepRowGrid(scenario_grid_full)
+sim_grid_all <- dplyr::filter(sim_grid_full, .data$iter <= sizes$n_dataset)
+# Dev keeps one debugging scenario; quick keeps the smallest grid that still
+# draws every figure: the main and no-response baselines with 5,000 cells,
+# no mismatch, the largest mean shift and SD inflation.
+if (analysis_dev) {
+  sim_grid_all <- dplyr::filter(
+    sim_grid_all, .data$family == "main", .data$response_level == "higher",
+    .data$n_cell == 5e3, .data$mismatch_type == "mean_shift", .data$stim_mean_shift == 0.2
+  )
+} else if (analysis_quick) {
+  sim_grid_all <- dplyr::filter(
+    sim_grid_all, .data$family %in% c("main", "null"), .data$response_level %in% c("higher", "none"),
+    .data$n_cell == 5e3, .data$stim_mean_shift %in% c(0, 0.2)
+  )
+}
+if (nrow(sim_grid_all) == 0L) {
+  stop("The Analysis 11b simulation grid is empty; check the dev/quick filters.")
+}
+analysis_grid_spec <- dplyr::select(sim_grid_all, -dplyr::all_of(c("sim_seed", "scenario_seed")))
+
+sim_grid <- .simLowSepChunkRows(sim_grid_all, sim_grid_shuffle_seed, sim_grid_n_chunks, sim_grid_chunk_index)
+message(
+  "Performing ", nrow(sim_grid), " of ", nrow(sim_grid_all),
+  " Analysis 11b datasets for chunk ", sim_grid_chunk_index, " of ", sim_grid_n_chunks
+)
+
+analysis_required_params <- list(
+  analysis_semantics_version = analysis_semantics_version,
+  simulation_seed = simulation_seed,
+  analysis_quick = analysis_quick,
+  analysis_dev = analysis_dev,
+  sim_size = sim_size,
+  scenario_settings = main_settings,
+  mismatch_settings = mismatch_tbl,
+  sim_grid_spec = analysis_grid_spec
+)
+```
+
+A single dataset can be rerun interactively with exactly the same random numbers as the parallel run.
+
+```{r}
+#| label: rerun-one-simulation
+#| include: false
+#| eval: false
+sim_id_target <- 1L
+rerun_res <- .simBandwidthRunRow(
+  dplyr::filter(sim_grid_full, .data$sim_id == sim_id_target),
+  scenario_fn = .simLowSepScenario,
+  settings = main_settings
+)
+```
+
+```{r}
+#| label: simulate
+#| include: false
+if (interactive()) {
+  progressr::handlers(global = TRUE)
+}
+
+if (isTRUE(run_simulations)) {
+  run_ctx <- .analysis_run_context(
+    analysis_key = analysis_key,
+    run_id = analysis_run_id,
+    qmd_path = analysis_qmd,
+    path_root = root_dir,
+    params = c(
+      list(
+        run_simulations = run_simulations,
+        run_plots = run_plots,
+        sim_grid_chunk_index = sim_grid_chunk_index,
+        sim_grid_n_chunks = sim_grid_n_chunks,
+        sim_grid_shuffle_seed = sim_grid_shuffle_seed
+      ),
+      analysis_required_params
+    ),
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks
+  )
+
+  .simBandwidthRunGrid(
+    sim_grid,
+    scenario_fn = .simLowSepScenario,
+    settings = main_settings,
+    run_ctx = run_ctx,
+    sim_grid_chunk_index = sim_grid_chunk_index,
+    sim_grid_n_chunks = sim_grid_n_chunks,
+    retry_errors = sim_retry_errors,
+    heading = "LOW-SEPARATION BATCH (11b) PROGRESS",
+    path_root = root_dir
+  )
+
+  .simBandwidthFinishChunk(
+    run_ctx = run_ctx,
+    sim_grid = sim_grid,
+    sim_grid_all = sim_grid_all,
+    validate_fn = .simLowSepValidator(main_settings$n_sample, main_settings$loc_threshold_method),
+    collate_fn = .simLowSepCollate,
+    label = "analysis 11b"
+  )
+
+  if (isTRUE(run_plots) && sim_grid_n_chunks > 1L) {
+    message(
+      "Skipping plots during a multi-chunk simulation render. ",
+      "Render again with run_simulations = FALSE after promotion."
+    )
+    run_plots <- FALSE
+  }
+} else if (isTRUE(run_plots)) {
+  run_ctx <- .analysis_results_context(
+    analysis_key = analysis_key, path_root = root_dir, qmd_path = analysis_qmd
+  )
+}
+```
+
+## Collation
+
+As in Analysis 11a, every dataset checks that the recomputed antimode combination counts equal `getStimStats()`, and promotion requires every dataset of every selected scenario.
+
+```{r}
+#| label: collate
+#| include: false
+if (isTRUE(run_plots)) {
+  results <- .simLowSepReadResults(run_ctx, analysis_required_params)
+  summ <- .simLowSepSummaries(results, main_settings, mcse = show_mcse)
+  scenario_grid <- results$scenarios
+  families <- intersect(names(.simLowSepFamilies), unique(scenario_grid$family))
+} else {
+  message("run_plots is false, so stopping after simulation/collation.")
+}
+```
+
+## Results
+
+```{r}
+#| label: tables
+#| include: false
+if (isTRUE(run_plots)) {
+  scenario_table <- scenario_grid |>
+    dplyr::left_join(
+      dplyr::count(dplyr::distinct(results$gates, .data$scenario_id, .data$iter), .data$scenario_id, name = "n_dataset"),
+      by = "scenario_id"
+    ) |>
+    dplyr::mutate(
+      n_sample = main_settings$n_sample,
+      mismatch_component = "stimulated TNF- IFNg- cells (both markers)",
+      coexpr_settings = paste(names(main_settings$coexpr), unlist(main_settings$coexpr), sep = "=", collapse = "; "),
+      cov_ev = main_settings$cov_ev, transformation = main_settings$transformation,
+      cyt_pos_method = main_settings$cyt_pos_method,
+      loc_threshold_method = main_settings$loc_threshold_method
+    )
+  table_paths <- c(
+    scenario_settings = .simLowSepWriteTable(scenario_table, "scenario_settings", fig_key, root_dir),
+    gates = .simLowSepWriteTable(results$gates, "gates", fig_key, root_dir),
+    coexpression_gates = .simLowSepWriteTable(results$coex_gates, "coexpression_gates", fig_key, root_dir),
+    cell_counts = .simLowSepWriteTable(summ$recovery, "cell_counts", fig_key, root_dir),
+    combination_frequencies = .simLowSepWriteTable(summ$freq, "combination_frequencies", fig_key, root_dir),
+    frequency_error_percentiles = .simLowSepWriteTable(summ$error_pct, "frequency_error_percentiles", fig_key, root_dir),
+    f1_percentiles = .simLowSepWriteTable(summ$f1_pct, "f1_percentiles", fig_key, root_dir),
+    expected_net = .simLowSepWriteTable(summ$expected_net, "expected_net", fig_key, root_dir),
+    sample_tests = .simLowSepWriteTable(summ$sample_tests, "sample_tests", fig_key, root_dir),
+    dataset_tests = .simLowSepWriteTable(summ$dataset_tests, "dataset_tests", fig_key, root_dir)
+  )
+}
+```
+
+The tables are saved as CSV files under `output/table/<fig_key>/` (relative to the repository root), with the same contents as Analysis 11a's plus the mismatch columns (`mismatch_type`, `mismatch_label`, `stim_mean_shift`, `stim_sd_multiplier`) and `base_scenario_id`: `scenario_settings.csv`, `gates.csv`, `coexpression_gates.csv`, `cell_counts.csv`, `combination_frequencies.csv`, `frequency_error_percentiles.csv`, `f1_percentiles.csv`, `expected_net.csv`, `sample_tests.csv` and `dataset_tests.csv`, and the summary tables at the end of this page.
+
+The figures below are shown for each mismatch kind and baseline family. Rows of panels are baseline scenarios (response level and cell count); the horizontal axis is the mismatch.
+
+**Does a test find a response?** The share of tests rejecting at 5%, for each rule, as in Analysis 11a: one-sided Fisher's exact tests of each sample's stimulated against unstimulated counts (rates pooled over every sample of every dataset, with 95% bootstrap intervals over whole datasets when at least five contribute), and one-sided paired Wilcoxon signed-rank tests across each dataset's samples (rates over datasets, with 95% Clopper-Pearson intervals). Filled points are power (the quantity has a net response), open points false-positive rates (it has none; the mismatch is not a response). The dashed line marks 5%. Intervals are Monte Carlo intervals; the paired t-test is in the summary table only.
+
+**Frequency error**: the estimated minus true background-subtracted frequency (percentage points), median as a point and 10th to 90th percentiles as a bar, over every sample of every dataset.
+
+**What the lowering rules gate**: the share of sample gates each rule lowered (both markers together), and the cells it adds over the ordinary gates in the stimulated tube per 100,000 cells, split into cells truly negative and truly positive for the marker (summed over the two markers, so a cell newly positive for both counts twice).
+
+```{r}
+#| label: fig-mismatch
+#| echo: false
+#| results: asis
+#| fig-width: 10
+#| fig-height: 9
+if (isTRUE(run_plots)) {
+  mismatch_types <- c(mean_shift = "Mean shift", sd_inflation = "SD inflation 10%")
+  for (type in names(mismatch_types)) {
+    rates_type <- .simLowSepMismatchSection(summ$rates, type)
+    if (!nrow(rates_type) || !any(rates_type$mismatch_x != "None")) next
+    error_type <- .simLowSepMismatchSection(summ$error_pct, type)
+    gating_type <- .simLowSepMismatchSection(summ$gating, type)
+    .analysis_heading(paste0(mismatch_types[[type]], " of the stimulated TNF- IFNγ- cells"), 3L)
+    for (fam in intersect(families, unique(rates_type$family))) {
+      .analysis_heading(.simLowSepFamilies[[fam]], 4L)
+      in_fam <- function(tbl) dplyr::filter(tbl, .data$family == fam)
+      fam_dir <- function(kind) .analysis_fig_dir(c(fig_key, type, kind, fam), root_dir)
+      for (tst in c("fisher", "wilcoxon")) {
+        .analysis_heading(paste0("Does a test find a response? ", .simLowSepTests[[tst]]), 5L)
+        p <- .simLowSepPlotMismatchRates(dplyr::filter(in_fam(rates_type), .data$test == tst), type)
+        .analysis_print_save_fig(p, file.path(fam_dir("rejection_rates"), paste0("rejection_rates-", tst, ".png")),
+          height = 18, mcse_mode = mcse_mode)
+      }
+      .analysis_heading("Frequency error", 5L)
+      p <- .simLowSepPlotMismatchError(in_fam(error_type), type)
+      .analysis_print_save_fig(p, file.path(fam_dir("frequency_error"), "frequency_error.png"), height = 20)
+      .analysis_heading("What the lowering rules gate", 5L)
+      p <- .simLowSepPlotMismatchGating(dplyr::filter(in_fam(gating_type), .data$gate_type != "ordinary"), type)
+      .analysis_print_save_fig(p, file.path(fam_dir("gating"), "gating.png"), height = 18)
+    }
+  }
+}
+```
+
+### Summary tables
+
+The rejection-rate table gives, by scenario (baseline and mismatch), rule, quantity and test, how many tests rejected, the rate and (with Monte Carlo intervals on) its interval, and whether the quantity has a net response. The gating table gives, by scenario, rule and marker, how many samples' gates were lowered, the median shift when lowered, and the cells added per 100,000 cells of each tube. The frequency table gives the mean true and estimated frequencies, and how many samples each lowering rule moved closer to or further from the truth than the ordinary gates.
+
+```{r}
+#| label: summary-tables
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  .analysis_report_table(summ$rates, c(fig_key, paste0("mcse_", mcse_mode), "rejection_rate_summary.csv"),
+    "Rejection rates at 5% by scenario, mismatch, rule, quantity and test, with dataset and test counts.",
+    root_dir)
+  .analysis_report_table(summ$gating, c(fig_key, "gating_summary.csv"),
+    "Samples whose gates each lowering rule moved, the median shift and the cells added, by scenario, mismatch and marker.",
+    root_dir)
+  .analysis_report_table(summ$freq_summary, c(fig_key, "frequency_summary.csv"),
+    "Mean true and estimated frequencies and samples moved closer or further, by scenario, mismatch, quantity and rule.",
+    root_dir)
+}
+```
+
+```{r}
+```
