@@ -238,7 +238,10 @@ test_that("recovering IFNg in TNF+ cells corrects the exclusive single-positive 
   expect_equal(get("antimode", "TNF+IFNg+", "error_bs"), 0.02)
   expect_equal(get("antimode", "IFNg+", "n_est_stim"), 12L)
   expect_equal(get("antimode", "IFNg+", "n_tube_uns"), 100L)
-  expect_setequal(unique(freq$quantity_type), c("marginal", "exclusive"))
+  expect_equal(get("ordinary", "any", "prop_bs_est"), 0.1)
+  expect_equal(get("antimode", "any", "prop_bs_est"), 0.12)
+  expect_equal(get("antimode", "any", "prop_bs_truth"), 0.1)
+  expect_setequal(unique(freq$quantity_type), c("total", "marginal", "exclusive"))
 
   rec <- env$.simLowSepRecovery(counts)
   ifng <- rec[rec$marker == "IFNg" & rec$tube == "stim", ]

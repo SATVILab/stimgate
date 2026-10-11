@@ -75,13 +75,15 @@
   background_coexpression = "Co-expressing background"
 )
 
-# Quantities whose background-subtracted frequencies are compared. Marginal
-# frequencies count every cell positive for a cytokine; exclusive frequencies
-# count one combination only.
+# Quantities whose background-subtracted frequencies are compared. "Any"
+# counts every cell positive for at least one cytokine (the total response),
+# marginal frequencies every cell positive for a cytokine and exclusive
+# frequencies one combination only.
 .simLowSepQuantities <- tibble::tribble(
   ~quantity, ~quantity_type, ~quantity_lab,
-  "TNF+", "marginal", "TNF+ (any)",
-  "IFNg+", "marginal", "IFNγ+ (any)",
+  "any", "total", "Any cytokine (total)",
+  "TNF+", "marginal", "TNF+ (marginal)",
+  "IFNg+", "marginal", "IFNγ+ (marginal)",
   "TNF+IFNg+", "exclusive", "TNF+ IFNγ+",
   "TNF+IFNg-", "exclusive", "TNF+ IFNγ- only",
   "TNF-IFNg+", "exclusive", "TNF- IFNγ+ only"
@@ -363,6 +365,7 @@
     }
     net <- r$prob_response[[1]] * (split - r$background_relative[[1]] * split_bg)
     vals <- c(
+      any = sum(net),
       "TNF+" = net[["TNF+IFNg-"]] + net[["TNF+IFNg+"]],
       "IFNg+" = net[["TNF-IFNg+"]] + net[["TNF+IFNg+"]],
       net
@@ -371,6 +374,16 @@
   }) |>
     dplyr::filter(.data$quantity %in% .simLowSepQuantities$quantity) |>
     dplyr::mutate(response_truth = dplyr::if_else(abs(.data$net_expected) > 1e-12, "response", "none"))
+}
+
+# Combinations (`x`, from `.simLowSepCombn`) that belong to quantity `q`.
+.simLowSepHit <- function(q, x) {
+  switch(q,
+    any = x != "TNF-IFNg-",
+    "TNF+" = grepl("TNF\\+", x),
+    "IFNg+" = grepl("IFNg\\+", x),
+    x == q
+  )
 }
 
 # Simulation and gating ------------------------------------------------------
@@ -844,9 +857,7 @@
     dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
     dplyr::summarise(n_tube = sum(.data$n), .groups = "drop")
   purrr::map_dfr(.simLowSepQuantities$quantity, function(q) {
-    hit <- function(x) {
-      if (q == "TNF+") grepl("TNF\\+", x) else if (q == "IFNg+") grepl("IFNg\\+", x) else x == q
-    }
+    hit <- function(x) .simLowSepHit(q, x)
     counts |>
       dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
       dplyr::summarise(
@@ -905,9 +916,7 @@
   keys <- .simLowSepKeys(counts)
   stim <- dplyr::filter(counts, .data$tube == "stim")
   purrr::map_dfr(.simLowSepQuantities$quantity, function(q) {
-    hit <- function(x) {
-      if (q == "TNF+") grepl("TNF\\+", x) else if (q == "IFNg+") grepl("IFNg\\+", x) else x == q
-    }
+    hit <- function(x) .simLowSepHit(q, x)
     stim |>
       dplyr::group_by(dplyr::across(dplyr::all_of(c(keys, "sample", "gate_type")))) |>
       dplyr::summarise(
