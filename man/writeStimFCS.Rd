@@ -51,7 +51,7 @@ specifies positive channels, with other selected channels negative.
 Default: NULL.}
 
 \item{gateTypeCytPos}{character Positivity rule: "base" uses main gates;
-"cyt" uses the saved refinement or coexpression rule.
+"cyt" uses the saved antimode or coexpression rule.
 Default: "cyt".}
 
 \item{mult}{logical Require positivity for at least two markers. Default: FALSE.}

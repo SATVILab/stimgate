@@ -57,16 +57,17 @@ stimControl(
   normExcessNcell = 10000L,
   normAdaptiveNcell = 2500L,
   normMtd = "moments",
-  cytPosMethod = "refine",
+  cytPosMethod = "coexpression",
   coexNBin = 20L,
   coexResidualMin = 3.5,
   coexPurityFrac = 0.75,
-  coexZMin = 2
+  coexZMin = 2,
+  coexScreen = TRUE
 )
 }
 \arguments{
-\item{calcCytPosGates}{logical Apply the \code{cytPosMethod} rule. With "refine",
-refine gates using cells positive for another
+\item{calcCytPosGates}{logical Apply the \code{cytPosMethod} rule. With "antimode",
+lower gates using cells positive for another
 cytokine. Lower a clustered gate to the leftmost internal antimode between
 the stimulated marginal peak plus half its negative-population width
 (at least one marginal density bandwidth) and
@@ -310,8 +311,13 @@ component for adaptive normalised bandwidths. Default: 2500.}
 replaces components with normals having matching moments; "boxcox" uses
 Box-Cox transformations for scalar bandwidths only. Default: "moments".}
 
-\item{cytPosMethod}{character Cytokine-positive rule, "refine" or
-"coexpression"; used only when \code{calcCytPosGates = TRUE}. Default: "refine".}
+\item{cytPosMethod}{character Cytokine-positive rule, "coexpression" or
+"antimode"; used only when \code{calcCytPosGates = TRUE}. "coexpression" lowers a
+cytokine's gate, for cells above another cytokine's gate, where the two
+are co-expressed beyond independence and the added cells are mostly
+responders (see \code{\link[=getStimGatesCoexpression]{getStimGatesCoexpression()}}). "antimode" lowers a gate to
+an antimode of the taut-string density among cells positive for another
+cytokine. Default: "coexpression".}
 
 \item{coexNBin}{integer Number of bins used to lower and trim pairwise gates.
 Default: 20L.}
@@ -322,7 +328,13 @@ Default: 3.5.}
 \item{coexPurityFrac}{numeric Required fraction of double-positive purity,
 greater than zero and at most one. Default: 0.75.}
 
-\item{coexZMin}{numeric Minimum net double-positive z score. Default: 2.}
+\item{coexZMin}{numeric Minimum net double-positive z score, used when
+\code{coexScreen = TRUE}. Default: 2.}
+
+\item{coexScreen}{logical Lower a pair's gate only when the cells above both
+ordinary gates show a clear net response (z above \code{coexZMin}). With FALSE,
+every pair is tested, and the purity requirement uses zero in place of a
+negative or undefined double-positive purity. Default: TRUE.}
 }
 \value{
 A named list of class \code{stimControl}, with one element per setting.

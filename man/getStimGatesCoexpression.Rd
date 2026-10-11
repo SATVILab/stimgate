@@ -19,7 +19,7 @@ cytokine; \code{chnl}, \code{marker} identify the target cytokine; \code{gate}, 
 \code{floor}, \code{floorCond} are the target and conditioning floors; \code{z} is the net
 double-positive z score; \code{purityDp} is double-positive purity (NA when the
 initial tests fail); and \code{lowered} indicates whether \code{cut < gate}.
-Projects using refinement or with cytokine-positive gating disabled error.
+Projects using the antimode rule or with cytokine-positive gating disabled error.
 }
 \description{
 Read the conditional thresholds and diagnostics saved by \code{\link[=gateStim]{gateStim()}} with
@@ -33,9 +33,10 @@ Conditioning uses expression, never recursively inferred positivity.
 Control expression is raw (without \code{biasUns}). The floor is the control's
 main nonzero negative peak plus 1.5 robust standard deviations, estimated
 with an nrd0 Gaussian density on 2048 points. Lowering requires a net
-double-positive response, excess coexpression beyond independence, and
-adequate purity; the added band is trimmed along the conditioning channel.
-The four \verb{coex*} controls in \code{\link[=stimControl]{stimControl()}} set these tests and bin counts.
+double-positive response (unless \code{coexScreen = FALSE}), excess
+coexpression beyond independence, and adequate purity; the added band is
+trimmed along the conditioning channel. The \verb{coex*} controls in
+\code{\link[=stimControl]{stimControl()}} set these tests and bin counts.
 }
 \examples{
 \donttest{
