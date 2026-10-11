@@ -386,9 +386,9 @@ if (isTRUE(run_plots)) {
     p <- .simLowSepPlotGateShift(in_fam(results$gates), in_fam(results$coex_gates))
     .analysis_print_save_fig(p, file.path(fam_dir("gate_shift"), "gate_shift.png"), height = 12)
     for (n_cell_curr in n_cell_vec) {
-      ids <- scenario_grid$scenario_id[scenario_grid$family == fam & scenario_grid$n_cell == n_cell_curr]
-      if (!length(ids)) next
-      in_cell <- function(tbl) dplyr::filter(tbl, .data$scenario_id %in% ids)
+      ids_cell <- scenario_grid$scenario_id[scenario_grid$family == fam & scenario_grid$n_cell == n_cell_curr]
+      if (!length(ids_cell)) next
+      in_cell <- function(tbl) dplyr::filter(tbl, .data$scenario_id %in% ids_cell)
       cells_fam <- dplyr::inner_join(in_cell(results$cells), scenario_grid, by = "scenario_id")
       cell_key <- paste0("n_cell_", .simLowSepCellKey(n_cell_curr))
       if (nrow(cells_fam)) {

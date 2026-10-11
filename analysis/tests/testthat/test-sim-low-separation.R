@@ -165,8 +165,8 @@ test_that("the mismatch changes only the stimulated tube's all-negative componen
   expect_true(any(neg) && any(!neg))
   # Positive stimulated cells are unchanged; negatives move by 0.2 on both markers.
   expect_equal(ex(shifted, 2L)[!neg, ], ex(base, 2L)[!neg, ])
-  expect_equal(ex(shifted, 2L)[neg, ] - ex(base, 2L)[neg, ], matrix(0.2, sum(neg), 2L), tolerance = 1e-5,
-    ignore_attr = TRUE)
+  expect_equal(unname(ex(shifted, 2L)[neg, ] - ex(base, 2L)[neg, ]), matrix(0.2, sum(neg), 2L),
+    tolerance = 1e-5)
   expect_equal(ex(wider, 2L)[!neg, ], ex(base, 2L)[!neg, ])
   centred <- function(m) sweep(m, 2L, colMeans(m))
   expect_equal(centred(ex(wider, 2L)[neg, ]), 1.1 * centred(ex(base, 2L)[neg, ]), tolerance = 1e-5)

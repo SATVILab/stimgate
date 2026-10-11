@@ -926,7 +926,7 @@
 # counted.
 .simLowSepPercentiles <- function(tbl, col, truth = NULL) {
   scen <- .simLowSepScen(tbl)
-  q <- function(x, p) {
+  quant_finite <- function(x, p) {
     if (any(is.finite(x))) stats::quantile(x, p, na.rm = TRUE, names = FALSE) else NA_real_
   }
   tbl |>
@@ -935,9 +935,9 @@
       n_sample = dplyr::n(),
       n_dataset = if ("iter" %in% names(tbl)) dplyr::n_distinct(.data$iter) else NA_integer_,
       n_defined = sum(is.finite(.data[[col]])),
-      p10 = q(.data[[col]], 0.1),
-      p50 = q(.data[[col]], 0.5),
-      p90 = q(.data[[col]], 0.9),
+      p10 = quant_finite(.data[[col]], 0.1),
+      p50 = quant_finite(.data[[col]], 0.5),
+      p90 = quant_finite(.data[[col]], 0.9),
       truth = if (is.null(truth)) NA_real_ else stats::median(.data[[truth]]),
       .groups = "drop"
     )

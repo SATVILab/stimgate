@@ -395,9 +395,9 @@ if (isTRUE(run_plots)) {
       "combinations called responding, grey ones could not be tested.\n\n")
     pop_tests <- tests_all[tests_all$pop == pop, ]
     hm <- .acsCoexGatesResponseHeatmap(pop_tests)
-    n_rows <- length(levels(hm$data$label))
+    hm_n_rows <- length(levels(hm$data$label))
     .analysis_print_save_fig(hm, file.path(fig_dir, "response-heatmap.png"),
-      width = 30, height = 8 + 0.5 * n_rows, allow_tall = TRUE)
+      width = 30, height = 8 + 0.5 * hm_n_rows, allow_tall = TRUE)
 
     paths <- .acsCytofPopulationPaths(pop, "unused", path_gs_base, path_scratch_base)
     gs <- NULL
