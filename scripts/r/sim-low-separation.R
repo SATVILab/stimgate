@@ -239,6 +239,7 @@
 # dataset's seed from the scenario's data seed (`scenario_seed`), so rows
 # sharing a scenario seed (11b mismatch settings) share their data.
 .simLowSepRowGrid <- function(scenario_grid, n_iter = .simLowSepIterMax) {
+  if (n_iter > .simLowSepIterMax) stop("At most ", .simLowSepIterMax, " datasets per scenario.")
   rows <- lapply(seq_len(nrow(scenario_grid)), function(i) {
     scen <- scenario_grid[i, , drop = FALSE]
     seeds <- .simLowSepIterSeeds(scen$scenario_seed[[1]], n_iter)
@@ -246,7 +247,9 @@
       scen[rep(1L, n_iter), , drop = FALSE],
       tibble::tibble(
         iter = seq_len(n_iter),
-        sim_id = as.integer((scen$scenario_id[[1]] - 1L) * n_iter + seq_len(n_iter)),
+        # The stride is always the full dataset count, so IDs do not depend
+        # on how many datasets a run uses.
+        sim_id = as.integer((scen$scenario_id[[1]] - 1L) * .simLowSepIterMax + seq_len(n_iter)),
         sim_seed = seeds
       )
     )
@@ -457,8 +460,11 @@
 # (`.coexPositive()`) use the lowered gates `low` (`.coexLowerGates()`) of
 # that rule.
 .simLowSepCall <- function(x_tnf, x_ifng, gate, gate_type, low = NULL) {
-  pos_tnf <- x_tnf > gate[["tnf"]]
-  pos_ifng <- x_ifng > gate[["ifng"]]
+  # A missing gate calls every cell negative, as the package's positivity
+  # helpers do, so every cell keeps a call.
+  above <- function(x, g) (x > g) %in% TRUE
+  pos_tnf <- above(x_tnf, gate[["tnf"]])
+  pos_ifng <- above(x_ifng, gate[["ifng"]])
   if (gate_type %in% names(.simLowSepCoexScreen)) {
     pos <- .coexPositive(
       data.frame(TNF = x_tnf, IFNg = x_ifng),
@@ -467,8 +473,8 @@
     pos_tnf <- pos[, "TNF"]
     pos_ifng <- pos[, "IFNg"]
   } else if (identical(gate_type, "antimode")) {
-    pos_tnf_cyt <- pos_tnf | (x_tnf > gate[["tnf_cyt"]] & pos_ifng)
-    pos_ifng <- pos_ifng | (x_ifng > gate[["ifng_cyt"]] & pos_tnf)
+    pos_tnf_cyt <- pos_tnf | (above(x_tnf, gate[["tnf_cyt"]]) & pos_ifng)
+    pos_ifng <- pos_ifng | (above(x_ifng, gate[["ifng_cyt"]]) & pos_tnf)
     pos_tnf <- pos_tnf_cyt
   } else if (!identical(gate_type, "ordinary")) {
     stop("gate_type must be one of: ", paste0("\"", names(.simLowSepGateTypes), "\"", collapse = ", "), ".")
@@ -530,6 +536,7 @@
           .simLowSepCall(ex[, .simLowSepChnl[["tnf"]]], ex[, .simLowSepChnl[["ifng"]]], gate, gt, low),
           levels = .simLowSepCombn
         )
+        if (anyNA(call)) stop("Undefined ", gt, " calls in tube ", ind, ".")
         tibble::as_tibble(as.data.frame(table(truth = truth, call = call), stringsAsFactors = FALSE)) |>
           dplyr::rename(n = "Freq") |>
           dplyr::mutate(gate_type = gt, .before = 1L)
@@ -972,10 +979,17 @@
     }
     return(suppressWarnings(stats::wilcox.test(d, mu = 0, alternative = "greater")$p.value))
   }
+  constant <- function() if (mean(d) > 0) 0 else 1
   if (stats::sd(d) == 0) {
-    return(if (mean(d) > 0) 0 else 1)
+    return(constant())
   }
-  stats::t.test(d, mu = 0, alternative = "greater")$p.value
+  # t.test() also stops on differences that are constant up to rounding.
+  tryCatch(
+    stats::t.test(d, mu = 0, alternative = "greater")$p.value,
+    error = function(e) {
+      if (grepl("essentially constant", conditionMessage(e), fixed = TRUE)) constant() else stop(e)
+    }
+  )
 }
 
 # Per stimulated sample, rule and quantity: Fisher's exact test of the
@@ -1073,8 +1087,9 @@
 }
 
 .simLowSepScaleRule <- function(aesthetics = "colour") {
+  # Two legend rows, so the four rule names fit the figure width.
   scale_colour_manual(values = .simLowSepGateColours, labels = .simLowSepGateTypes, name = NULL,
-    aesthetics = aesthetics, drop = TRUE)
+    aesthetics = aesthetics, drop = TRUE, guide = guide_legend(nrow = 2))
 }
 
 # First sample of the first dataset of each scenario (chosen in advance).
@@ -1238,7 +1253,7 @@
       ordinary = "Ordinary IFNγ gate", antimode = "Antimode IFNγ gate",
       coex_screened = "Co-expression IFNγ gate, screened (where lowered)",
       coex_unscreened = "Co-expression IFNγ gate, unscreened (where lowered)"
-    ), name = NULL, drop = TRUE) +
+    ), name = NULL, drop = TRUE, guide = guide_legend(nrow = 2)) +
     scale_y_sqrt() +
     facet_wrap(~ scenario_lab, ncol = 2, scales = "free_y", labeller = ggplot2::label_wrap_gen(width = 36)) +
     labs(x = "IFNγ", y = "Density (square-root scale)") +
@@ -1394,17 +1409,18 @@
     geom_point(aes(x = .data$rate, shape = .data$response_truth), position = dodge, size = 1.4) +
     scale_shape_manual(values = c(response = 16, none = 1), labels = c(
       response = "Net response (power)", none = "No net response (false-positive rate)"
-    ), name = NULL, drop = FALSE) +
+    ), name = NULL, drop = FALSE, guide = guide_legend(override.aes = list(colour = "black"))) +
     .simLowSepScaleRule() +
     .simLowSepXFloor(c(0, 0.1)) +
-    scale_x_continuous(labels = function(x) paste0(100 * x, "%")) +
+    scale_x_continuous(breaks = c(0, 0.5, 1), labels = function(x) paste0(100 * x, "%")) +
     facet_grid(test ~ quantity_lab, labeller = ggplot2::labeller(
       test = ggplot2::label_wrap_gen(width = 20), quantity_lab = ggplot2::label_wrap_gen(width = 12)
     )) +
     scale_y_discrete(labels = function(x) stringr::str_wrap(x, 36)) +
     labs(x = "Tests rejecting at the 5% level", y = NULL) +
     .analysis_theme() +
-    theme(legend.position = "bottom", legend.box = "vertical", axis.text.x = element_text(size = 7))
+    theme(legend.position = "bottom", legend.box = "vertical", axis.text.x = element_text(size = 7),
+      panel.spacing.x = grid::unit(1.2, "lines"))
 }
 
 # Cells each lowering rule adds over the ordinary gates in the stimulated
@@ -1488,7 +1504,7 @@
     geom_point(aes(shape = .data$response_truth), position = dodge, size = 1.4) +
     scale_shape_manual(values = c(response = 16, none = 1), labels = c(
       response = "Net response (power)", none = "No net response (false-positive rate)"
-    ), name = NULL, drop = FALSE) +
+    ), name = NULL, drop = FALSE, guide = guide_legend(override.aes = list(colour = "black"))) +
     .simLowSepScaleRule() +
     .simLowSepYFloor(c(0, 0.1)) +
     scale_y_continuous(labels = function(x) paste0(100 * x, "%")) +

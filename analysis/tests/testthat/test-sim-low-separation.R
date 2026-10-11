@@ -102,6 +102,12 @@ test_that("dataset rows get stable IDs and seeds drawn from the scenario seed", 
   sub <- env$.simLowSepRowGrid(grid[c(5, 33), ])
   expect_equal(sub$sim_seed, rows$sim_seed[rows$scenario_id %in% c(5, 33)])
   expect_equal(sub$sim_id, rows$sim_id[rows$scenario_id %in% c(5, 33)])
+  # Fewer datasets keep the same IDs and seeds for the datasets they run.
+  few <- env$.simLowSepRowGrid(grid[c(5, 33), ], n_iter = 5L)
+  keep <- rows$scenario_id %in% c(5, 33) & rows$iter <= 5L
+  expect_equal(few$sim_id, rows$sim_id[keep])
+  expect_equal(few$sim_seed, rows$sim_seed[keep])
+  expect_error(env$.simLowSepRowGrid(grid[1, ], n_iter = 21L), "At most")
   expect_equal(anyDuplicated(rows$sim_seed), 0L)
   expect_equal(env$.simLowSepSizes("final"), list(n_dataset = 20L, n_sample = 12L))
   expect_equal(env$.simLowSepSizes("draft"), list(n_dataset = 5L, n_sample = 12L))
@@ -278,11 +284,23 @@ test_that("the one-sided Fisher test equals fisher.test", {
   expect_length(env$.simLowSepFisherGreater(c(1, 2), c(10, 10), c(0, 0), c(10, 10)), 2L)
 })
 
+test_that("a missing gate calls every cell negative under every rule", {
+  env <- .lowSepEnv()
+  gate <- c(tnf = NA_real_, ifng = 1, tnf_cyt = NA_real_, ifng_cyt = 0.5)
+  for (gt in names(env$.simLowSepGateTypes)) {
+    call <- env$.simLowSepCall(c(2, 0, 3), c(2, 0.7, 0), gate, gt)
+    expect_false(anyNA(call), info = gt)
+    expect_false(any(grepl("TNF\\+", call)), info = gt)
+  }
+})
+
 test_that("paired tests treat no difference as no evidence", {
   env <- .lowSepEnv()
   expect_equal(env$.simLowSepPairedP(c(0, 0, 0, 0), "wilcoxon"), 1)
   expect_equal(env$.simLowSepPairedP(c(0, 0, 0, 0), "t"), 1)
   expect_equal(env$.simLowSepPairedP(c(0.1, 0.1, 0.1), "t"), 0)
+  # Constant up to rounding: t.test() would stop.
+  expect_equal(env$.simLowSepPairedP(0.1 + c(0, 1e-17, 2e-17, -1e-17), "t"), 0)
   expect_true(is.na(env$.simLowSepPairedP(0.1, "wilcoxon")))
   d <- c(0.01, 0.02, -0.005, 0.03, 0.015, 0.04)
   expect_equal(env$.simLowSepPairedP(d, "wilcoxon"),
