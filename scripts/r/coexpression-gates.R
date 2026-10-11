@@ -1,5 +1,5 @@
 # Cytokine-positive gates lowered where two cytokines are co-expressed beyond
-# independence (Analyses 11, 17 and 18). Each tube pair is a list with `stim`
+# independence (Analyses 11a, 11b, 17 and 18). Each tube pair is a list with `stim`
 # and `uns` data frames (one column per marker, values on the gating scale)
 # and `gate`, the ordinary gates named by marker. For an ordered pair (a, b),
 # b's gate is lowered for cells above a's gate (`.coexLowerGate()`); with
