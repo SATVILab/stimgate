@@ -169,6 +169,31 @@ done
 run_selection
 grep -Fq -- 'dev-13-real-debug-acs-cytof.sh' "$SLURM_TEST_LOG"
 
+# Analysis 17 only draws plots, in its own job (no plot job). It waits for 9
+# when both are submitted, whatever the order requested, and for Analysis 1's
+# projr build, which clears the figure folder.
+run_selection 17
+[[ $(wc -l < "$SLURM_TEST_LOG") -eq 1 ]]
+sim_17=$(grep -F 'dev-17-explore-acs-cytof-coexpression.sh' "$SLURM_TEST_LOG")
+[[ "$sim_17" != *"--dependency"* ]]
+[[ "$sim_17" == *",RUN_PLOTS=true|"* ]]
+for selection in "9 17" "17 9"; do
+  # shellcheck disable=SC2086
+  run_selection $selection
+  sim_17=$(grep -F 'dev-17-explore-acs-cytof-coexpression.sh' "$SLURM_TEST_LOG")
+  [[ "$sim_17" == *"|--dependency=afterok:101|"* ]]
+  ! grep -Fq -- 'plots-17-' "$SLURM_TEST_LOG"
+done
+run_selection 17 1
+sim_17=$(grep -F 'dev-17-explore-acs-cytof-coexpression.sh' "$SLURM_TEST_LOG")
+[[ "$sim_17" == *"|--dependency=afterany:101|"* ]]
+: > "$SLURM_TEST_LOG"
+bash "$project_root/scripts/slurm/dev-17-explore-acs-cytof-coexpression.sh" > "$test_dir/output" 2>&1
+grep -Fq 'render_file_exists=analysis/17-explore-acs-cytof-coexpression.qmd' "$SLURM_TEST_LOG"
+grep -Fq 'plots=true' "$SLURM_TEST_LOG"
+run_selection
+grep -Fq -- 'dev-17-explore-acs-cytof-coexpression.sh' "$SLURM_TEST_LOG"
+
 # OMIP analyses draw their plots in the simulation job, with no plot job.
 # 14b and 15b wait for 14 and 15 when both are submitted, whatever the order
 # requested, and run alone without a dependency.
@@ -300,7 +325,7 @@ for launcher_path in "$project_root"/scripts/slurm/dev-*.sh; do
   else
     [[ $? -eq 23 ]]
   fi
-  grep -Fq -- 'SIM_SIZE:' "$test_dir/output" || [[ "$launcher_path" == *dev-9-* || "$launcher_path" == *dev-13-* ]]
+  grep -Fq -- 'SIM_SIZE:' "$test_dir/output" || [[ "$launcher_path" == *dev-9-* || "$launcher_path" == *dev-13-* || "$launcher_path" == *dev-17-* ]]
 done
 if PLOT_QMD_FILES="analysis/1-sim-trans.qmd" bash "$project_root/scripts/slurm/render-plots.sh" > "$test_dir/output" 2>&1; then
   echo 'Renderer failure must fail the plot launcher.' >&2

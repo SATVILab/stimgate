@@ -25,6 +25,7 @@ scripts=(
   "dev-14b-real-compare-omip111-shifted-peak.sh"
   "dev-15-real-compare-omip016.sh"
   "dev-15b-real-compare-omip016-shifted-peak.sh"
+  "dev-17-explore-acs-cytof-coexpression.sh"
 )
 
 # With arguments, submit only those analysis IDs or launcher filenames.
@@ -72,8 +73,9 @@ if (( $# > 0 )); then
 fi
 
 # Some analyses read another's results, so submit the one they read first
-# when both run: 13 and 18 read 9, 14b reads 14 and 15b reads 15. The OMIP analyses
-# also wait for Analysis 1's projr build, which clears the figure folder.
+# when both run: 13, 17 and 18 read 9, 14b reads 14 and 15b reads 15. The OMIP
+# analyses and 17 also wait for Analysis 1's projr build, which clears the
+# figure folder.
 move_after() {
   local first="$1" second="$2" idx_first=-1 idx_second=-1 i moved
   for i in "${!scripts[@]}"; do
@@ -87,10 +89,12 @@ move_after() {
   fi
 }
 for omip_script in dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh \
-  dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh; do
+  dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh \
+  dev-17-explore-acs-cytof-coexpression.sh; do
   move_after dev-1-sim-trans.sh "$omip_script"
 done
 move_after dev-9-real-compare-acs-cytof.sh dev-13-real-debug-acs-cytof.sh
+move_after dev-9-real-compare-acs-cytof.sh dev-17-explore-acs-cytof-coexpression.sh
 move_after dev-9-real-compare-acs-cytof.sh dev-18-explore-acs-cytof-coexpression-gates.sh
 move_after dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh
 move_after dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh
@@ -158,10 +162,11 @@ plot_qmds_for_script() {
     dev-13-real-debug-acs-cytof.sh)
       echo "analysis/13-real-debug-acs-cytof.qmd"
       ;;
-    # The OMIP analyses (14, 14b, 15, 15b) draw their plots in their own
-    # simulation job (plots_in_sim_job), so they have no plot job.
+    # The OMIP analyses (14, 14b, 15, 15b) and 17 draw their plots in their
+    # own job (plots_in_sim_job), so they have no plot job.
     dev-14-real-compare-omip111.sh | dev-14b-real-compare-omip111-shifted-peak.sh | \
-      dev-15-real-compare-omip016.sh | dev-15b-real-compare-omip016-shifted-peak.sh)
+      dev-15-real-compare-omip016.sh | dev-15b-real-compare-omip016-shifted-peak.sh | \
+      dev-17-explore-acs-cytof-coexpression.sh)
       ;;
     *)
       qmd_stem="$(chunked_qmd_stem_for_script "$1")"
@@ -172,12 +177,13 @@ plot_qmds_for_script() {
   esac
 }
 
-# Analyses quick enough to draw their plots in the simulation render.
+# Analyses quick enough to draw their plots in the simulation render, and
+# Analysis 17, which only draws plots.
 plots_in_sim_job() {
   case "$1" in
     dev-14-real-compare-omip111.sh | dev-14b-real-compare-omip111-shifted-peak.sh | \
       dev-15-real-compare-omip016.sh | dev-15b-real-compare-omip016-shifted-peak.sh | \
-      dev-18-explore-acs-cytof-coexpression-gates.sh)
+      dev-17-explore-acs-cytof-coexpression.sh | dev-18-explore-acs-cytof-coexpression-gates.sh)
       return 0
       ;;
     *) return 1 ;;
@@ -186,11 +192,12 @@ plots_in_sim_job() {
 
 # Simulation jobs that must wait for another launcher's jobs to succeed, as
 # ':'-prefixed job IDs (empty when that launcher is not in this submission).
-# Analyses 13 and 18 read Analysis 9's caches and results; 14b
-# and 15b compare against Analysis 14's and 15's saved results.
+# Analyses 13 and 18 read Analysis 9's caches and results, and 17 reads its
+# gates; 14b and 15b compare against Analysis 14's and 15's saved results.
 sim_dependency_for_script() {
   case "$1" in
-    dev-13-real-debug-acs-cytof.sh | dev-18-explore-acs-cytof-coexpression-gates.sh)
+    dev-13-real-debug-acs-cytof.sh | dev-17-explore-acs-cytof-coexpression.sh | \
+      dev-18-explore-acs-cytof-coexpression-gates.sh)
       echo "${script_job_ids[dev-9-real-compare-acs-cytof.sh]:-}"
       ;;
     dev-14b-real-compare-omip111-shifted-peak.sh)

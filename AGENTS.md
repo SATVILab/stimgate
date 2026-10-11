@@ -400,9 +400,11 @@ the QMDs end to end in quick mode instead (simulate, then plot; one job per QMD)
 `analysis/tests/README.md` for commands and coverage limits.
 
 The default Slurm job list includes Analysis 2a, 2b, 7, 8, 11a and 11b as chunked runs,
-Analysis 12 as a serial non-chunked simulation, Analysis 13
-after Analysis 9, and the OMIP analyses 14, 14b, 15 and 15b. `sim_dependency_for_script()`
-makes 13's job wait `afterok` on 9's (and 14b on 14, 15b on 15) when both are
+Analysis 12 as a serial non-chunked simulation, Analyses 13
+and 17 after Analysis 9, and the OMIP analyses 14, 14b, 15 and 15b. Analysis 17
+only draws plots: like the OMIP analyses it renders with plots on in its own
+job, has no plot job and waits `afterany` on Analysis 1's projr build. `sim_dependency_for_script()`
+makes 13's, 17's and 18's jobs wait `afterok` on 9's (and 14b on 14, 15b on 15) when both are
 submitted, and `dev.sh` (`move_after()`) submits the analysis that is read first
 whatever the order requested. OMIP launchers reuse prepared data unless
 `RUN_PREPROCESSING=true` and draw plots by default; plot jobs also set `RUN_METHODS=false`. Keep enabled
@@ -625,7 +627,14 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     departure from independence and purity relative to the double positives;
     the added band trimmed on purity), with conditional histograms scaled per
     100,000 tube cells. Floors use non-zero values; purity and expected counts
-    use every cell.
+    use every cell. It also compares the net total response (any of IFNg, TNF,
+    IL-2) and single-cytokine frequencies, with ordinary and lowered gates,
+    against manual gating (`.acsCoexTotalTbl()`). Gates lowered only for cells
+    already positive for another cytokine cannot change the total; the manual
+    file has single-cytokine frequencies only, so the manual total is shown as
+    the range its marginals allow, and the ordinary frequencies must equal
+    Analysis 9's saved StimGate frequencies. Analysis 11a reports the same total
+    (`any`) beside its marginal and exclusive quantities.
   - `coexpression-gates.R`: the reference implementation of the co-expression
     gates for any number of markers (`.coexLowerGate()`, `.coexLowerGates()`
     over every ordered pair, `.coexPositive()`, `.coexCombnCounts()`), shared

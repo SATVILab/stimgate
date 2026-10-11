@@ -29,6 +29,37 @@ local({
     testthat::expect_equal(env$.acsScoreRectNet(dat, c("A", "B"), "d1")$net, 1 / 3)
     testthat::expect_true(env$.acsScoreKl(tbl)$klBits >= 0)
   })
+
+  testthat::test_that("lowered gates keep the total response and manual totals are bounded", {
+    # Stimulated: cell 2 is A+ only by the ordinary gates and B+ too with B's
+    # lowered gate; cell 3 is B+ only. Control: cell 1 is A+.
+    dat <- list(
+      stim = data.frame(A = c(0, 3, 0, 0), B = c(0, 2, 3, 0)),
+      uns = data.frame(A = c(3, 0, 0, 0), B = c(0, 0, 0, 0)),
+      gate = c(A = 2.5, B = 2.5)
+    )
+    low <- list(
+      A = list(a = "B", b = "A", gateB = 2.5, cut = 2.5, condCut = 2.5),
+      B = list(a = "A", b = "B", gateB = 2.5, cut = 1.5, condCut = 2.5)
+    )
+    manual <- data.frame(cyt = c("B", "A"), freq_stim_man = c(30, 20),
+      freq_uns_man = c(5, 10), freq_stim_auto = c(25, 25), freq_uns_auto = c(0, 25))
+    tbl <- env$.acsCoexTotalTbl(dat, low, c("A", "B"), "d1", manual)
+    row <- function(q) tbl[tbl$quantity == q, ]
+    testthat::expect_equal(row("any")$ordinary, 100 * (2 / 4 - 1 / 4))
+    testthat::expect_equal(row("any")$lowered, row("any")$ordinary)
+    testthat::expect_equal(row("B")$ordinary, 25)
+    testthat::expect_equal(row("B")$lowered, 50)
+    testthat::expect_equal(row("A")$lowered, row("A")$ordinary)
+    testthat::expect_equal(row("A")$manual, 10)
+    testthat::expect_equal(row("B")$manual, 25)
+    testthat::expect_equal(row("A")$analysis9, 0)
+    # Net manual total between (largest stim - summed control) and
+    # (summed stim - largest control).
+    testthat::expect_equal(row("any")$manualLow, 30 - 15)
+    testthat::expect_equal(row("any")$manualHigh, 50 - 10)
+    testthat::expect_s3_class(env$.acsCoexTotalPlot(tbl), "ggplot")
+  })
 })
 
 local({

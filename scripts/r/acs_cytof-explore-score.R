@@ -361,6 +361,68 @@
   )
 }
 
+# Total response and single-cytokine frequencies for one donor: the net
+# (stimulated minus control, %) frequency of cells positive for any of
+# `markers` and of each marker, with the ordinary gates and with the lowered
+# gates `low` (from `.acsCoexLowerSummary()`; `.coexPositive()`), beside
+# Analysis 9's manual net frequencies (`manual`: cyt, freq_stim_man,
+# freq_uns_man; unclipped here) and its StimGate frequencies from
+# getStimStats() (freq_stim_auto, freq_uns_auto). The lowered gates only add
+# a marker to cells already positive for another, so the total cannot change.
+# The manual file has single-cytokine frequencies only, so its total is
+# bounded: each tube's lies between the largest and the sum of its marginals.
+.acsCoexTotalTbl <- function(dat, low, markers, donor, manual) {
+  lowTbl <- do.call(rbind, lapply(low, function(l) {
+    data.frame(a = l$a, b = l$b, cut = l$cut, condCut = l$condCut,
+      lowered = isTRUE(l$cut < l$gateB))
+  }))
+  net <- function(l) {
+    pos <- lapply(list(stim = dat$stim, uns = dat$uns), function(ex) {
+      .coexPositive(ex, dat$gate[markers], l, markers)
+    })
+    100 * (c(any = mean(rowSums(pos$stim) > 0), colMeans(pos$stim)) -
+      c(any = mean(rowSums(pos$uns) > 0), colMeans(pos$uns)))
+  }
+  man <- manual[match(markers, manual$cyt), , drop = FALSE]
+  manNet <- stats::setNames(man$freq_stim_man - man$freq_uns_man, markers)
+  autoNet <- stats::setNames(man$freq_stim_auto - man$freq_uns_auto, markers)
+  data.frame(donor = donor, quantity = c("any", markers),
+    ordinary = net(NULL), lowered = net(lowTbl),
+    manual = c(NA_real_, manNet),
+    manualLow = c(max(man$freq_stim_man) - sum(man$freq_uns_man), rep(NA_real_, length(markers))),
+    manualHigh = c(sum(man$freq_stim_man) - max(man$freq_uns_man), rep(NA_real_, length(markers))),
+    analysis9 = c(NA_real_, autoNet), row.names = NULL)
+}
+
+# Per donor (rows) and quantity (panels): StimGate's net frequencies with the
+# ordinary (orange) and lowered (blue) gates, the manual net frequency (black
+# cross) and, for the total, the range the manual marginals allow (black bar).
+.acsCoexTotalPlot <- function(totalTbl) {
+  labs <- c(any = "Any of IFN\u03b3, TNF, IL-2 (total)")
+  totalTbl$panel <- ifelse(totalTbl$quantity %in% names(labs), labs[totalTbl$quantity],
+    paste0(totalTbl$quantity, "+"))
+  totalTbl$panel <- factor(totalTbl$panel, levels = unique(totalTbl$panel))
+  pts <- rbind(
+    data.frame(totalTbl[c("donor", "panel")], rule = "Ordinary gates", net = totalTbl$ordinary),
+    data.frame(totalTbl[c("donor", "panel")], rule = "Lowered gates", net = totalTbl$lowered)
+  )
+  rng <- totalTbl[!is.na(totalTbl$manualLow), , drop = FALSE]
+  ggplot(pts, aes(x = .data$net, y = .data$donor)) +
+    geom_vline(xintercept = 0, colour = "grey60", linewidth = 0.3) +
+    geom_errorbar(data = rng, aes(xmin = .data$manualLow, xmax = .data$manualHigh, y = .data$donor),
+      inherit.aes = FALSE, orientation = "y", width = 0.4, colour = "black") +
+    geom_point(aes(colour = .data$rule, shape = .data$rule), size = 2.2, alpha = 0.8,
+      position = ggplot2::position_dodge(width = 0.5)) +
+    geom_point(data = totalTbl[!is.na(totalTbl$manual), , drop = FALSE],
+      aes(x = .data$manual, y = .data$donor), inherit.aes = FALSE, shape = 4, size = 2.5) +
+    scale_colour_manual(values = c("Ordinary gates" = "#D55E00", "Lowered gates" = "#0072B2"), name = NULL) +
+    scale_shape_manual(values = c("Ordinary gates" = 16, "Lowered gates" = 17), name = NULL) +
+    facet_wrap(~panel, nrow = 1, scales = "free_x") +
+    labs(x = "Net frequency (stimulated minus control, %)", y = NULL) +
+    .analysis_theme() +
+    theme(legend.position = "bottom")
+}
+
 # Line segments for the lowered gates on x-against-y plots: x's lowered gate
 # (vertical, from y's raised cut up) and y's (horizontal, from x's raised cut
 # right), drawn only where a gate was lowered.

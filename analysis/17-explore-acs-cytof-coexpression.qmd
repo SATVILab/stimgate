@@ -76,6 +76,7 @@ cells also carry the other marker. Per donor this section shows:
 9. lowered cytokine-positive gates (next section) on the hexagon plots, with
    histograms of each marker among cells positive for the other and a table of
    the net double-positive frequencies.
+10. the total response against manual gating (described below).
 
 ## Lowering a gate for cells positive for the other cytokine
 
@@ -129,6 +130,28 @@ A CSV gives each donor's KL divergence of the stimulated from the control
 score distribution (bits; bins 0.25 wide, add-half smoothing), a summary of
 how differently the two tubes score, not a gate.
 
+## Total response against manual gating
+
+For each population and stimulation, the net (stimulated minus control)
+frequency of cells positive for any of IFNγ, TNF and IL-2 (the total
+response) and of each of the three is computed per donor with the ordinary
+gates and with the lowered IFNγ/TNF gates (strict `x > gate`), and compared
+with manual gating. The lowered gates only add a cytokine to cells already
+positive for another by its ordinary gate, so they cannot change the total;
+they move cells between combinations and raise the single-cytokine
+frequencies.
+
+The manual file gives each cytokine's frequency on its own, not the
+combinations, so the manual total is not known. It is bounded: in each tube,
+the frequency of cells positive for any cytokine lies between the largest
+single-cytokine frequency and their sum, so the net total lies between
+(largest stimulated − sum of control) and (sum of stimulated − largest
+control), the black bar in the figure. Manual net frequencies are not clipped
+at zero here, unlike Analysis 9. The single-cytokine panels compare
+StimGate's frequencies directly with the manual ones (black cross). As a
+check, the ordinary frequencies should equal Analysis 9's saved StimGate
+frequencies, counted from the same gates.
+
 Everything is read from Analysis 9's most recent run; nothing is gated again.
 
 ```{r}
@@ -173,7 +196,15 @@ path_comparison <- projr::projr_path_get(
 if (!file.exists(path_comparison)) {
   stop("Analysis 9's manual comparison is missing; render Analysis 9 first.")
 }
-manual_donors <- sort(unique(as.character(readRDS(path_comparison)$SampleID)))
+comparison <- readRDS(path_comparison)
+manual_donors <- sort(unique(as.character(comparison$SampleID)))
+# Analysis 9's manual and StimGate single-cytokine frequencies, for the totals.
+manual_freq <- as.data.frame(comparison[comparison$method == "stimgate", c(
+  "SampleID", "stim", "popCode", "cyt", "freq_stim_man", "freq_uns_man",
+  "freq_stim_auto", "freq_uns_auto"
+)])
+manual_freq$cyt <- as.character(manual_freq$cyt)
+total_markers <- c("IFNg", "TNF", "IL2")
 channel_map <- .acsCytofChannelMap()
 selection <- list(cd4 = c("p1", "mtb"), nk = c("ebv", "p1"))
 pairs <- list(c("IFNg", "TNF"), c("IFNg", "IL2"), c("TNF", "IL2"))
@@ -188,6 +219,7 @@ if (isTRUE(run_plots)) {
   kl_all <- list()
   mono_all <- list()
   low_all <- list()
+  total_all <- list()
   for (pop in names(selection)) {
     paths <- .acsCytofPopulationPaths(pop, "unused", path_gs_base, path_scratch_base)
     gs <- flowWorkspace::load_gs(paths$gs, backend_readonly = TRUE)
@@ -285,6 +317,23 @@ if (isTRUE(run_plots)) {
           .analysis_report_table(low_show,
             c(fig_key, paste0(pop, "-", stim, "-lowered-gates.csv")),
             "Lowered gates and net double-positive frequencies per donor.", root_dir)
+
+          cat("\n\n#### Total response against manual gating\n\n")
+          total_tbl <- do.call(rbind, lapply(donors, function(d) {
+            man <- manual_freq[manual_freq$SampleID == d & manual_freq$stim == stim &
+              manual_freq$popCode == pop, , drop = FALSE]
+            .acsCoexTotalTbl(dat[[d]], lower[[d]]$low, total_markers, d, man)
+          }))
+          .analysis_print_save_fig(.acsCoexTotalPlot(total_tbl),
+            file.path(fig_dir, paste0(stim, "-total-response.png")), width = 36, height = 16)
+          total_all[[length(total_all) + 1L]] <- cbind(pop = pop, stim = stim, total_tbl)
+          total_show <- total_tbl
+          is_num <- vapply(total_show, is.numeric, logical(1))
+          total_show[is_num] <- lapply(total_show[is_num], round, 3)
+          .analysis_report_table(total_show,
+            c(fig_key, paste0(pop, "-", stim, "-total-response.csv")),
+            "Net total and single-cytokine frequencies (%) per donor: StimGate with ordinary and lowered gates, manual, and Analysis 9.",
+            root_dir)
         }
       }
     }
@@ -297,6 +346,32 @@ if (isTRUE(run_plots)) {
   .analysis_report_table(low_all, c(fig_key, "lowered-gates.csv"),
     "Lowered IFNg and TNF gates and net double-positive frequencies per donor.", root_dir,
     quiet = TRUE)
+  total_all <- do.call(rbind, total_all)
+  .analysis_report_table(total_all, c(fig_key, "total-response.csv"),
+    "Net total and single-cytokine frequencies (%) per donor, population and stimulation.",
+    root_dir, quiet = TRUE)
+  cat("\n\n## Total response against manual gating: summary\n\n")
+  cat("The CSV gives, per population, stimulation and quantity (12 donors), the median net frequency (%)",
+    "with the ordinary and the lowered gates and by manual gating (for the total, the median",
+    "of the manual range's ends), the median absolute difference from manual, and the largest",
+    "difference between this document's ordinary frequencies and Analysis 9's saved ones",
+    "(zero up to rounding if both count the same cells).\n\n")
+  total_summary <- do.call(rbind, lapply(
+    split(total_all, list(total_all$pop, total_all$stim, total_all$quantity), drop = TRUE),
+    function(d) {
+      data.frame(pop = d$pop[[1]], stim = d$stim[[1]], quantity = d$quantity[[1]],
+        medianOrdinary = round(stats::median(d$ordinary), 3),
+        medianLowered = round(stats::median(d$lowered), 3),
+        medianManual = round(stats::median(d$manual), 3),
+        medianManualLow = round(stats::median(d$manualLow), 3),
+        medianManualHigh = round(stats::median(d$manualHigh), 3),
+        medianAbsDiffOrdinary = round(stats::median(abs(d$ordinary - d$manual)), 3),
+        medianAbsDiffLowered = round(stats::median(abs(d$lowered - d$manual)), 3),
+        maxDiffAnalysis9 = signif(max(abs(d$ordinary - d$analysis9)), 3))
+    }
+  ))
+  .analysis_report_table(total_summary, c(fig_key, "total-response-summary.csv"),
+    "Median net total and single-cytokine frequencies (%) against manual gating.", root_dir)
   cat("\n\n## Lowered gates: summary\n\n")
   cat("Per population and stimulation (12 donors): donors with a clear double-positive",
     "response (z > 2), donors whose TNF gate (for IFNγ+ cells) and IFNγ gate (for TNF+",

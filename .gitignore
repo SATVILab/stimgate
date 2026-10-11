@@ -182,3 +182,6 @@ _tmp/log/sbatch/plots/14-real-compare-omip111
 _tmp/log/sbatch/plots/14b-real-compare-omip111-shifted-peak
 _tmp/log/sbatch/plots/15-real-compare-omip016
 _tmp/log/sbatch/plots/15b-real-compare-omip016-shifted-peak
+_tmp/log/sbatch/dev-6-sim-tune-comparators
+_tmp/log/sbatch/plots/6-sim-tune-comparators
+_tmp/log/sbatch/dev-17-explore-acs-cytof-coexpression
