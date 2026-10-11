@@ -8,7 +8,6 @@ Start with the defaults; set only the options you need to change.
 
 ``` r
 stimControl(
-  calcCytPosGates = TRUE,
   minCell = 100,
   biasUnsFactor = 1,
   excMin = TRUE,
@@ -60,23 +59,16 @@ stimControl(
   normExcessNcell = 10000L,
   normAdaptiveNcell = 2500L,
   normMtd = "moments",
-  cytPosMethod = "refine",
+  cytPosMethod = "coexpression",
   coexNBin = 20L,
   coexResidualMin = 3.5,
   coexPurityFrac = 0.75,
-  coexZMin = 2
+  coexZMin = 2,
+  coexScreen = TRUE
 )
 ```
 
 ## Arguments
-
-- calcCytPosGates:
-
-  logical Apply the `cytPosMethod` rule. With "refine", refine gates
-  using cells positive for another cytokine. Lower a clustered gate to
-  the leftmost internal antimode between the stimulated marginal peak
-  plus half its negative-population width (at least one marginal density
-  bandwidth) and that gate; keep the gate if none exists. Default: TRUE.
 
 - minCell:
 
@@ -414,8 +406,16 @@ stimControl(
 
 - cytPosMethod:
 
-  character Cytokine-positive rule, "refine" or "coexpression"; used
-  only when `calcCytPosGates = TRUE`. Default: "refine".
+  character Cytokine-positive rule, "coexpression" or "antimode"; used
+  only when
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)'s
+  `calcCytPosGates` is TRUE. "coexpression" lowers a cytokine's gate,
+  for cells above another cytokine's gate, where the two are
+  co-expressed beyond independence and the added cells are mostly
+  responders (see
+  [`getStimGatesCoexpression()`](https://satvilab.github.io/stimgate/reference/getStimGatesCoexpression.md)).
+  "antimode" lowers a gate to an antimode of the taut-string density
+  among cells positive for another cytokine. Default: "coexpression".
 
 - coexNBin:
 
@@ -433,7 +433,15 @@ stimControl(
 
 - coexZMin:
 
-  numeric Minimum net double-positive z score. Default: 2.
+  numeric Minimum net double-positive z score, used when
+  `coexScreen = TRUE`. Default: 2.
+
+- coexScreen:
+
+  logical Lower a pair's gate only when the cells above both ordinary
+  gates show a clear net response (z above `coexZMin`). With FALSE,
+  every pair is tested, and the purity requirement uses zero in place of
+  a negative or undefined double-positive purity. Default: TRUE.
 
 ## Value
 
@@ -468,9 +476,6 @@ both limits to Inf shares responders' thresholds without limits.
 
 ``` r
 stimControl()
-#> $calcCytPosGates
-#> [1] TRUE
-#> 
 #> $minCell
 #> [1] 100
 #> 
@@ -631,7 +636,7 @@ stimControl()
 #> [1] "moments"
 #> 
 #> $cytPosMethod
-#> [1] "refine"
+#> [1] "coexpression"
 #> 
 #> $coexNBin
 #> [1] 20
@@ -644,13 +649,13 @@ stimControl()
 #> 
 #> $coexZMin
 #> [1] 2
+#> 
+#> $coexScreen
+#> [1] TRUE
 #> 
 #> attr(,"class")
 #> [1] "stimControl"
 stimControl(bwAdj = 1.5, clusterGates = FALSE)
-#> $calcCytPosGates
-#> [1] TRUE
-#> 
 #> $minCell
 #> [1] 100
 #> 
@@ -811,7 +816,7 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> [1] "moments"
 #> 
 #> $cytPosMethod
-#> [1] "refine"
+#> [1] "coexpression"
 #> 
 #> $coexNBin
 #> [1] 20
@@ -824,6 +829,9 @@ stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #> 
 #> $coexZMin
 #> [1] 2
+#> 
+#> $coexScreen
+#> [1] TRUE
 #> 
 #> attr(,"class")
 #> [1] "stimControl"

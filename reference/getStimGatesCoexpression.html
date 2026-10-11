@@ -9,7 +9,7 @@ stimControl(cytPosMethod = "coexpression") and cytokine-positive gating enabled.
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.35</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.36</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,7 +67,7 @@ cytokine; <code>chnl</code>, <code>marker</code> identify the target cytokine; <
 <code>floor</code>, <code>floorCond</code> are the target and conditioning floors; <code>z</code> is the net
 double-positive z score; <code>purityDp</code> is double-positive purity (NA when the
 initial tests fail); and <code>lowered</code> indicates whether <code>cut &lt; gate</code>.
-Projects using refinement or with cytokine-positive gating disabled error.</p>
+Projects using the antimode rule or with cytokine-positive gating disabled error.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -78,9 +78,10 @@ Conditioning uses expression, never recursively inferred positivity.
 Control expression is raw (without <code>biasUns</code>). The floor is the control's
 main nonzero negative peak plus 1.5 robust standard deviations, estimated
 with an nrd0 Gaussian density on 2048 points. Lowering requires a net
-double-positive response, excess coexpression beyond independence, and
-adequate purity; the added band is trimmed along the conditioning channel.
-The four <code>coex*</code> controls in <code><a href="stimControl.html">stimControl()</a></code> set these tests and bin counts.</p>
+double-positive response (unless <code>coexScreen = FALSE</code>), excess
+coexpression beyond independence, and adequate purity; the added band is
+trimmed along the conditioning channel. The <code>coex*</code> controls in
+<code><a href="stimControl.html">stimControl()</a></code> set these tests and bin counts.</p>
     </div>
 
     <div class="section level2">

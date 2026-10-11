@@ -1,5 +1,27 @@
 # Changelog
 
+## stimgate 0.99.36
+
+### Breaking changes
+
+- [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)’s
+  cytokine-positive gates now use the co-expression rule by default
+  (`stimControl(cytPosMethod = "coexpression")`). The taut-string
+  antimode rule used until now is available as
+  `stimControl(cytPosMethod = "antimode")`, which replaces
+  `cytPosMethod = "refine"`; `calcCytPosGates = FALSE` still switches
+  both off.
+- `calcCytPosGates` moved from
+  [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
+  to
+  [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md).
+
+### New features
+
+- `stimControl(coexScreen = FALSE)` tests every pair of cytokines for
+  co-expression, rather than only pairs whose cells above both ordinary
+  gates already show a clear response.
+
 ## stimgate 0.99.35
 
 ### New features

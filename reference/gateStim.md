@@ -16,6 +16,7 @@ gateStim(
   popGate = "root",
   biasUns = NULL,
   bw = NULL,
+  calcCytPosGates = TRUE,
   control = stimControl(),
   markerControl = NULL,
   parallel = FALSE
@@ -72,6 +73,14 @@ gateStim(
   numeric or NULL Fixed density bandwidth; NULL estimates it
   automatically. Per-marker values go in `markerControl`. Default: NULL.
 
+- calcCytPosGates:
+
+  logical Also call a cytokine positive, for cells positive for another
+  cytokine, above a lower cytokine-positive gate found by `control`'s
+  `cytPosMethod` (co-expression by default; see
+  [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)).
+  FALSE keeps one gate per cytokine. Default: TRUE.
+
 - control:
 
   stimControl Tuning settings from
@@ -83,9 +92,8 @@ gateStim(
   list or NULL Settings for single markers, named by marker label or
   channel, e.g. `list(IL2 = list(bw = 0.12, biasUns = 0))`. Accepts
   [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
-  settings except `locEnforceShapeThreshold`, `calcCytPosGates`,
-  `cytPosMethod` and the `coex*` settings, plus `bw`, `biasUns` and
-  `popGate`. Default: NULL.
+  settings except `locEnforceShapeThreshold`, `cytPosMethod` and the
+  `coex*` settings, plus `bw`, `biasUns` and `popGate`. Default: NULL.
 
 - parallel:
 
@@ -197,7 +205,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp8XMoyY/custom_gating_1a0f28c09e20"
+#> [1] "/tmp/RtmpwxrqmO/custom_gating_1a28308382a7"
 
 # Gate in-memory matrices; column names act as channels and markers
 matrices <- lapply(seq_along(gs), function(i) {
@@ -205,7 +213,7 @@ matrices <- lapply(seq_along(gs), function(i) {
 })
 gateStim(
   tempfile("matrix_gating_"), matrices, exampleData$batchList,
-  chnl = exampleData$chnl, control = stimControl(calcCytPosGates = FALSE)
+  chnl = exampleData$chnl, calcCytPosGates = FALSE
 )
 #> shared bandwidth for BC1(La139)Dd: 0.186
 #> shared bandwidth for BC2(Pr141)Dd: 0.187
@@ -220,5 +228,5 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp8XMoyY/matrix_gating_1a0f37cc801d"
+#> [1] "/tmp/RtmpwxrqmO/matrix_gating_1a283a5780aa"
 ```

@@ -81,7 +81,7 @@ writeStimFCS(
 - gateTypeCytPos:
 
   character Positivity rule: "base" uses main gates; "cyt" uses the
-  saved refinement or coexpression rule. Default: "cyt".
+  saved antimode or coexpression rule. Default: "cyt".
 
 - mult:
 

@@ -127,11 +127,11 @@ head(stats[, c("ind", "cytCombn", "countStim", "freqStim", "freqUns", "freqBs")]
 #>   ind   cytCombn                       countStim freqStim freqUns freqBs
 #>   <chr> <chr>                              <int>    <dbl>   <dbl>  <dbl>
 #> 1 2     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        39     0.39    0.03   0.36
-#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       330     3.3     0.86   2.44
-#> 3 2     BC1(La139)Dd~+~BC2(Pr141)Dd~+~        40     0.4     0.01   0.39
+#> 2 2     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       322     3.22    0.85   2.37
+#> 3 2     BC1(La139)Dd~+~BC2(Pr141)Dd~+~        48     0.48    0.02   0.46
 #> 4 2     BC1(La139)Dd~-~BC2(Pr141)Dd~-~      9591    95.9    99.1   -3.19
 #> 5 4     BC1(La139)Dd~+~BC2(Pr141)Dd~-~        64     0.64    0.18   0.46
-#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       411     4.11    0.78   3.33
+#> 6 4     BC1(La139)Dd~-~BC2(Pr141)Dd~+~       388     3.88    0.75   3.13
 ```
 
 ## 4. Plot the results
@@ -183,7 +183,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] stimgate_0.99.35
+#> [1] stimgate_0.99.36
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] utf8_1.2.6           tidyr_1.3.2          sass_0.4.10         

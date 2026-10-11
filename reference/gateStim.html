@@ -11,7 +11,7 @@ background-subtracted statistics to a project directory."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.35</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.36</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -55,6 +55,7 @@ background-subtracted statistics to a project directory.</p>
 <span>  popGate <span class="op">=</span> <span class="st">"root"</span>,</span>
 <span>  biasUns <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  bw <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calcCytPosGates <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="stimControl.html">stimControl</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  markerControl <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  parallel <span class="op">=</span> <span class="cn">FALSE</span></span>
@@ -112,6 +113,13 @@ Positive shifts make gating more conservative. Default: NULL.</p></dd>
 automatically. Per-marker values go in <code>markerControl</code>. Default: NULL.</p></dd>
 
 
+<dt id="arg-calccytposgates">calcCytPosGates<a class="anchor" aria-label="anchor" href="#arg-calccytposgates"></a></dt>
+<dd><p>logical Also call a cytokine positive, for cells
+positive for another cytokine, above a lower cytokine-positive gate found
+by <code>control</code>'s <code>cytPosMethod</code> (co-expression by default; see
+<code><a href="stimControl.html">stimControl()</a></code>). FALSE keeps one gate per cytokine. Default: TRUE.</p></dd>
+
+
 <dt id="arg-control">control<a class="anchor" aria-label="anchor" href="#arg-control"></a></dt>
 <dd><p>stimControl Tuning settings from <code><a href="stimControl.html">stimControl()</a></code>.
 Default: stimControl().</p></dd>
@@ -121,7 +129,7 @@ Default: stimControl().</p></dd>
 <dd><p>list or NULL Settings for single markers, named by marker
 label or channel,
 e.g. <code>list(IL2 = list(bw = 0.12, biasUns = 0))</code>. Accepts <code><a href="stimControl.html">stimControl()</a></code>
-settings except <code>locEnforceShapeThreshold</code>, <code>calcCytPosGates</code>,
+settings except <code>locEnforceShapeThreshold</code>,
 <code>cytPosMethod</code> and the <code>coex*</code> settings, plus
 <code>bw</code>, <code>biasUns</code> and <code>popGate</code>. Default: NULL.</p></dd>
 
@@ -216,7 +224,7 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmp8XMoyY/custom_gating_1a0f28c09e20"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpwxrqmO/custom_gating_1a28308382a7"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Gate in-memory matrices; column names act as channels and markers</span></span></span>
 <span class="r-in"><span><span class="va">matrices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">gs</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span></span>
@@ -224,7 +232,7 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">gateStim</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"matrix_gating_"</span><span class="op">)</span>, <span class="va">matrices</span>, <span class="va">exampleData</span><span class="op">$</span><span class="va">batchList</span>,</span></span>
-<span class="r-in"><span>  chnl <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">chnl</span>, control <span class="op">=</span> <span class="fu"><a href="stimControl.html">stimControl</a></span><span class="op">(</span>calcCytPosGates <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  chnl <span class="op">=</span> <span class="va">exampleData</span><span class="op">$</span><span class="va">chnl</span>, calcCytPosGates <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for BC1(La139)Dd: 0.186</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> shared bandwidth for BC2(Pr141)Dd: 0.187</span>
@@ -239,7 +247,7 @@ reproducible parallel subsampling; results may differ from sequential runs.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting clustered and/or controlled gates</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> getting cyt combn frequencies</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> batch 2 of 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/Rtmp8XMoyY/matrix_gating_1a0f37cc801d"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "/tmp/RtmpwxrqmO/matrix_gating_1a283a5780aa"</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

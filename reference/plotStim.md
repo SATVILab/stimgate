@@ -129,7 +129,7 @@ plotStim(
 - gateTypeCytPos:
 
   character Positivity rule: "base" uses the main gate; "cyt" uses the
-  saved refinement or coexpression rule. Default: "cyt".
+  saved antimode or coexpression rule. Default: "cyt".
 
 - mult:
 

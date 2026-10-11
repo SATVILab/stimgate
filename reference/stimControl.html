@@ -9,7 +9,7 @@ set only the options you need to change."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">stimgate</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.35</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.36</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,7 +44,6 @@ set only the options you need to change.</p>
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">stimControl</span><span class="op">(</span></span>
-<span>  calcCytPosGates <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  minCell <span class="op">=</span> <span class="fl">100</span>,</span>
 <span>  biasUnsFactor <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  excMin <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -96,11 +95,12 @@ set only the options you need to change.</p>
 <span>  normExcessNcell <span class="op">=</span> <span class="fl">10000L</span>,</span>
 <span>  normAdaptiveNcell <span class="op">=</span> <span class="fl">2500L</span>,</span>
 <span>  normMtd <span class="op">=</span> <span class="st">"moments"</span>,</span>
-<span>  cytPosMethod <span class="op">=</span> <span class="st">"refine"</span>,</span>
+<span>  cytPosMethod <span class="op">=</span> <span class="st">"coexpression"</span>,</span>
 <span>  coexNBin <span class="op">=</span> <span class="fl">20L</span>,</span>
 <span>  coexResidualMin <span class="op">=</span> <span class="fl">3.5</span>,</span>
 <span>  coexPurityFrac <span class="op">=</span> <span class="fl">0.75</span>,</span>
-<span>  coexZMin <span class="op">=</span> <span class="fl">2</span></span>
+<span>  coexZMin <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  coexScreen <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -108,16 +108,7 @@ set only the options you need to change.</p>
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-calccytposgates">calcCytPosGates<a class="anchor" aria-label="anchor" href="#arg-calccytposgates"></a></dt>
-<dd><p>logical Apply the <code>cytPosMethod</code> rule. With "refine",
-refine gates using cells positive for another
-cytokine. Lower a clustered gate to the leftmost internal antimode between
-the stimulated marginal peak plus half its negative-population width
-(at least one marginal density bandwidth) and
-that gate; keep the gate if none exists. Default: TRUE.</p></dd>
-
-
-<dt id="arg-mincell">minCell<a class="anchor" aria-label="anchor" href="#arg-mincell"></a></dt>
+<dl><dt id="arg-mincell">minCell<a class="anchor" aria-label="anchor" href="#arg-mincell"></a></dt>
 <dd><p>numeric Minimum cells required for gating; samples below this
 count are skipped. Default: 100.</p></dd>
 
@@ -458,8 +449,13 @@ Box-Cox transformations for scalar bandwidths only. Default: "moments".</p></dd>
 
 
 <dt id="arg-cytposmethod">cytPosMethod<a class="anchor" aria-label="anchor" href="#arg-cytposmethod"></a></dt>
-<dd><p>character Cytokine-positive rule, "refine" or
-"coexpression"; used only when <code>calcCytPosGates = TRUE</code>. Default: "refine".</p></dd>
+<dd><p>character Cytokine-positive rule, "coexpression" or
+"antimode"; used only when <code><a href="gateStim.html">gateStim()</a></code>'s <code>calcCytPosGates</code> is TRUE. "coexpression" lowers a
+cytokine's gate, for cells above another cytokine's gate, where the two
+are co-expressed beyond independence and the added cells are mostly
+responders (see <code><a href="getStimGatesCoexpression.html">getStimGatesCoexpression()</a></code>). "antimode" lowers a gate to
+an antimode of the taut-string density among cells positive for another
+cytokine. Default: "coexpression".</p></dd>
 
 
 <dt id="arg-coexnbin">coexNBin<a class="anchor" aria-label="anchor" href="#arg-coexnbin"></a></dt>
@@ -478,7 +474,15 @@ greater than zero and at most one. Default: 0.75.</p></dd>
 
 
 <dt id="arg-coexzmin">coexZMin<a class="anchor" aria-label="anchor" href="#arg-coexzmin"></a></dt>
-<dd><p>numeric Minimum net double-positive z score. Default: 2.</p></dd>
+<dd><p>numeric Minimum net double-positive z score, used when
+<code>coexScreen = TRUE</code>. Default: 2.</p></dd>
+
+
+<dt id="arg-coexscreen">coexScreen<a class="anchor" aria-label="anchor" href="#arg-coexscreen"></a></dt>
+<dd><p>logical Lower a pair's gate only when the cells above both
+ordinary gates show a clear net response (z above <code>coexZMin</code>). With FALSE,
+every pair is tested, and the purity requirement uses zero in place of a
+negative or undefined double-positive purity. Default: TRUE.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -509,9 +513,6 @@ limits to Inf shares responders' thresholds without limits.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">stimControl</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $calcCytPosGates</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $minCell</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 100</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -672,7 +673,7 @@ limits to Inf shares responders' thresholds without limits.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "moments"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $cytPosMethod</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "refine"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "coexpression"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $coexNBin</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 20</span>
@@ -685,13 +686,13 @@ limits to Inf shares responders' thresholds without limits.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $coexZMin</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $coexScreen</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "stimControl"</span>
 <span class="r-in"><span><span class="fu">stimControl</span><span class="op">(</span>bwAdj <span class="op">=</span> <span class="fl">1.5</span>, clusterGates <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $calcCytPosGates</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $minCell</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 100</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -852,7 +853,7 @@ limits to Inf shares responders' thresholds without limits.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "moments"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $cytPosMethod</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "refine"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "coexpression"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $coexNBin</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 20</span>
@@ -865,6 +866,9 @@ limits to Inf shares responders' thresholds without limits.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $coexZMin</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $coexScreen</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "stimControl"</span>

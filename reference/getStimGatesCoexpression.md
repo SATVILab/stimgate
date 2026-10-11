@@ -31,7 +31,7 @@ conditioning cytokine; `chnl`, `marker` identify the target cytokine;
 conditioning cut; `floor`, `floorCond` are the target and conditioning
 floors; `z` is the net double-positive z score; `purityDp` is
 double-positive purity (NA when the initial tests fail); and `lowered`
-indicates whether `cut < gate`. Projects using refinement or with
+indicates whether `cut < gate`. Projects using the antimode rule or with
 cytokine-positive gating disabled error.
 
 ## Details
@@ -43,9 +43,10 @@ strictly above `condCut` and target-channel expression strictly above
 positivity. Control expression is raw (without `biasUns`). The floor is
 the control's main nonzero negative peak plus 1.5 robust standard
 deviations, estimated with an nrd0 Gaussian density on 2048 points.
-Lowering requires a net double-positive response, excess coexpression
-beyond independence, and adequate purity; the added band is trimmed
-along the conditioning channel. The four `coex*` controls in
+Lowering requires a net double-positive response (unless
+`coexScreen = FALSE`), excess coexpression beyond independence, and
+adequate purity; the added band is trimmed along the conditioning
+channel. The `coex*` controls in
 [`stimControl()`](https://satvilab.github.io/stimgate/reference/stimControl.md)
 set these tests and bin counts.
 
