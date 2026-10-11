@@ -82,8 +82,8 @@ run_local_fdr_inspection <- function(scenario) {
     marker = "MarkerF1",
     biasUns = 0,
     bw = scenario$bandwidth,
+    calcCytPosGates = FALSE,
     control = stimControl(
-      calcCytPosGates = FALSE,
       clusterGates = FALSE,
       gateCombn = "no",
       locEnforceShapeThreshold = FALSE

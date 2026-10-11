@@ -2,7 +2,7 @@
 #' @description Set tuning options for [gateStim()]. Start with the defaults;
 #'   set only the options you need to change.
 #' @param cytPosMethod character Cytokine-positive rule, "coexpression" or
-#'   "antimode"; used only when `calcCytPosGates = TRUE`. "coexpression" lowers a
+#'   "antimode"; used only when [gateStim()]'s `calcCytPosGates` is TRUE. "coexpression" lowers a
 #'   cytokine's gate, for cells above another cytokine's gate, where the two
 #'   are co-expressed beyond independence and the added cells are mostly
 #'   responders (see [getStimGatesCoexpression()]). "antimode" lowers a gate to
@@ -20,12 +20,6 @@
 #'   ordinary gates show a clear net response (z above `coexZMin`). With FALSE,
 #'   every pair is tested, and the purity requirement uses zero in place of a
 #'   negative or undefined double-positive purity. Default: TRUE.
-#' @param calcCytPosGates logical Apply the `cytPosMethod` rule. With "antimode",
-#'   lower gates using cells positive for another
-#'   cytokine. Lower a clustered gate to the leftmost internal antimode between
-#'   the stimulated marginal peak plus half its negative-population width
-#'   (at least one marginal density bandwidth) and
-#'   that gate; keep the gate if none exists. Default: TRUE.
 #' @param minCell numeric Minimum cells required for gating; samples below this
 #'   count are skipped. Default: 100.
 #' @param biasUnsFactor numeric Automatic `biasUns` (when `biasUns` is NULL)
@@ -238,7 +232,6 @@
 #' stimControl(bwAdj = 1.5, clusterGates = FALSE)
 #' @export
 stimControl <- function(
-  calcCytPosGates = TRUE,
   minCell = 1e2,
   biasUnsFactor = 1,
   excMin = TRUE,
@@ -316,12 +309,6 @@ stimControl <- function(
     }
   }
 
-  if (
-    !is.logical(calcCytPosGates) || length(calcCytPosGates) != 1L ||
-      is.na(calcCytPosGates)
-  ) {
-    stop("`calcCytPosGates` must be a single logical value (TRUE/FALSE).")
-  }
   if (!is.numeric(minCell) || length(minCell) != 1L || minCell <= 0) {
     stop("`minCell` must be a positive number.")
   }

@@ -8,6 +8,7 @@
   `stimControl(cytPosMethod = "antimode")`, which replaces
   `cytPosMethod = "refine"`; `calcCytPosGates = FALSE` still switches both
   off.
+- `calcCytPosGates` moved from `stimControl()` to `gateStim()`.
 
 ## New features
 

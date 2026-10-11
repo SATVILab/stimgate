@@ -899,11 +899,16 @@ with no gates report NA counts, while missing individual channel gates are FALSE
 ## 7. Specific Package Policies & Design Notes
 
 `gateStim()` keeps data, batch, marker/channel and population arguments plus the
-user-facing `biasUns` and `bw` tuning knobs. All other tuning belongs in the
-validated `stimControl()` object passed as `control`; that includes the gating
-switches `calcCytPosGates` and `minCell`. Per-marker overrides belong in
+user-facing `biasUns` and `bw` tuning knobs and the top-level switch
+`calcCytPosGates` (default TRUE; analysis code passes it explicitly, FALSE
+except in Analyses 11 and 17). All other tuning belongs in the validated
+`stimControl()` object passed as `control`; that includes `minCell`, the
+cytokine-positive rule `cytPosMethod` (`"coexpression"` by default, or
+`"antimode"`) and the `coex*` settings. `gateStim()` stores `calcCytPosGates`
+in the control object for internal code. Per-marker overrides belong in
 `markerControl`, keyed by marker labels or channel names: `bw` and `minCell` are
-allowed per marker, whereas `calcCytPosGates` is global-only and rejected there.
+allowed per marker, whereas `calcCytPosGates` is not a `stimControl()` setting
+and is rejected there.
 Threshold sharing is controlled by logical `clusterGates`. Do not restore the
 removed tuning arguments on `gateStim()` or the dead `gateQuant` / `maxPosProbX`
 settings.

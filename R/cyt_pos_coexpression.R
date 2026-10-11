@@ -81,7 +81,8 @@
   z <- .coexDpZ(dat, a, b)
   out <- list(a = a, b = b, gateA = gA, gateB = gB, cut = gB, condCut = gA,
     floorA = floorA, floorB = floorB, z = z, purityDp = NA_real_)
-  if (!is.finite(gA) || !is.finite(gB) || (screen && !(z > zMin)) || floorB >= gB) {
+  if (nS == 0L || nU == 0L || !is.finite(gA) || !is.finite(gB) ||
+      (screen && !isTRUE(z > zMin)) || floorB >= gB) {
     return(out)
   }
   sAv <- dat$stim[[a]]
@@ -98,12 +99,12 @@
   purityMin <- frac * max(if (is.finite(pDp)) pDp else 0, 0)
   pure <- function(s, u) {
     p <- .coexPurity(s, u, nS, nU)
-    p > 0 && p >= purityMin
+    is.finite(p) && p > 0 && p >= purityMin
   }
   passBins <- function(lo, hi) {
-    inS <- sB > lo & sB <= hi
+    inS <- (sB > lo & sB <= hi) %in% TRUE
     s <- sum(sA & inS)
-    u <- sum(uA & uB > lo & uB <= hi)
+    u <- sum(uA & (uB > lo & uB <= hi) %in% TRUE)
     e <- nS * pA * mean(inS)
     s > 0 && (s - e) / sqrt(max(e, 1e-12)) >= rMin && pure(s, u)
   }
@@ -118,15 +119,18 @@
   if (out$cut >= gB) {
     return(out)
   }
-  bandS <- sB > out$cut & sB <= gB
-  bandU <- uB > out$cut & uB <= gB
+  bandS <- (sB > out$cut & sB <= gB) %in% TRUE
+  bandU <- (uB > out$cut & uB <= gB) %in% TRUE
   passBand <- function(lo, hi) {
-    s <- sum(bandS & sAv > lo & sAv <= hi)
-    u <- sum(bandU & uAv > lo & uAv <= hi)
+    s <- sum(bandS & (sAv > lo & sAv <= hi) %in% TRUE)
+    u <- sum(bandU & (uAv > lo & uAv <= hi) %in% TRUE)
     s > 0 && pure(s, u)
   }
-  step <- max(gA - floorA, 1e-6) / nBin
-  maxA <- max(sAv[bandS & sA])
+  maxA <- max(sAv[bandS & sA], na.rm = TRUE)
+  # Steps are 1/nBin of a's gate-to-floor distance; with the floor at or
+  # above a's gate, use the added band's range on a instead, so the loop
+  # stays bounded.
+  step <- if (gA > floorA) (gA - floorA) / nBin else max(maxA - gA, 1e-6) / nBin
   lo <- gA
   while (lo < maxA && !(passBand(lo, lo + step) && passBand(lo, Inf))) {
     lo <- lo + step

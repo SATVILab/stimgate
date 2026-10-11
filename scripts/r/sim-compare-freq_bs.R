@@ -1187,6 +1187,7 @@
         marker = paste0("MarkerF", seq_len(nMarker)),
         biasUns = biasUns,
         bw = bw,
+        calcCytPosGates = calcCytPosGates,
         control = stimgate::stimControl(
           biasUnsFactor = biasUnsFactor,
           bwFallback = bwFallback,
@@ -1212,7 +1213,6 @@
           locMarginalPurityRel = locMarginalPurityRel,
           locMarginalCellBinRatio = locMarginalCellBinRatio,
           locMarginalRefQuantile = locMarginalRefQuantile,
-          calcCytPosGates = calcCytPosGates,
           minCell = minCell
         )
       ))

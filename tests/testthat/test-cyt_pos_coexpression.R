@@ -170,10 +170,12 @@ local({
     baseline <- file.path(dirname(exampleData$pathGs), "baseline")
     set.seed(42)
     gateStim(disabled, gs, exampleData$batchList, chnl = exampleData$chnl,
-      control = stimControl(cytPosMethod = "coexpression", calcCytPosGates = FALSE))
+      calcCytPosGates = FALSE,
+      control = stimControl(cytPosMethod = "coexpression"))
     set.seed(42)
     gateStim(baseline, gs, exampleData$batchList, chnl = exampleData$chnl,
-      control = stimControl(calcCytPosGates = FALSE))
+      calcCytPosGates = FALSE,
+      control = stimControl(cytPosMethod = "antimode"))
     expect_equal(getStimGates(disabled), getStimGates(baseline))
     expect_equal(getStimStats(disabled), getStimStats(baseline))
     expect_error(getStimGatesCoexpression(disabled), "not gated")

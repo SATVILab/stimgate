@@ -22,7 +22,9 @@ test_that("shifted-peak settings change only the rule and the semantics", {
   expect_identical(shifted$control$bwMtd, "nrd0")
   expect_identical(shifted$seed, 1L)
   # The settings must build a valid stimControl().
-  expect_true(do.call(stimgate::stimControl, shifted$control)$locShiftedPeakRef)
+  ctrl <- shifted$control
+  ctrl$calcCytPosGates <- NULL # a gateStim() argument, not a stimControl() one
+  expect_true(do.call(stimgate::stimControl, ctrl)$locShiftedPeakRef)
 })
 
 test_that("OMIP-016 settings keep Analysis 15's saved form when the rule is off", {

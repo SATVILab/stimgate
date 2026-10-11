@@ -359,7 +359,8 @@ if (isTRUE(run_plots)) {
     contamination_all, sum)
   ct$stimPerMillion <- round(1e6 * ct$addedStim / ct$cellsStim, 1)
   ct$controlPerMillion <- round(1e6 * ct$addedUns / ct$cellsUns, 1)
-  ct$controlShare <- round(ifelse(ct$addedStim > 0, ct$controlPerMillion / ct$stimPerMillion, NA), 3)
+  ct$controlShare <- round(ifelse(ct$addedStim > 0,
+    (ct$addedUns / ct$cellsUns) / (ct$addedStim / ct$cellsStim), NA_real_), 3)
   ct <- ct[order(match(ct$pop, pop_vec), ct$rule),
     c("pop", "rule", "addedStim", "addedUns", "stimPerMillion", "controlPerMillion", "controlShare")]
   print(knitr::kable(ct, row.names = FALSE))

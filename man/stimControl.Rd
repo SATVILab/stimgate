@@ -5,7 +5,6 @@
 \title{Tune stimulation gating}
 \usage{
 stimControl(
-  calcCytPosGates = TRUE,
   minCell = 100,
   biasUnsFactor = 1,
   excMin = TRUE,
@@ -66,13 +65,6 @@ stimControl(
 )
 }
 \arguments{
-\item{calcCytPosGates}{logical Apply the \code{cytPosMethod} rule. With "antimode",
-lower gates using cells positive for another
-cytokine. Lower a clustered gate to the leftmost internal antimode between
-the stimulated marginal peak plus half its negative-population width
-(at least one marginal density bandwidth) and
-that gate; keep the gate if none exists. Default: TRUE.}
-
 \item{minCell}{numeric Minimum cells required for gating; samples below this
 count are skipped. Default: 100.}
 
@@ -312,7 +304,7 @@ replaces components with normals having matching moments; "boxcox" uses
 Box-Cox transformations for scalar bandwidths only. Default: "moments".}
 
 \item{cytPosMethod}{character Cytokine-positive rule, "coexpression" or
-"antimode"; used only when \code{calcCytPosGates = TRUE}. "coexpression" lowers a
+"antimode"; used only when \code{\link[=gateStim]{gateStim()}}'s \code{calcCytPosGates} is TRUE. "coexpression" lowers a
 cytokine's gate, for cells above another cytokine's gate, where the two
 are co-expressed beyond independence and the added cells are mostly
 responders (see \code{\link[=getStimGatesCoexpression]{getStimGatesCoexpression()}}). "antimode" lowers a gate to
