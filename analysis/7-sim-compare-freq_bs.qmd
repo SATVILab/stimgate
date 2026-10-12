@@ -68,7 +68,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "corrected-comparison-v24"
+comparison_semantics_version <- "corrected-comparison-v25"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -155,12 +155,14 @@ unstimulated-sample bias is not fixed: it equals the bandwidth StimGate
 estimates at the start (`biasUns = NULL` with `biasUnsFactor = 1`). Tailgate is deliberately left to use its usual automatic
 bandwidth estimation and automatic tolerance (`autoTol = TRUE`, 1% of the
 largest absolute first derivative of the density). Its cutpoint is then moved up
-by a bias of 0.1 (`tailgate_bias`), the same for every transformation, as
-StimGate's gates are moved up by its bias. In a pilot at 0.2% and 2% response,
-a bias left the Gaussian and skewed results almost unchanged and removed most
-of Tailgate's false positives in the gamma transformation, where its cutpoint
-otherwise falls inside the tail of the negative population; biases above 0.1
-removed true positives at low separation. Tailgate without the bias, as
+by a bias of 0.15 (`tailgate_bias`), the same for every transformation, as
+StimGate's gates are moved up by its bias. Analysis 6 chose this bias (with
+the automatic tolerance) by median F1 and the accuracy of the estimated
+frequencies: a bias leaves the Gaussian and skewed results almost unchanged
+and removes most of Tailgate's false positives in the gamma transformation,
+where its cutpoint otherwise falls inside the tail of the negative population;
+0.15 gave higher F1 than 0.1 there, while larger biases removed true
+positives. Tailgate without the bias, as
 published, is kept as "Tailgate (default settings)" and shown in its own
 figure set.
 
@@ -269,7 +271,7 @@ tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
 # Tailgate's cutpoint is moved up by this amount, as StimGate's gates are
 # moved up by its bias. The unbiased cutpoint is kept as "tailgate_default".
-tailgate_bias <- 0.1
+tailgate_bias <- 0.15
 tailgate_x <- "stim"
 ```
 
