@@ -175,10 +175,13 @@ test_that("F-beta's used beta is bold and its top-ranked beta is not called sele
   d <- env$.simTuneRankDisplay(r, fbetaUsedBeta = 0.8)
   fb <- d[d$method == "$F_{\\beta}$", ]
   expect_identical(fb$used, fb$setting == "$\\beta$ 0.8 (selected)")
-  expect_true(fb$selected[fb$setting == "$\\beta$ 2 (top-ranked)"])
+  expect_true(fb$selected[fb$setting == "$\\beta$ 2"])
   md <- env$.simTuneMdTable(d)
   expect_match(md, "**$\\beta$ 0.8 (selected)**", fixed = TRUE)
-  expect_match(md, "kept because the top-ranked", fixed = TRUE)
+  expect_match(md, "| **2** | **$\\beta$ 0.8 (selected)** |", fixed = TRUE)
+  # The method column is never bold.
+  expect_false(grepl("**$F_{\\beta}$**", md, fixed = TRUE))
+  expect_match(md, "Bold-text row denotes parameter settings selected", fixed = TRUE)
   cmp <- env$.simTuneCompareSettings(r, fbetaUsedBeta = 0.8)
   expect_match(cmp$setting_ref_lab[cmp$setting_ref == "fbeta_selected"], "\u03b2 2", fixed = TRUE)
   expect_match(cmp$setting_ref_lab[cmp$setting_ref == "fbeta_published"], "0.8 (default; selected)", fixed = TRUE)
