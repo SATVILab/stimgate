@@ -249,22 +249,17 @@ n_cell_vec <- sort(unique(sim_grid$n_cell))
 
 ## How the settings are chosen
 
-Two things are judged, each over the stimulated tubes of a scenario:
-
-- **F1 score**, the median and the 10th and 90th percentiles. F1 combines
-  sensitivity and precision of the gate against the simulated labels:
-  2TP / (2TP + FP + FN).
-- **Estimated frequency**, the 10th and 90th percentiles of the
-  background-subtracted frequency (stimulated minus unstimulated cells above
-  the gate). The truth is 0.2%. The estimate error of a setting is the larger
-  of the relative errors of these two percentiles, so it is small only when the
-  middle 80% of estimates lies close to the truth.
-
-The percentiles pool the tubes of all datasets in a scenario. The twelve
-scenarios count equally. For each method, the settings whose mean median F1 is
-within `r f1_tolerance` of the best are kept, and of those the one with the
-smallest mean estimate error is chosen (ties go to the higher mean 10th
-percentile of F1).
+Settings are judged on the **F1 score** of their gates against the simulated
+labels, 2TP / (2TP + FP + FN): its median and its 10th and 90th percentiles over
+the stimulated tubes of a scenario. The percentiles pool the tubes of all
+datasets in a scenario (200 tubes), and the twelve scenarios count equally.
+For each method, the settings whose mean median F1 is within `r f1_tolerance`
+of the best are kept, and of those the one with the narrowest mean 10th-90th
+percentile F1 interval is chosen (ties go to the higher mean 10th percentile).
+Settings outside the F1 cut are listed by mean median F1. The estimated
+frequencies (the 10th and 90th percentiles of the background-subtracted
+frequency against the true 0.2%) are shown below for context but do not
+enter the choice.
 
 The table below lists the five best settings of each method by that rule,
 with each method's selected setting, used in the comparisons, in bold. It is written as a Quarto table

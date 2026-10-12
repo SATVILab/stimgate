@@ -105,23 +105,32 @@ test_that("F1 and estimate percentiles keep errors missing", {
   expect_equal(s$est_band_error[s$method == "tailgate" & s$bias == 0], 1)
 })
 
-test_that("selection keeps near-best F1 settings and then prefers accurate estimates", {
+test_that("selection keeps near-best F1 settings and then prefers the narrowest F1 interval", {
   env <- .tuneEnv()
   s <- env$.simTuneSummary(env$.simTuneMetrics(.tuneToyScores(env)))
   r <- env$.simTuneRank(s, f1_tolerance = 0.02)
   sel <- r[r$selected, ]
   expect_setequal(sel$method, c("fbeta", "tailgate"))
   expect_equal(sel$bias[sel$method == "tailgate"], 0.1)
-  # With a wide F1 tolerance both Tailgate settings are eligible; the
-  # estimate error still picks the accurate one.
-  r_wide <- env$.simTuneRank(s, f1_tolerance = 1)
-  expect_equal(r_wide$bias[r_wide$selected & r_wide$method == "tailgate"], 0.1)
-  # A setting worse on F1 than the tolerance is not chosen for its estimates.
+  expect_true("mean_f1_width" %in% names(r))
+  # Two eligible settings: the narrower 10th-90th percentile F1 interval wins,
+  # whatever the estimates.
   s2 <- s
-  s2$est_band_error[s2$method == "tailgate" & s2$bias == 0] <- 0
-  s2$f1_median[s2$method == "tailgate" & s2$bias == 0.1] <- 1
+  tg <- s2$method == "tailgate"
+  s2$f1_median[tg] <- 0.8
+  s2$f1_p10[tg & s2$bias == 0.1] <- 0.5
+  s2$f1_p90[tg & s2$bias == 0.1] <- 0.9
+  s2$f1_p10[tg & s2$bias == 0] <- 0.7
+  s2$f1_p90[tg & s2$bias == 0] <- 0.85
+  s2$est_band_error[tg & s2$bias == 0] <- 10
   r2 <- env$.simTuneRank(s2, f1_tolerance = 0.02)
-  expect_equal(r2$bias[r2$selected & r2$method == "tailgate"], 0.1)
+  expect_equal(r2$bias[r2$selected & r2$method == "tailgate"], 0)
+  # A narrow interval does not rescue a setting outside the F1 cut, and
+  # ineligible settings are listed by median F1.
+  s3 <- s2
+  s3$f1_median[tg & s3$bias == 0] <- 0.5
+  r3 <- env$.simTuneRank(s3, f1_tolerance = 0.02)
+  expect_equal(r3$bias[r3$selected & r3$method == "tailgate"], 0.1)
 })
 
 test_that("the thesis ranking table is a captioned Quarto table without estimate error", {
