@@ -526,6 +526,7 @@
       min_f1_median = min(.data$f1_median),
       mean_f1_p10 = mean(.data$f1_p10),
       mean_f1_p90 = mean(.data$f1_p90),
+      mean_f1_width = mean(.data$f1_p90 - .data$f1_p10),
       mean_est_band_error = mean(.data$est_band_error),
       max_est_band_error = max(.data$est_band_error),
       n_truth_in_band = sum(.data$truth_in_band %in% TRUE),
@@ -536,8 +537,11 @@
       f1_eligible = is.finite(.data$mean_f1_median) &
         .data$mean_f1_median >= max(.data$mean_f1_median, na.rm = TRUE) - f1_tolerance
     ) |>
+    # Eligible settings by the narrowest 10th-90th percentile F1 interval
+    # (ties: higher 10th percentile); the rest by mean median F1.
     dplyr::arrange(
-      .data$method, dplyr::desc(.data$f1_eligible), .data$mean_est_band_error,
+      .data$method, dplyr::desc(.data$f1_eligible),
+      dplyr::if_else(.data$f1_eligible, .data$mean_f1_width, -.data$mean_f1_median),
       dplyr::desc(.data$mean_f1_p10), .by_group = TRUE
     ) |>
     dplyr::mutate(
