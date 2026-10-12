@@ -1018,12 +1018,14 @@ simulation-size setting, including real-data analyses, pass
 The projr `output` label is `_output/general`; `output-thesis`
 (`_output/thesis`) holds files for the thesis and is uploaded to a
 GitHub release on projr builds (`build: github:` in `_projr.yml`). Save
-thesis files in its `appendix/` (or other chapter) subfolder, with
-quick/dev renders one level deeper (`c("appendix", fig_key[-1L])`); do
-not add further output labels. Draw thesis figures at their printed
-size: the thesis (Manuscript22RodoThesis, stanford-thesis Typst
-template) is A4 with a 146.5 x 246.2 mm text area and 12 pt body text,
-and inserts PDF figures at full width (`.acsCytofThesisFigureSize()`,
+only the files the operator has asked for there, never every variant a
+QMD draws. Save thesis files in its `appendix/` (or other chapter)
+subfolder, with quick/dev renders one level deeper
+(`c("appendix", fig_key[-1L])`); do not add further output labels. Draw
+thesis figures at their printed size: the thesis
+(Manuscript22RodoThesis, stanford-thesis Typst template) is A4 with a
+146.5 x 246.2 mm text area and 12 pt body text, and inserts PDF figures
+at full width (`.acsCytofThesisFigureSize()`,
 `.acsCytofSaveThesisFigure()`: PDF plus 300 dpi PNG). HTML reports keep
 showing the standard figures. Typst tables for the thesis are generated
 from the same formatted values as the HTML table, shown in a `typst`
