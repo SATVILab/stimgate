@@ -335,8 +335,8 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   Analysis 10’s appendix (filter with `.acsCytofMainComparisonTable()`).
   With `autoTol = FALSE`, `tol` is an absolute derivative bound that
   depends on the data’s scale. Simulations and the OMIP analyses use the
-  simulation-selected Tailgate (`autoTol = TRUE`, bias 0.1, all cells;
-  `tailgate_simulation_allcells`).
+  simulation-selected Tailgate (`autoTol = TRUE`, bias 0.15, all cells;
+  `tailgate_simulation_allcells`), as chosen in Analysis 6.
 - Comparator exceptions in benchmarking analyses must remain explicit
   runtime errors. A numerical fallback may be retained for diagnostics,
   but the exception must not be silently promoted or scored as a valid
@@ -836,7 +836,7 @@ the `flowWorkspace` stack from source.
     results go to the projr cache `omip016/prepared` and
     `omip016/methods`. F-beta keeps its published defaults; Tailgate
     uses the simulation-selected settings (automatic tolerance, bias
-    0.1). Scoring classifies each method/tube jointly across markers
+    0.15). Scoring classifies each method/tube jointly across markers
     with StimGate’s cytokine-positive rule (`x > gate`, or `x > gateCyt`
     when ordinarily positive for another marker) and must reproduce
     [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md).
