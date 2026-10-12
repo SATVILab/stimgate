@@ -49,7 +49,11 @@
       "test-sim-compare-recorded-errors.R",
       "test-analysis-sim-size.R"
     ),
-    "9-real-compare-acs-cytof.qmd" = c(
+    "9a-real-tune-acs-cytof-tailgate.qmd" = c(
+      "test-acs-cytof-tailgate-select.R", "test-acs-cytof-methods.R",
+      "test-acs-cytof-validation-plots.R", "test-acs-cytof-paths.R"
+    ),
+    "9b-real-compare-acs-cytof.qmd" = c(
       "test-signed-percentile-plots.R",
       "test-acs-cytof-gate.R", "test-acs-cytof-methods.R", "test-ratio-companion-plots.R",
       "test-acs-cytof-paths.R"

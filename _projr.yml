@@ -12,6 +12,13 @@ directories:
     path: ../stimgate-store/_tmp_analysis/cache
   docs:
     path: docs
+  output:
+    path: _output/general
+  output-thesis:
+    path: _output/thesis
 parameters:
   sim_size: final
-
+build:
+  github:
+    output-thesis:
+      content: output-thesis

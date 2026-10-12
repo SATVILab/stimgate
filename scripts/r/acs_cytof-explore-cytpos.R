@@ -1,10 +1,10 @@
 # Analysis 16 (16-explore-acs-cytof-cytpos.qmd): how each cytokine is
 # distributed among ACS CyTOF cells that are positive for another cytokine,
-# to inform the cytokine-positive refinement rule. Reads Analysis 9's cached
-# GatingSets and StimGate gates; never re-gates or writes to Analysis 9.
+# to inform the cytokine-positive refinement rule. Reads Analysis 9b's cached
+# GatingSets and StimGate gates; never re-gates or writes to Analysis 9b.
 
 # Expression of the six response cytokines for one stimulated tube and its
-# control tube, with Analysis 9's final base and cytokine-positive gates.
+# control tube, with Analysis 9b's final base and cytokine-positive gates.
 .acsCytposTubeData <- function(gs, sampleMap, gates, sampleId, stim, channelMap) {
   tubeRow <- function(s) {
     out <- sampleMap[sampleMap$SampleID == sampleId & sampleMap$stim == s, ]
@@ -106,7 +106,7 @@
 
 
 # Hexagon plots of IFNg against TNF for every donor's stimulated and control
-# tube, with Analysis 9's base gates.
+# tube, with Analysis 9b's base gates.
 .acsCytposHexPlot <- function(tbl, gates, x = "IFNg", y = "TNF") {
   tbl$panel <- paste0(tbl$donor, "\n", tbl$tube)
   lines <- dplyr::bind_rows(lapply(names(gates), function(donor) {

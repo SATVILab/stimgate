@@ -1,6 +1,6 @@
 root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
 qmd13_path <- file.path(root_dir, "analysis", "13-real-debug-acs-cytof.qmd")
-qmd9_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
+qmd9_path <- file.path(root_dir, "analysis", "9b-real-compare-acs-cytof.qmd")
 
 .load_acs_debug_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
@@ -167,7 +167,7 @@ test_that("pages draw without simulated truth and record the final gates", {
   info <- env$.acsCytofDebugInfo(x$rec, x$row)
   expect_true(all(names(env$.acsCytofDebugHeadings) %in% names(info)))
   expect_identical(
-    info$final$value[info$final$name == "same gates as Analysis 9"], "yes"
+    info$final$value[info$final$name == "same gates as Analysis 9b"], "yes"
   )
   expect_s3_class(env$.acsCytofDebugFigure(x$rec, x$row), "ggplot")
 })

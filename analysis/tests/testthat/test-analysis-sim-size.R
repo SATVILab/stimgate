@@ -50,7 +50,7 @@ test_that("invalid global and override sim_size values give a clear error", {
 test_that("ACS figure paths ignore simulation sizes and retain explicit profiles", {
   env <- .sim_size_runtime_env()
   withr::local_envvar(PROJR_PROFILE = NA, SIM_SIZE = NA)
-  stems <- c("9-real-compare-acs-cytof", "10-real-compare-acs-cytof-validation")
+  stems <- c("9b-real-compare-acs-cytof", "10-real-compare-acs-cytof-validation")
   for (stem in stems) {
     line <- grep("^fig_key <-", readLines(file.path(.sim_size_root(), "analysis", paste0(stem, ".qmd"))), value = TRUE)
     for (size in c(NA_character_, "draft", "final")) {

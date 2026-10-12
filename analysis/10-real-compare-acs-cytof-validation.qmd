@@ -15,18 +15,20 @@ params:
   run_plots: false
 ---
 
-Reproduce the ACS manuscript-style validation plots for StimGate, F-beta and
+Reproduce the ACS manuscript-style validation plots for StimGate, $F_{\beta}$ and
 Tailgate using the comparison table produced by the main ACS analysis.
-The figures use saved results from analysis 9 without rerunning the gating methods.
+The figures use saved results from Analysis 9b without rerunning the gating
+methods. Tailgate uses the configuration Analysis 9a selected against these
+manual references, so its agreement here is in-sample.
 
 ## Set-up
 
 Failed method/marker estimates remain missing and are excluded from agreement
 statistics; correlation tables state total, failed and scored counts for each
-included stratum. Analysis 9 also saves coverage for all strata and an exclusion
+included stratum. Analysis 9b also saves coverage for all strata and an exclusion
 table for unmatched cohort keys.
 
-The saved `acs_cytof/manual-comparison/manual-comparison.rds` table is sufficient; raw FCS files are not needed here. Render analysis 9 with `RUN_SIMULATIONS=true RUN_PLOTS=false` first if that table is missing. `RUN_PLOTS=true` displays and saves the validation figures; this document does not rerun the gating methods.
+The saved `acs_cytof/manual-comparison/manual-comparison.rds` table is sufficient; raw FCS files are not needed here. Render Analyses 9a and 9b with `RUN_SIMULATIONS=true RUN_PLOTS=false` first if that table is missing. `RUN_PLOTS=true` displays and saves the validation figures; this document does not rerun the gating methods.
 
 ```{r}
 #| label: setup
@@ -47,6 +49,8 @@ fig_key <- .analysis_mode_key("10-real-compare-acs-cytof-validation", sized = FA
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-manual.R"))
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
+source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
+source(file.path(scripts_r_dir, "acs_cytof-tailgate-select.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
@@ -69,24 +73,26 @@ path_comparison <- file.path(
   path_manual_output,
   "manual-comparison.rds"
 )
-# Must match the StimGate threshold method set in analysis 9.
+# Must match the StimGate threshold method set in Analysis 9b.
 stimgate_loc_threshold_method <- "cap"
+qmd_9b <- "analysis/9b-real-compare-acs-cytof.qmd"
 manual_run_manifest <- .analysis_read_rds(
-  file.path(path_manual_output, "manifest.rds"), "acs_cytof",
-  "analysis/9-real-compare-acs-cytof.qmd"
+  file.path(path_manual_output, "manifest.rds"), "acs_cytof", qmd_9b
 )
 .analysis_check_expected_run(
   manual_run_manifest,
-  "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd",
-  semantics_version = "acs-cytof-v9"
+  "acs_cytof", qmd_9b,
+  semantics_version = "acs-cytof-v10"
 )
 .acsCytofCheckRunManifestMethod(
-  manual_run_manifest, stimgate_loc_threshold_method,
-  "analysis/9-real-compare-acs-cytof.qmd"
+  manual_run_manifest, stimgate_loc_threshold_method, qmd_9b
 )
-manual_comparison_tbl <- .analysis_read_rds(
-  path_comparison, "acs_cytof", "analysis/9-real-compare-acs-cytof.qmd"
+# Tailgate's results must come from the configuration 9a currently selects.
+tailgate_selection <- .acsCytofReadTailgateSelection(
+  .acsCytofTailgateSelectionDir(root_dir)
 )
+.acsCytofCheckRunManifestTailgate(manual_run_manifest, tailgate_selection, qmd_9b)
+manual_comparison_tbl <- .analysis_read_rds(path_comparison, "acs_cytof", qmd_9b)
 .acsCytofValidateComparisonManifest(
   manual_comparison_tbl,
   locThresholdMethod = stimgate_loc_threshold_method
@@ -97,8 +103,8 @@ appendix_methods <- .acsCytofValidationAppendixMethods()
   manual_comparison_tbl,
   requiredMethods = c(validation_methods, appendix_methods)
 )
-# The saved table also holds Tailgate and F-beta at their published defaults,
-# reported in the appendix; the main results use the tuned comparators.
+# The saved table also holds F-beta at its published defaults, reported in the
+# appendix; the main results leave it out.
 manual_comparison_all_tbl <- manual_comparison_tbl
 manual_comparison_tbl <- .acsCytofMainComparisonTable(manual_comparison_all_tbl)
 ```
@@ -121,7 +127,7 @@ additional populations in the current benchmark.
 ## Frequency-error coverage and donor uncertainty
 
 Manual gating is an imperfect reference, so agreement is not proof of biological
-accuracy. Analysis 9 provides absolute frequency-error and relative-error figures
+accuracy. Analysis 9b provides absolute frequency-error and relative-error figures
 for each stimulus. Absolute error includes zero manual net frequencies; the current
 manual and automated net frequencies are truncated at zero after subtraction.
 relative error needs a positive manual net frequency, and very small denominators
@@ -237,7 +243,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-Each figure shows one method. Scatterplots also have a separate figure for each population. The saved figures also cover Tailgate and F-beta at their default settings (see the appendix).
+Each figure shows one method. Scatterplots also have a separate figure for each population. The saved figures also cover $F_{\beta}$ at its default settings (see the appendix).
 
 ### Raw background-subtracted frequencies
 
@@ -323,15 +329,15 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-## Appendix: Tailgate and F-beta at default settings
+## Appendix: $F_{\beta}$ at default settings
 
-The main results use Tailgate and F-beta as tuned for the CyTOF data in
-Analysis 9: cells with an expression of exactly zero are removed before the
-gate is estimated, and Tailgate uses a fixed tolerance and a bias of 0.2. Here
-both methods use their published defaults on every cell instead: F-beta with
-`beta = 0.8`, `theta = 2`, `width = 10` and pdfs that integrate to one, and
-Tailgate with its automatic tolerance and no bias. The eligibility rules and
-heatmap layout match the main results.
+The main results use $F_{\beta}$ as adapted for the CyTOF data in Analysis 9b:
+cells with an expression of exactly zero are removed before the gate is
+estimated. Here $F_{\beta}$ uses its published defaults on every cell instead
+($\beta=0.8$, `theta = 2`, `width = 10` and pdfs that integrate to one). The
+eligibility rules and heatmap layout match the main results. Tailgate's
+alternative settings, including its automatic-tolerance and cytoUtils
+defaults, are compared in Analysis 9a.
 
 ```{r}
 #| label: appendix-correlation-table
@@ -344,7 +350,7 @@ appendix_correlation_tbl <- .acsCytofValidationCorrelationTable(
 if (isTRUE(run_plots)) {
   .analysis_report_table(appendix_correlation_tbl,
     c(fig_key, "validation-correlations-default-settings.csv"),
-    "Eligible-stratum PCC and CCC for Tailgate and F-beta at default settings.",
+    "Eligible-stratum PCC and CCC for F-beta at default settings.",
     path_root = root_dir)
 }
 ```

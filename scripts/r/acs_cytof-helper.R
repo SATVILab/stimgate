@@ -162,7 +162,7 @@
   invisible(TRUE)
 }
 
-# The analysis 9 run manifest records the StimGate threshold method used for
+# The analysis 9b run manifest records the StimGate threshold method used for
 # the saved comparison; a manifest without it (or with another) is rejected.
 .acsCytofCheckRunManifestMethod <- function(
     manifest, locThresholdMethod, qmdPath) {
@@ -174,6 +174,23 @@
       paste0(
         "Cached stimgate_loc_threshold_method does not match '",
         locThresholdMethod, "'."
+      ),
+      qmdPath
+    )
+  }
+  invisible(manifest)
+}
+
+# The saved Analysis 9b comparison must have used the Tailgate configuration
+# Analysis 9a currently selects.
+.acsCytofCheckRunManifestTailgate <- function(manifest, selection, qmdPath) {
+  if (!identical(manifest$tailgate_config, selection$method)) {
+    .analysis_cache_error(
+      "acs_cytof",
+      paste0(
+        "The saved comparison used Tailgate configuration '",
+        paste(manifest$tailgate_config, collapse = ", "),
+        "', but Analysis 9a selects '", selection$method, "'."
       ),
       qmdPath
     )
@@ -204,14 +221,14 @@
   if (is.null(manifest$methods) || !length(manifest$methods) ||
       is.null(manifest$comparisonSettings) || is.null(manifest$manualInputHash) ||
       !"thresholdFailed" %in% names(table)) {
-    stop("Legacy or incomplete ACS comparison manifest; re-run analysis 9 with RUN_SIMULATIONS=true RUN_PLOTS=false.")
+    stop("Legacy or incomplete ACS comparison manifest; re-run analysis 9b with RUN_SIMULATIONS=true RUN_PLOTS=false.")
   }
   if (!identical(
     manifest$comparisonSettings$locThresholdMethod, locThresholdMethod
   )) {
     stop(
       "ACS comparison does not record StimGate locThresholdMethod = '",
-      locThresholdMethod, "'; re-run analysis 9 with ",
+      locThresholdMethod, "'; re-run analysis 9b with ",
       "RUN_SIMULATIONS=true RUN_PLOTS=false."
     )
   }
@@ -226,7 +243,7 @@
     !all(table$locThresholdMethod[isStimGate] %in% locThresholdMethod))) {
     stop(
       "ACS StimGate rows do not record locThresholdMethod = '",
-      locThresholdMethod, "'; re-run analysis 9 with ",
+      locThresholdMethod, "'; re-run analysis 9b with ",
       "RUN_SIMULATIONS=true RUN_PLOTS=false."
     )
   }

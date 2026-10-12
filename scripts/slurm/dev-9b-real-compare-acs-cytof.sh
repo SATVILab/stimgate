@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=6
-#SBATCH --job-name="dev-9-acs-cytof"
+#SBATCH --job-name="dev-9b-acs-cytof"
 #SBATCH --partition=ada
 
 set -euo pipefail
@@ -9,7 +9,7 @@ set -euo pipefail
 # Under sbatch, the script may be copied into Slurm's spool directory.
 # Use the submit directory, or an explicit PROJECT_ROOT passed by a launcher.
 project_root="${PROJECT_ROOT:-${SLURM_SUBMIT_DIR:-$(pwd)}}"
-qmd_file="${ACS_CYTOF_QMD_FILE:-analysis/9-real-compare-acs-cytof.qmd}"
+qmd_file="${ACS_CYTOF_QMD_FILE:-analysis/9b-real-compare-acs-cytof.qmd}"
 qmd_abs="$project_root/$qmd_file"
 
 if [[ ! -f "$qmd_abs" ]]; then
@@ -17,7 +17,7 @@ if [[ ! -f "$qmd_abs" ]]; then
   exit 1
 fi
 
-# Analysis 9 has six configured populations and runs at most one R worker per
+# Analysis 9b has six configured populations and runs at most one R worker per
 # population. Keep native-library thread pools single-threaded so workers do not
 # oversubscribe the Slurm allocation.
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
@@ -26,7 +26,8 @@ export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
 export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
 
-export RUN_PREPROCESSING="${RUN_PREPROCESSING:-true}"
+# Analysis 9a preprocesses the populations into the GatingSets read here.
+export RUN_PREPROCESSING="${RUN_PREPROCESSING:-false}"
 
 # RUN_METHODS is retained as a backwards-compatible umbrella default. The QMD
 # reads the stage-specific RUN_STIMGATE and RUN_COMPARATORS controls.

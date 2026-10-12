@@ -51,9 +51,9 @@ The all-cell curves use their own Sheather-Jones bandwidth (at least 0.05).
 The y axis is on a square-root scale so the tails remain visible next to the
 large peak near zero.
 
-Everything is read from Analysis 9's most recent run (its cached GatingSets
+Everything is read from Analysis 9b's most recent run (its cached GatingSets
 and StimGate gates); nothing is gated again. The gates are therefore those of
-the version Analysis 9 last ran with.
+the version Analysis 9b last ran with.
 
 ## Set-up
 
@@ -89,7 +89,7 @@ sel_stims <- .acsCytofDebugList(.get_qmd_param_env("stims", "ACS_EXPLORE_STIMS",
 ```{r}
 #| label: paths
 #| include: false
-# Analysis 9's caches are only read: never create or change them here.
+# Analysis 9b's caches are only read: never create or change them here.
 path_gs_base <- projr::projr_path_get(
   "cache", "acs_cytof", "gs",
   create = FALSE, format = "absolute"
@@ -103,12 +103,12 @@ path_comparison <- projr::projr_path_get(
   create = FALSE, format = "absolute"
 )
 if (!file.exists(path_comparison)) {
-  stop("Analysis 9's manual comparison is missing; render Analysis 9 first.")
+  stop("Analysis 9b's manual comparison is missing; render Analysis 9b first.")
 }
 comparison <- readRDS(path_comparison)
 manual_donors <- sort(unique(as.character(comparison$SampleID)))
 settings <- .acsCytofDebugSettings(
-  file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
+  file.path(root_dir, "analysis", "9b-real-compare-acs-cytof.qmd")
 )
 pops <- intersect(
   settings$popVec,

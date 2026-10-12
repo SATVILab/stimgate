@@ -172,8 +172,8 @@ test_that("new unchunked cache schemas require their semantics identifier", {
     semantics_version = "acs-cytof-v3"
   ))
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
-  for (file in c("9-real-compare-acs-cytof.qmd", "10-real-compare-acs-cytof-validation.qmd")) {
+  for (file in c("9b-real-compare-acs-cytof.qmd", "10-real-compare-acs-cytof-validation.qmd")) {
     text <- paste(readLines(file.path(root, "analysis", file)), collapse = "\n")
-    expect_match(text, 'semantics_version = "acs-cytof-v9"', fixed = TRUE)
+    expect_match(text, 'semantics_version = "acs-cytof-v10"', fixed = TRUE)
   }
 })

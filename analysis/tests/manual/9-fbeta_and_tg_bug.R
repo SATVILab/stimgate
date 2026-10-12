@@ -294,7 +294,8 @@ reticulate::py_config()
   # -----------------------------------------------------------------------
 
   fbetaSettings <- .acsCytofComparatorSettings("fbeta")
-  tailgateSettings <- .acsCytofComparatorSettings("tailgate")
+  # The previous ACS-tuned Tailgate; Analysis 9b now reads 9a's selection.
+  tailgateSettings <- .acsCytofComparatorSettings("tailgate_acs_rmzero")
 
   fbetaDirect <- .tryAcsMethod(
     do.call(

@@ -1,5 +1,5 @@
 ---
-title: Compare StimGate, Tailgate and F-beta on the ACS CyTOF dataset
+title: Compare StimGate, Tailgate and $F_{\beta}$ on the ACS CyTOF dataset
 format:
   html:
     embed-resources: true
@@ -21,12 +21,18 @@ params:
 ---
 
 Validate StimGate on the ACS CyTOF dataset and compare its estimated
-background-subtracted response frequencies with Tailgate and F-beta.
+background-subtracted response frequencies with Tailgate and $F_{\beta}$.
 Each batch contains one unstimulated and four stimulated samples, analysed separately for six cell populations.
+Tailgate uses the configuration selected in Analysis 9a
+(`9a-real-tune-acs-cytof-tailgate.qmd`) against the same manual gating, so
+Tailgate's agreement here is in-sample.
 
 ## Set-up
 
-`RUN_SIMULATIONS=true` runs preprocessing and all three methods; `RUN_SIMULATIONS=false RUN_PLOTS=true` reads the saved manual-comparison table. The individual `RUN_PREPROCESSING`, `RUN_STIMGATE` and `RUN_COMPARATORS` controls override those stages when supplied. Computation requires the population FCS directories under the `raw-data-large/comparison_data/acscytof/fcs` projr path, the manual `Cytokines_10Jun2021_2.csv` under `raw-data-small/comparison_data/acscytof`, and the filename map from `DataTidyACSCyTOFFAUST`.
+Render Analysis 9a first: it preprocesses the populations into the cached
+GatingSets this analysis reuses and saves Tailgate's selected configuration,
+which is read here (a tie or a missing selection stops the render).
+`RUN_SIMULATIONS=true` runs all three methods (and preprocesses the TCRgd tester; `RUN_PREPROCESSING=true` also preprocesses every population again, which Analysis 9a would then have to repeat); `RUN_SIMULATIONS=false RUN_PLOTS=true` reads the saved manual-comparison table. The individual `RUN_PREPROCESSING`, `RUN_STIMGATE` and `RUN_COMPARATORS` controls override those stages when supplied. Computation requires the population FCS directories under the `raw-data-large/comparison_data/acscytof/fcs` projr path, the manual `Cytokines_10Jun2021_2.csv` under `raw-data-small/comparison_data/acscytof`, and the filename map from `DataTidyACSCyTOFFAUST`.
 
 ```{r}
 #| label: setup
@@ -46,8 +52,8 @@ source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
 source(file.path(scripts_r_dir, "analysis-mcse.R"))
 source(file.path(scripts_r_dir, "sim-bandwidth-analysis-plot.R"))
-fig_key <- .analysis_mode_key("9-real-compare-acs-cytof", sized = FALSE)
-analysis_qmd <- "analysis/9-real-compare-acs-cytof.qmd"
+fig_key <- .analysis_mode_key("9b-real-compare-acs-cytof", sized = FALSE)
+analysis_qmd <- "analysis/9b-real-compare-acs-cytof.qmd"
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
 source(file.path(scripts_r_dir, "acs_cytof-preprocess.R"))
 source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
@@ -56,6 +62,7 @@ source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
 source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
 source(file.path(scripts_r_dir, "acs_cytof-manual.R"))
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
+source(file.path(scripts_r_dir, "acs_cytof-tailgate-select.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
@@ -63,10 +70,11 @@ run_simulations <- .as_flag(.get_qmd_param_env(
   FALSE
 ))
 
+# Analysis 9a preprocesses the populations; only an explicit request redoes it.
 run_preprocessing <- .as_flag(.get_qmd_param_env(
   "run_preprocessing",
   "RUN_PREPROCESSING",
-  run_simulations
+  FALSE
 ))
 run_stimgate <- .as_flag(.get_qmd_param_env(
   "run_stimgate",
@@ -124,6 +132,17 @@ path_scratch_base <- projr::projr_path_get(
   format = "absolute"
 )
 path_fbeta <- file.path(root_dir, "scripts", "python", "fbeta.py")
+# Analysis 9a's recorded selection sets Tailgate's configuration.
+tailgate_selection <- .acsCytofReadTailgateSelection(
+  .acsCytofTailgateSelectionDir(root_dir)
+)
+# The selection is an input here, so it may come from an earlier 9a run.
+if (!identical(
+  tailgate_selection$analysis_semantics_version,
+  .acsCytofTailgateSelectionSemantics()
+)) {
+  stop("Analysis 9a's Tailgate selection is from an older version; re-render Analysis 9a.")
+}
 if (isTRUE(run_comparators)) {
   if (!requireNamespace("cytoUtils", quietly = TRUE) ||
       !requireNamespace("reticulate", quietly = TRUE) ||
@@ -180,29 +199,40 @@ recorded with the saved run, and a saved StimGate result made with another
 threshold method is rejected.
 Its unstimulated-sample bias
 is not fixed: it equals the shared bandwidth StimGate estimates for each
-marker (`biasUns = NULL` with `biasUnsFactor = 1`). F-beta uses its standard
-parameters (`beta = 0.8`, `theta = 2`, `width = 10` and automatic bin count).
-The F-beta implementation is adapted from Richards et al. (2014) only in the
+marker (`biasUns = NULL` with `biasUnsFactor = 1`). $F_{\beta}$ uses its standard
+parameters ($\beta=0.8$, `theta = 2`, `width = 10` and automatic bin count).
+The $F_{\beta}$ implementation is adapted from Richards et al. (2014) only in the
 histogram support: common bin edges span the matched stimulated and unstimulated
 distributions, instead of being derived from the unstimulated range alone. This
 prevents stimulated response-tail events outside the observed unstimulated range
 from being omitted when no explicit strong positive control is available.
-Tailgate uses the stimulated distribution and automatic bandwidth estimation.
+Tailgate uses the stimulated distribution and automatic bandwidth estimation,
+with the tolerance, bias and zero handling of the configuration Analysis 9a
+selected (shown below).
 
-Both comparators are applied after removing cells with an expression of
-exactly zero, which are clearly negative in the CyTOF data (over half of the
-cells for some cytokines). Their frequencies are still calculated over every
-cell, so these cells count as negative. For F-beta, each histogram pdf is
-scaled to integrate to the retained fraction of its tube rather than to one.
-Tailgate's tolerance is fixed at `tol = 2e-5` rather than set automatically:
-the automatic tolerance (1% of the largest absolute first derivative of the
-density) is dominated by the zero spike, so the cutpoint stops at the shoulder
-of the negative population. Tailgate's cutpoint is then moved up by 0.2, as
-StimGate's gates are moved up by its bias. The tolerance was chosen against the
-manual gates for TNF and IFNg in CD4 T cells, so agreement there is optimistic.
-Both methods are also run with their published
-defaults on all cells (`tailgate_default` and `fbeta_default`); Analysis 10
-reports their agreement with the manual gating in an appendix.
+$F_{\beta}$ is applied after removing cells with an expression of exactly
+zero, which are clearly negative in the CyTOF data (over half of the cells for
+some cytokines). Its frequencies are still calculated over every cell, so
+these cells count as negative, and each histogram pdf is scaled to integrate
+to the retained fraction of its tube rather than to one. $F_{\beta}$ is also
+run with its published defaults on all cells (`fbeta_default`); Analysis 10
+reports its agreement with the manual gating in an appendix. Analysis 9a
+compares Tailgate's alternative settings.
+
+```{r}
+#| label: show-tailgate-selection
+#| echo: false
+#| results: asis
+cfg <- tailgate_selection$config
+cat(
+  "\nTailgate configuration from Analysis 9a: **", cfg$configLabel, "**, ",
+  if (cfg$removeZero) "zeros removed before estimation" else "estimated on all cells",
+  "; automatic tolerance ", if (cfg$autoTol) "on" else "off",
+  ", tolerance ", format(cfg$tol), if (cfg$autoTol) " (relative)" else " (absolute)",
+  ", bias ", format(cfg$bias), " (`", tailgate_selection$method, "`, selected ",
+  format(tailgate_selection$createdAt, "%Y-%m-%d"), ").\n\n", sep = ""
+)
+```
 
 ### TCRgd tester
 
@@ -216,12 +246,13 @@ subdirectory, so they cannot overwrite the full TCRgd run.
 #| include: false
 set.seed(analysis_seed)
 
+# The tester has its own small GatingSet, preprocessed whenever it is gated.
 tcrgd_tester <- .acsCytofRunPopulation(
   pop = "tcrgd",
   pathFcsBase = path_fcs_base,
   pathGsBase = path_gs_base,
   pathScratchBase = path_scratch_base,
-  runPreprocessing = run_preprocessing,
+  runPreprocessing = run_preprocessing || run_stimgate,
   runMethods = run_stimgate,
   runPlots = FALSE,
   runPreprocessingPlots = FALSE,
@@ -242,7 +273,8 @@ if (isTRUE(run_comparators)) {
     runMethods = TRUE,
     nSample = tester_n_sample,
     outputGroup = "tester",
-    pathFbeta = path_fbeta
+    pathFbeta = path_fbeta,
+    tailgateSelection = tailgate_selection
   )
 }
 ```
@@ -282,13 +314,13 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate)) {
 }
 ```
 
-## Tailgate and F-beta
+## Tailgate and $F_{\beta}$
 
-Tailgate and F-beta run concurrently across populations, using the same
-`n_workers` control as StimGate. Within each population, the tuned and default
-versions of the two methods run sequentially so that they do not compete for
+Tailgate and $F_{\beta}$ run concurrently across populations, using the same
+`n_workers` control as StimGate. Within each population, Tailgate and the two
+versions of $F_{\beta}$ run sequentially so that they do not compete for
 the same GatingSet. Each method is saved to its own `result.rds`. Whenever
-`run_comparators` is true, all four are recomputed for every population and
+`run_comparators` is true, all three are recomputed for every population and
 replace the previous results only once all have finished, so a failed rerun
 keeps the last good results. When
 `run_comparators` is false, existing results remain available to
@@ -307,7 +339,8 @@ if (isTRUE(run_comparators)) {
         pathGsBase = path_gs_base,
         pathScratchBase = path_scratch_base,
         runMethods = run_comparators_vec_by_pop[[pop]],
-        pathFbeta = path_fbeta
+        pathFbeta = path_fbeta,
+        tailgateSelection = tailgate_selection
       )
     },
     nWorkers = n_workers,
@@ -351,8 +384,11 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
     path_dir_save = NULL,
     save_plots = FALSE,
     sample_map = fn_to_sampleid_map,
-    loc_threshold_method = stimgate_loc_threshold_method
+    loc_threshold_method = stimgate_loc_threshold_method,
+    tailgate_selection = tailgate_selection
   )
+  # Fail before saving if the GatingSets differ from those 9a selected on.
+  .acsCytofCheckSelectionPreprocessing(tailgate_selection, manual_comparison_tbl)
   # Save the complete table without generating figures in this plumbing chunk.
   .acsCytofManualSave(
     comparisonTbl = manual_comparison_tbl,
@@ -361,8 +397,9 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .write_rds_atomic(
     list(
-      analysis_semantics_version = "acs-cytof-v9",
+      analysis_semantics_version = "acs-cytof-v10",
       stimgate_loc_threshold_method = stimgate_loc_threshold_method,
+      tailgate_config = tailgate_selection$method,
       run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))
     ),
     file.path(path_manual_output, "manifest.rds")
@@ -373,11 +410,12 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .analysis_check_expected_run(
     manual_run_manifest,
-    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v9"
+    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v10"
   )
   .acsCytofCheckRunManifestMethod(
     manual_run_manifest, stimgate_loc_threshold_method, analysis_qmd
   )
+  .acsCytofCheckRunManifestTailgate(manual_run_manifest, tailgate_selection, analysis_qmd)
   manual_comparison_tbl <- .analysis_read_rds(
     path_comparison, "acs_cytof", analysis_qmd
   )
@@ -386,9 +424,8 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   manual_comparison_tbl,
   locThresholdMethod = stimgate_loc_threshold_method
 )
-# The saved table also holds Tailgate and F-beta at their published defaults,
-# which Analysis 10 reports in its appendix; the results below use the tuned
-# comparators only.
+# The saved table also holds F-beta at its published defaults, which
+# Analysis 10 reports in its appendix; the results below leave it out.
 manual_comparison_tbl <- .acsCytofMainComparisonTable(manual_comparison_tbl)
 manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 ```
@@ -399,12 +436,12 @@ manual_summary_tbl <- .acsCytofManualSummaryTable(manual_comparison_tbl)
 
 The comparison table, its RDS copy and a method/population/cytokine summary
 are written under `path_manual_output`. When `run_plots` is true, the
-figures are saved under `output/fig/9-real-compare-acs-cytof/`. Failed thresholds (including finite fallback gates) remain in the comparison
+figures are saved under `output/fig/9b-real-compare-acs-cytof/`. Failed thresholds (including finite fallback gates) remain in the comparison
 with missing scored frequencies. Summary tables state total, failed and scored
 counts; agreement statistics use successful estimates only. The exclusion CSV
 records unmatched manual/automated keys. Methods must have identical sample and
 stratum keys and matching data/preprocessing manifests before joining.
-Pearson correlations of the StimGate, Tailgate and F-beta estimates with the manual frequencies
+Pearson correlations of the StimGate, Tailgate and $F_{\beta}$ estimates with the manual frequencies
 follow.
 
 ```{r}

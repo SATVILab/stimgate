@@ -186,7 +186,7 @@ test_that("analysis 10 correlation and plot chunks run with comparison fixtures"
   expect_length(plots, 0L)
 })
 
-test_that("analysis 10 keeps default-settings comparators for its appendix only", {
+test_that("analysis 10 keeps default-settings F-beta for its appendix only", {
   lines <- readLines(qmd_path, warn = FALSE)
   chunk_code <- function(label) {
     start <- which(lines == paste0("#| label: ", label))
@@ -195,13 +195,12 @@ test_that("analysis 10 keeps default-settings comparators for its appendix only"
     parse(text = lines[seq.int(start + 1L, end - 1L)])
   }
   appendix_methods <- env$.acsCytofValidationAppendixMethods()
-  expect_setequal(appendix_methods, c("fbeta_default", "tailgate_default"))
+  expect_identical(appendix_methods, "fbeta_default")
 
   main <- .acs_validation_fixture()
   all_tbl <- dplyr::bind_rows(
     main,
-    dplyr::mutate(dplyr::filter(main, .data$method == "fbeta"), method = "fbeta_default"),
-    dplyr::mutate(dplyr::filter(main, .data$method == "tailgate"), method = "tailgate_default")
+    dplyr::mutate(dplyr::filter(main, .data$method == "fbeta"), method = "fbeta_default")
   )
   attr(all_tbl, "manifest") <- list(x = 1)
 
@@ -230,11 +229,11 @@ test_that("analysis 10 keeps default-settings comparators for its appendix only"
   chunk_env$run_plots <- TRUE
   for (label in c("appendix-t-cell-correlations", "appendix-all-correlations")) {
     out <- capture.output(eval(chunk_code(label), envir = chunk_env))
-    expect_true(any(grepl("#### Method: Tailgate (default settings)", out, fixed = TRUE)))
+    expect_true(any(grepl("#### Method: F-beta (default settings)", out, fixed = TRUE)))
     expect_true(any(grepl("Concordance correlation", out, fixed = TRUE)))
   }
-  # Two methods, two metrics, two population sets.
-  expect_length(plots, 8L)
+  # One method, two metrics, two population sets.
+  expect_length(plots, 4L)
   expect_true(all(vapply(plots, inherits, logical(1), what = "ggplot")))
 })
 

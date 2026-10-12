@@ -76,7 +76,7 @@ if (run_methods) .acsCytofEnsureCurrentCheckout(root_dir)
 #| label: scientific-settings
 # Analysis 14's settings, with only the shifted-peak rule switched on.
 default_settings <- list(
-  semantics = "omip111-v5", seed = 20261009L,
+  semantics = "omip111-v6", seed = 20261009L,
   preprocessing = list(reference = "raw cytokine lower cutoff on common non-naive parent",
     cofactor = 150, parentRelativeTolerance = 0.02,
     frequencyTolerancePp = 0.1),
@@ -86,7 +86,7 @@ default_settings <- list(
     calcCytPosGates = FALSE, minCell = 100, locThresholdMethod = "cap"),
   comparators = list(
     fbeta = .acsCytofComparatorSettings("fbeta_default")$params,
-    tailgate = .acsCytofComparatorSettings("tailgate_default")$params))
+    tailgate = .acsCytofComparatorSettings("tailgate_simulation_allcells")$params))
 scientific_settings <- .omipShiftedPeakSettings(default_settings)
 ```
 

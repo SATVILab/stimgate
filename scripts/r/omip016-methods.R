@@ -9,10 +9,11 @@
 
 .omip016Methods <- function() c("stimgate", "tailgate", "fbeta")
 
-# OMIP-016 is conventional flow data without the exact-zero spike that made
-# the ACS CyTOF comparators need tuning, so both comparators keep their
-# published defaults (Analysis 9's "_default" settings). Tuning them against
-# these manual gates would make the comparison circular.
+# OMIP-016 is conventional flow data without the exact-zero spike of the ACS
+# CyTOF data, so zeros are kept. F-beta keeps its published defaults and
+# Tailgate uses the settings selected in the simulations (Analyses 6 and 7:
+# automatic tolerance, bias 0.1). Tuning either against these manual gates
+# would make the comparison circular.
 .omip016ComparatorSettings <- function(method = c("tailgate", "fbeta")) {
   method <- match.arg(method)
   params <- switch(
@@ -20,7 +21,7 @@
     tailgate = list(
       tailgateX = "stim", adjust = 1, bandwidth = NULL, numPeaks = 1L,
       refPeak = 1L, derivativeMethod = "firstDeriv", tol = 1e-2,
-      side = "right", strict = FALSE, autoTol = TRUE, bias = 0,
+      side = "right", strict = FALSE, autoTol = TRUE, bias = 0.1,
       removeZero = FALSE
     ),
     fbeta = list(
@@ -28,7 +29,7 @@
       patchPy2Compat = TRUE, removeZero = FALSE
     )
   )
-  list(cacheVersion = 2L, method = method, family = method, params = params)
+  list(cacheVersion = 3L, method = method, family = method, params = params)
 }
 
 # `locShiftedPeakRef = TRUE` (Analysis 15b) adds the shifted-peak rule; the

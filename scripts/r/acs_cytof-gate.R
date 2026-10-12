@@ -27,11 +27,20 @@
     scratch = pathScratch,
     gsCheck = file.path(pathScratch, "gatingset"),
     stimgate = file.path(pathScratch, "stimgate"),
-    tailgate = file.path(pathScratch, "tailgate", "result.rds"),
-    fbeta = file.path(pathScratch, "fbeta", "result.rds"),
-    tailgate_default = file.path(pathScratch, "tailgate_default", "result.rds"),
-    fbeta_default = file.path(pathScratch, "fbeta_default", "result.rds"),
     stimgateCheck = file.path(pathScratch, "stimgate_check_sample_2.pdf")
+  ) |>
+    c(.acsCytofComparatorPaths(pathScratch))
+}
+
+# One result.rds per comparator method (Analysis 9b's and Analysis 9a's
+# eight Tailgate configurations), in a folder named after the method.
+.acsCytofComparatorPaths <- function(pathScratch) {
+  methods <- c(
+    .acsCytofComparatorMethods(), .acsCytofTailgateSelectionMethods()
+  )
+  stats::setNames(
+    lapply(methods, function(m) file.path(pathScratch, m, "result.rds")),
+    methods
   )
 }
 
@@ -327,9 +336,9 @@
   ))
 }
 
-# The ACS StimGate call shared by Analysis 9 and its per-sample diagnostics
+# The ACS StimGate call shared by Analysis 9b and its per-sample diagnostics
 # (Analysis 13), so both gate with exactly the same settings. Debug mode is on
-# while gating, as in Analysis 9's saved runs.
+# while gating, as in Analysis 9b's saved runs.
 .acsCytofGateStim <- function(
   gs,
   pathProject,

@@ -1,10 +1,10 @@
 # Analysis 18 (18-explore-acs-cytof-coexpression-gates.qmd): the co-expression
 # gates (`scripts/r/coexpression-gates.R`) applied to every ACS population,
-# stimulation and donor, from Analysis 9's ordinary gates, over every ordered
-# pair of all the cytokines Analysis 9 gates. Each tube is scored under three
+# stimulation and donor, from Analysis 9b's ordinary gates, over every ordered
+# pair of all the cytokines Analysis 9b gates. Each tube is scored under three
 # rules: the ordinary gates, the co-expression gates with the double-positive
 # screen ("screened", `screen = TRUE`) and without it ("unscreened",
-# `screen = FALSE`). Read-only on Analysis 9's caches; results go to the projr
+# `screen = FALSE`). Read-only on Analysis 9b's caches; results go to the projr
 # cache `acs_cytof_coexpression`.
 
 .acsCoexGatesSemantics <- "acs-coexpression-gates-v2"
@@ -66,7 +66,7 @@
 }
 
 # Every donor and stimulation of one population, over all the cytokines in
-# `channelMap` (those Analysis 9 gates). `workers` > 1 forks (future
+# `channelMap` (those Analysis 9b gates). `workers` > 1 forks (future
 # multicore) over donors; the GatingSet is read in each fork.
 .acsCoexGatesPopulation <- function(pop, paths, channelMap, settings = .acsCoexGatesSettings(),
                                     workers = 1L) {

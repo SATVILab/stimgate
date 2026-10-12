@@ -101,6 +101,8 @@ test_that("QMD table exports are guarded and large inline table printers stay ab
             allowed <- list(
               "8-sim-compare-freq_bs-batch.qmd" = ".simCompareMethodOutcomeCounts",
               "6-sim-tune-comparators.qmd" = "knitr::kable(rank_display",
+              # The eight Tailgate configurations, ranked.
+              "9a-real-tune-acs-cytof-tailgate.qmd" = "knitr::kable(.acsCytofTailgateHtmlTable(ranking_tbl)",
               # One row per population and stimulation (four rows).
               "17-explore-acs-cytof-coexpression.qmd" = "knitr::kable(low_summary",
               # One row per ACS population (six rows); responding counts per
@@ -142,9 +144,9 @@ test_that("disabled table chunks write nothing while retaining correlation compu
   for (entry in list(
     c("1-sim-trans.qmd", "univariate-counts-by-mean-pos"),
     c("2c-sim-test.qmd", "test-summary"),
-    c("9-real-compare-acs-cytof.qmd", "show-manual-summary"),
-    c("9-real-compare-acs-cytof.qmd", "manual-error-coverage"),
-    c("9-real-compare-acs-cytof.qmd", "manual-donor-uncertainty"),
+    c("9b-real-compare-acs-cytof.qmd", "show-manual-summary"),
+    c("9b-real-compare-acs-cytof.qmd", "manual-error-coverage"),
+    c("9b-real-compare-acs-cytof.qmd", "manual-donor-uncertainty"),
     c("10-real-compare-acs-cytof-validation.qmd", "validation-error-coverage"),
     c("10-real-compare-acs-cytof-validation.qmd", "validation-donor-uncertainty")
   )) {

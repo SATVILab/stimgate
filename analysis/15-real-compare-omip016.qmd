@@ -99,16 +99,18 @@ if (isTRUE(run_comparators)) {
 
 ## Scientific settings
 
-StimGate uses Analysis 9's settings: `bwMtd = "nrd0"` with
+StimGate uses Analysis 9b's settings: `bwMtd = "nrd0"` with
 `bwNcellMax = 1e4`, shared per-marker bandwidths, `gateCombn = "min"`,
 `minCell = 100`, threshold clustering on, cytokine-positive refinement off
 (one gate per marker, as the manual gates and the comparators have),
 `locThresholdMethod = "cap"` and `biasUns` equal to the shared bandwidth. The
-comparison scores the final `loc_minClust` gates. Tailgate (stimulated tube,
-automatic tolerance) and F-beta (`beta = 0.8`, `theta = 2`, `width = 10`)
-keep their published defaults: these are conventional flow data without the
-CyTOF zero spike that motivated Analysis 9's tuned versions, and tuning them
-against these manual gates would make the comparison circular.
+comparison scores the final `loc_minClust` gates. Tailgate uses the settings selected in the simulations (Analyses 6 and 7):
+the stimulated tube, automatic tolerance (1% of the largest absolute first
+derivative of the density) and a bias of 0.1 added to the cutpoint. F-beta
+keeps its published defaults (`beta = 0.8`, `theta = 2`, `width = 10`). Both
+keep every cell: these are conventional flow data without the CyTOF zero
+spike, and tuning either against these manual gates would make the
+comparison circular.
 
 ```{r}
 #| label: scientific-settings
@@ -253,7 +255,7 @@ The rectangle's other bounds exclude at most
 `r max(gate_vs_threshold$n_disagree)` CD4 T cells above a threshold in any
 tube. The reference labels are the rectangles themselves. Manual frequencies
 in CD4 T cells (%; background-subtracted values are clipped at zero, as in
-Analysis 9):
+Analysis 9b):
 
 ```{r}
 #| label: manual-frequencies

@@ -9,23 +9,57 @@
   )
 }
 
-# Methods run on the ACS data besides StimGate. "tailgate" and "fbeta" are
-# the tuned comparators of the main results; "tailgate_default" and
-# "fbeta_default" keep each method's published defaults for the appendix.
+# Methods run in Analysis 9b besides StimGate: Tailgate with the
+# configuration selected in Analysis 9a, F-beta with zeros removed before
+# estimation, and F-beta at its published defaults (Analysis 10's appendix).
 .acsCytofComparatorMethods <- function() {
-  c("fbeta", "tailgate", "fbeta_default", "tailgate_default")
+  c("fbeta", "tailgate", "fbeta_default")
 }
 
-.acsCytofComparatorSettings <- function(
-  method = c("tailgate", "fbeta", "tailgate_default", "fbeta_default")
-) {
-  method <- match.arg(method)
+# The eight Tailgate configurations Analysis 9a compares: four parameter sets,
+# each estimated with and without cells whose expression is exactly zero.
+# With `autoTol = TRUE`, `tol` multiplies the largest absolute first
+# derivative of the density (a relative tolerance); with `autoTol = FALSE`, it
+# is an absolute bound on the derivative. "package" is cytoUtils'
+# `.cytokine_cutpoint()` default (`tol = 0.01`, `auto_tol = FALSE`), which
+# differs from the automatic-tolerance reference ("autotol", formerly
+# `tailgate_default`).
+.acsCytofTailgateConfigs <- function() {
+  base <- tibble::tibble(
+    config = c("simulation", "autotol", "acs", "package"),
+    configLabel = c(
+      "Simulation-selected", "Automatic-tolerance reference",
+      "ACS-tuned", "cytoUtils package default"
+    ),
+    autoTol = c(TRUE, TRUE, FALSE, FALSE),
+    tol = c(1e-2, 1e-2, 2e-5, 1e-2),
+    bias = c(0.1, 0, 0.2, 0)
+  )
+  out <- tidyr::crossing(base, removeZero = c(TRUE, FALSE))
+  out <- out[order(match(out$config, base$config), !out$removeZero), ]
+  out$method <- paste0(
+    "tailgate_", out$config, ifelse(out$removeZero, "_rmzero", "_allcells")
+  )
+  out[c("method", setdiff(names(out), "method"))]
+}
+
+.acsCytofTailgateSelectionMethods <- function() {
+  .acsCytofTailgateConfigs()$method
+}
+
+# `tailgateSelection` (Analysis 9a's saved selection, read with
+# `.acsCytofReadTailgateSelection()`) sets the "tailgate" configuration; the
+# other methods do not use it.
+.acsCytofComparatorSettings <- function(method, tailgateSelection = NULL) {
+  method <- match.arg(method, c(
+    "tailgate", "fbeta", "fbeta_default", .acsCytofTailgateSelectionMethods()
+  ))
 
   # Cells with an expression of exactly zero are clearly negative in CyTOF
-  # data. The tuned comparators drop them before estimating the gate (F-beta
-  # scales each pdf to the retained fraction of its tube); frequencies are
-  # still calculated over every cell.
-  tailgateDefault <- list(
+  # data. Comparators with `removeZero = TRUE` drop them before estimating the
+  # gate (F-beta scales each pdf to the retained fraction of its tube);
+  # frequencies are still calculated over every cell.
+  tailgateBase <- list(
     tailgateX = "stim",
     adjust = 1,
     bandwidth = NULL,
@@ -47,36 +81,90 @@
     patchPy2Compat = TRUE,
     removeZero = FALSE
   )
+  configs <- .acsCytofTailgateConfigs()
+  configParams <- function(row) {
+    utils::modifyList(tailgateBase, list(
+      autoTol = row$autoTol, tol = row$tol, bias = row$bias,
+      removeZero = row$removeZero
+    ))
+  }
 
-  params <- switch(
-    method,
-    # The automatic tolerance (1% of the largest absolute derivative) is set by
-    # the zero spike and stops at the shoulder of the negative population.
-    # The fixed tolerance was chosen against the manual CD4 TNF and IFNg gates.
-    tailgate = utils::modifyList(tailgateDefault, list(
-      tol = 2e-5,
-      autoTol = FALSE,
-      bias = 0.2,
-      removeZero = TRUE
-    )),
-    fbeta = utils::modifyList(fbetaDefault, list(removeZero = TRUE)),
-    tailgate_default = tailgateDefault,
-    fbeta_default = fbetaDefault
-  )
+  selected <- NULL
+  if (identical(method, "tailgate")) {
+    selected <- .acsCytofCheckTailgateSelection(tailgateSelection)$method
+    params <- configParams(configs[configs$method == selected, ])
+  } else if (method %in% configs$method) {
+    params <- configParams(configs[configs$method == method, ])
+  } else {
+    params <- switch(
+      method,
+      fbeta = utils::modifyList(fbetaDefault, list(removeZero = TRUE)),
+      fbeta_default = fbetaDefault
+    )
+  }
 
-  list(
+  out <- list(
     cacheVersion = switch(
       method,
-      tailgate = 2L,
+      tailgate = 3L,
       fbeta = 3L,
-      tailgate_default = 1L,
-      fbeta_default = 2L
+      fbeta_default = 2L,
+      1L
     ),
     method = method,
-    family = sub("_default$", "", method),
+    family = if (startsWith(method, "tailgate")) "tailgate" else "fbeta",
     channelMap = .acsCytofChannelMap(),
     params = params
   )
+  if (!is.null(selected)) out$tailgateConfig <- selected
+  out
+}
+
+# Analysis 9a's selection must be complete and name exactly one of the eight
+# configurations; a tie or an unavailable selection stops Analysis 9b.
+.acsCytofCheckTailgateSelection <- function(selection) {
+  if (is.null(selection)) {
+    stop(
+      "Tailgate's configuration comes from Analysis 9a's saved selection; ",
+      "render analysis/9a-real-tune-acs-cytof-tailgate.qmd first."
+    )
+  }
+  if (!is.list(selection) || !identical(selection$status, "selected") ||
+      length(selection$method) != 1L ||
+      !selection$method %in% .acsCytofTailgateSelectionMethods()) {
+    stop(
+      "Analysis 9a did not select one Tailgate configuration (status: ",
+      paste(selection$status, collapse = ", "), "): ",
+      paste(selection$method, collapse = ", "), "."
+    )
+  }
+  configs <- .acsCytofTailgateConfigs()
+  recorded <- selection$config
+  expected <- as.list(configs[configs$method == selection$method, ])
+  if (!is.list(recorded) || !isTRUE(all.equal(
+    recorded[names(expected)], expected, check.attributes = FALSE
+  ))) {
+    stop("Analysis 9a's saved Tailgate configuration no longer matches its definition; re-render Analysis 9a.")
+  }
+  selection
+}
+
+# Analysis 9a's selection folder (projr cache); needs analysis-runtime.R.
+.acsCytofTailgateSelectionDir <- function(rootDir = NULL, create = FALSE) {
+  .analysis_project_dir(
+    "cache", c("acs_cytof", "tailgate-selection"), rootDir, create = create
+  )
+}
+
+.acsCytofReadTailgateSelection <- function(path) {
+  file <- file.path(path, "selection.rds")
+  if (!file.exists(file)) {
+    stop(
+      "Analysis 9a's Tailgate selection is missing at ", file,
+      "; render analysis/9a-real-tune-acs-cytof-tailgate.qmd with RUN_SIMULATIONS=true."
+    )
+  }
+  .acsCytofCheckTailgateSelection(readRDS(file))
 }
 
 .acsCytofCombinationLevels <- function(channels) {
@@ -307,12 +395,12 @@
 .acsCytofRunComparator <- function(
   gs,
   pop,
-  method = .acsCytofComparatorMethods(),
+  method,
   batchList,
-  pathFbeta = NULL
+  pathFbeta = NULL,
+  tailgateSelection = NULL
 ) {
-  method <- match.arg(method)
-  settings <- .acsCytofComparatorSettings(method)
+  settings <- .acsCytofComparatorSettings(method, tailgateSelection)
   channelMap <- settings$channelMap
   channels <- names(channelMap)
   fbetaEnv <- if (identical(settings$family, "fbeta")) {
@@ -496,7 +584,8 @@
 .acsCytofReadComparatorCache <- function(
   path,
   method,
-  nSample = NULL
+  nSample = NULL,
+  tailgateSelection = NULL
 ) {
   if (!file.exists(path)) {
     stop(
@@ -509,7 +598,7 @@
   }
 
   object <- tryCatch(readRDS(path), error = function(e) NULL)
-  settings <- .acsCytofComparatorSettings(method)
+  settings <- .acsCytofComparatorSettings(method, tailgateSelection)
   if (!.acsCytofCacheIsCurrent(object, settings, nSample = nSample)) {
     stop(
       "Cached ",
@@ -553,7 +642,9 @@
   runMethods,
   nSample = NULL,
   outputGroup = NULL,
-  pathFbeta = NULL
+  pathFbeta = NULL,
+  methods = .acsCytofComparatorMethods(),
+  tailgateSelection = NULL
 ) {
   paths <- .acsCytofPopulationPaths(
     pop = pop,
@@ -562,14 +653,15 @@
     pathScratchBase = pathScratchBase,
     outputGroup = outputGroup
   )
-  methodVec <- .acsCytofComparatorMethods()
+  methodVec <- methods
 
   if (!isTRUE(runMethods)) {
     resultList <- lapply(methodVec, function(method) {
       .acsCytofReadComparatorCache(
         path = paths[[method]],
         method = method,
-        nSample = nSample
+        nSample = nSample,
+        tailgateSelection = tailgateSelection
       )
     })
     names(resultList) <- methodVec
@@ -610,7 +702,8 @@
       pop = pop,
       method = method,
       batchList = batchList,
-      pathFbeta = pathFbeta
+      pathFbeta = pathFbeta,
+      tailgateSelection = tailgateSelection
     )
     result$manifest <- list(context = .acsCytofManifest(preprocessing), settings = result$settings)
     result

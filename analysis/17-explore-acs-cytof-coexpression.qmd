@@ -147,12 +147,12 @@ the frequency of cells positive for any cytokine lies between the largest
 single-cytokine frequency and their sum, so the net total lies between
 (largest stimulated − sum of control) and (sum of stimulated − largest
 control), the black bar in the figure. Manual net frequencies are not clipped
-at zero here, unlike Analysis 9. The single-cytokine panels compare
+at zero here, unlike Analysis 9b. The single-cytokine panels compare
 StimGate's frequencies directly with the manual ones (black cross). As a
-check, the ordinary frequencies should equal Analysis 9's saved StimGate
+check, the ordinary frequencies should equal Analysis 9b's saved StimGate
 frequencies, counted from the same gates.
 
-Everything is read from Analysis 9's most recent run; nothing is gated again.
+Everything is read from Analysis 9b's most recent run; nothing is gated again.
 
 ```{r}
 #| label: setup
@@ -180,7 +180,7 @@ run_plots <- .as_flag(.get_qmd_param_env("run_plots", "RUN_PLOTS", TRUE))
 ```{r}
 #| label: paths
 #| include: false
-# Analysis 9's caches are only read: never create or change them here.
+# Analysis 9b's caches are only read: never create or change them here.
 path_gs_base <- projr::projr_path_get(
   "cache", "acs_cytof", "gs",
   create = FALSE, format = "absolute"
@@ -194,11 +194,11 @@ path_comparison <- projr::projr_path_get(
   create = FALSE, format = "absolute"
 )
 if (!file.exists(path_comparison)) {
-  stop("Analysis 9's manual comparison is missing; render Analysis 9 first.")
+  stop("Analysis 9b's manual comparison is missing; render Analysis 9b first.")
 }
 comparison <- readRDS(path_comparison)
 manual_donors <- sort(unique(as.character(comparison$SampleID)))
-# Analysis 9's manual and StimGate single-cytokine frequencies, for the totals.
+# Analysis 9b's manual and StimGate single-cytokine frequencies, for the totals.
 manual_freq <- as.data.frame(comparison[comparison$method == "stimgate", c(
   "SampleID", "stim", "popCode", "cyt", "freq_stim_man", "freq_uns_man",
   "freq_stim_auto", "freq_uns_auto"
@@ -332,7 +332,7 @@ if (isTRUE(run_plots)) {
           total_show[is_num] <- lapply(total_show[is_num], round, 3)
           .analysis_report_table(total_show,
             c(fig_key, paste0(pop, "-", stim, "-total-response.csv")),
-            "Net total and single-cytokine frequencies (%) per donor: StimGate with ordinary and lowered gates, manual, and Analysis 9.",
+            "Net total and single-cytokine frequencies (%) per donor: StimGate with ordinary and lowered gates, manual, and Analysis 9b.",
             root_dir)
         }
       }
@@ -354,7 +354,7 @@ if (isTRUE(run_plots)) {
   cat("The CSV gives, per population, stimulation and quantity (12 donors), the median net frequency (%)",
     "with the ordinary and the lowered gates and by manual gating (for the total, the median",
     "of the manual range's ends), the median absolute difference from manual, and the largest",
-    "difference between this document's ordinary frequencies and Analysis 9's saved ones",
+    "difference between this document's ordinary frequencies and Analysis 9b's saved ones",
     "(zero up to rounding if both count the same cells).\n\n")
   total_summary <- do.call(rbind, lapply(
     split(total_all, list(total_all$pop, total_all$stim, total_all$quantity), drop = TRUE),
