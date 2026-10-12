@@ -599,16 +599,14 @@
   method[duplicated(display$method)] <- ""
   fbetaKept <- any(display$method == "$F_{\\beta}$" & display$selected & !display$used)
   .analysis_md_table(
-    cbind(method, display$rank, display$setting, display$f1_median,
-      display$f1_p10, display$truth_in_band),
-    header = c("Method", "Rank", "Setting", "Mean median F1",
-      "Mean 10th-percentile F1", "Truth within 10th-90th percentiles"),
-    align = c("left", "right", "left", "right", "right", "right"),
+    cbind(method, display$rank, display$setting, display$f1_median, display$f1_p10),
+    header = c("Method", "Rank", "Setting", "Mean median F1", "Mean 10th-percentile F1"),
+    align = c("left", "right", "left", "right", "right"),
     bold = display$used,
     caption = paste0(
       "**Choosing the $F_{\\beta}$ and Tailgate settings**. The best settings of each ",
       "method in the simulations (0.2% response; three transformations, two separations, ",
-      "5,000 and 100,000 cells), averaged over the twelve scenarios. Settings within 0.02 ",
+      "5,000 and 100,000 cells). Settings within 0.02 ",
       "of the best mean median F1 are ranked by how closely the 10th and 90th percentiles ",
       "of their background-subtracted frequency estimates match the truth. The selected ",
       "setting of each method, used in the comparisons, is in bold",
@@ -618,8 +616,8 @@
       ),
       ". A relative tolerance is a fraction of the steepest slope of the density ",
       "(Tailgate's automatic tolerance is $10^{-2}$); an absolute tolerance bounds the ",
-      "derivative. Truth within 10th-90th percentiles: scenarios whose 10th-90th ",
-      "percentile range of estimates contains the true frequency."
+      "derivative. F1 medians and 10th percentiles are over the 200 tubes of each scenario, ",
+      "averaged over the twelve scenarios."
     ),
     label = label
   )
