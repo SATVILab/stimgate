@@ -815,7 +815,7 @@ add_bw_labs <- function(.data) {
 # `positive_mean` is the mean of the stimulated tube's positive-component cells.
 .simBandwidthThresholdDensities <- function(
     panels, settings, n_cell = 1e5, seed = 271L, density_n = 2048L,
-    unstimulated_negative_only = TRUE) {
+    unstimulated_negative_only = TRUE, rug_n = 0L) {
   keys <- c(
     "transformation", "mean_pos", "prob_response",
     "sample_perturbation_sd", "condition_perturbation_sd",
@@ -854,7 +854,7 @@ add_bw_labs <- function(.data) {
     positive_mean <- mean(x_stim[out$labelsList[[2]] == "gp"])
     bw <- if (row$transformation == "gamma") 0.025 else 0.15
     limits <- range(c(x_uns, x_stim), finite = TRUE) + c(-3, 3) * bw
-    purrr::map_dfr(c("unstimulated", "stimulated"), function(condition) {
+    out_dens <- purrr::map_dfr(c("unstimulated", "stimulated"), function(condition) {
       x <- if (condition == "unstimulated") x_uns else x_stim
       dens <- stats::density(
         x, bw = bw, n = density_n, from = limits[1], to = limits[2]
@@ -865,6 +865,32 @@ add_bw_labs <- function(.data) {
           positive_mean = positive_mean)
       )
     })
+    if (rug_n <= 0L) return(out_dens)
+    # Positive-component cells for a rug (condition "positive_rug"), drawn from
+    # a seeded tube in which half the stimulated cells respond, so every
+    # response probability has responders to show; locations, not abundance.
+    pos_cells <- .analysis_with_seed(seed + 1L, {
+      sim <- simcyto::simCytExperiment(
+        nSample = 1L, nMarker = 1L, nCondition = 2L, nCluster = 2L,
+        nCellByCondition = c(2L * rug_n, 2L * rug_n),
+        transformationFunc = .simMiscGetTrans(as.character(row$transformation)),
+        mixtureType = "gaussianOnly",
+        meanExprMat = matrix(c(0, row$mean_pos), ncol = 1),
+        clusterLabelVec = c("gn", "gp"),
+        probVecUns = c(1, 0),
+        probResponseVecByStimCondition = list(c(-0.5, 0.5)),
+        probExact = TRUE,
+        covEvMin = settings$covEvMin, covEvMax = settings$covEvMax,
+        samplePerturbationSd = 0, conditionPerturbationSd = 0, clusterPerturbationSd = 0
+      )
+      x <- flowCore::exprs(sim$flowFrameList[[2]])[, 1]
+      utils::head(x[sim$labelsList[[2]] == "gp"], rug_n)
+    })
+    dplyr::bind_rows(out_dens, dplyr::bind_cols(
+      row[rep(1L, length(pos_cells)), ],
+      tibble::tibble(condition = "positive_rug", expression = pos_cells,
+        density = NA_real_, positive_mean = positive_mean)
+    ))
   }) |>
     dplyr::mutate(transformation = .analysis_trans_factor(.data$transformation))
 }
@@ -1121,12 +1147,27 @@ add_bw_labs <- function(.data) {
     by_prob = FALSE, facet = NULL, mcse = FALSE,
     y_label = NULL,
     alphas = c(outer = 0.35, tail = 0.55, quartile = 0.75, median = 1),
-    linewidths = c(outer = 0.4, tail = 0.6, quartile = 0.9, median = 1.2)) {
-  outer <- .simBandwidthSignedPercentileOuter(tbl)
-  fallback <- identical(outer, c("q05", "q95"))
-  stats <- c(outer[1], "q10", "q25", "median", "q75", "q90", outer[2])
-  labels <- c(if (fallback) "5th" else "2.5th", "10th", "25th", "50th (median)",
-    "75th", "90th", if (fallback) "95th" else "97.5th")
+    linewidths = c(outer = 0.4, tail = 0.6, quartile = 0.9, median = 1.2),
+    percentiles = c("all", "tails")) {
+  # "all": seven percentiles; "tails": the median with the 10th and 90th
+  # percentiles only (Analyses 8 onwards and thesis figures).
+  percentiles <- match.arg(percentiles)
+  if (identical(percentiles, "tails")) {
+    stats <- c("q10", "median", "q90")
+    labels <- c("10th", "50th (median)", "90th")
+    tiers <- c("tail", "median", "tail")
+    linetypes <- stats::setNames(c("dotted", "solid", "dotted"), labels)
+  } else {
+    outer <- .simBandwidthSignedPercentileOuter(tbl)
+    fallback <- identical(outer, c("q05", "q95"))
+    stats <- c(outer[1], "q10", "q25", "median", "q75", "q90", outer[2])
+    labels <- c(if (fallback) "5th" else "2.5th", "10th", "25th", "50th (median)",
+      "75th", "90th", if (fallback) "95th" else "97.5th")
+    tiers <- c("outer", "tail", "quartile", "median", "quartile", "tail", "outer")
+    linetypes <- stats::setNames(c(rep("dotted", 3), "solid", rep("dashed", 3)), labels)
+  }
+  k <- length(labels)
+  mid <- (k + 1L) / 2L
   long <- .simBandwidthSignedPercentileLong(tbl, x, stats, labels)
   multi <- "method" %in% names(long)
   line_cols <- intersect(c("method", "percentile", "transformation", "prob_response",
@@ -1171,7 +1212,7 @@ add_bw_labs <- function(.data) {
       ggplot2::labs(x = x_label, y = y_label, caption = caption)
   }
   if (!multi) {
-    band_labels <- paste0(labels[1:3], "–", rev(labels[5:7]))
+    band_labels <- paste0(labels[seq_len(mid - 1L)], "–", rev(labels[(mid + 1L):k]))
     # One band per curve: pair each lower percentile with its upper partner.
     curve_cols <- setdiff(line_cols, "percentile")
     long$curve <- if (length(curve_cols)) interaction(long[curve_cols], drop = TRUE) else factor(1)
@@ -1179,16 +1220,16 @@ add_bw_labs <- function(.data) {
       c("percentile", "series", "value", "value_shown", "lower", "upper", "mcse"))
     wide <- function(i) {
       lo <- long[long$percentile == labels[i], , drop = FALSE]
-      hi <- long[long$percentile == labels[8L - i], c(keys, "value_shown"), drop = FALSE]
+      hi <- long[long$percentile == labels[k + 1L - i], c(keys, "value_shown"), drop = FALSE]
       names(hi)[names(hi) == "value_shown"] <- "upper_shown"
       out <- dplyr::left_join(lo[c(keys, "value_shown")], hi, by = keys)
       out$band <- factor(band_labels[i], levels = band_labels)
       out
     }
-    bands <- dplyr::bind_rows(lapply(1:3, wide))
+    bands <- dplyr::bind_rows(lapply(seq_len(mid - 1L), wide))
     bands$band_group <- interaction(bands$curve, bands$band, drop = TRUE)
-    median_tbl <- long[long$percentile == labels[4], , drop = FALSE]
-    fills <- stats::setNames(c("#C7EAE5", "#80CDC1", "#35978F"), band_labels)
+    median_tbl <- long[long$percentile == labels[mid], , drop = FALSE]
+    fills <- stats::setNames(utils::tail(c("#C7EAE5", "#80CDC1", "#35978F"), mid - 1L), band_labels)
     p <- ggplot2::ggplot(long, ggplot2::aes(x = .data[[x]], y = .data$value_shown)) +
       ggplot2::geom_ribbon(data = bands, ggplot2::aes(x = .data[[x]],
         ymin = .data$value_shown, ymax = .data$upper_shown, fill = .data$band,
@@ -1203,13 +1244,11 @@ add_bw_labs <- function(.data) {
         colour = .data$percentile), linewidth = 0.9) +
       ggplot2::geom_point(data = median_tbl, ggplot2::aes(colour = .data$percentile), size = 1) +
       ggplot2::scale_fill_manual(values = fills, name = "Percentile range", drop = FALSE) +
-      ggplot2::scale_colour_manual(values = stats::setNames("#01665E", labels[4]), name = NULL)
+      ggplot2::scale_colour_manual(values = stats::setNames("#01665E", labels[mid]), name = NULL)
     return(finish(p))
   }
   # Alpha, line width and line type all map to the percentile under one legend
   # title, so ggplot2 merges them.
-  tiers <- c("outer", "tail", "quartile", "median", "quartile", "tail", "outer")
-  linetypes <- stats::setNames(c(rep("dotted", 3), "solid", rep("dashed", 3)), labels)
   p <- ggplot2::ggplot(long, ggplot2::aes(
     x = .data[[x]], y = .data$value_shown, group = .data$series,
     colour = .data$method,

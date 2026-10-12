@@ -33,7 +33,7 @@
       "test-sim-performance-estimands.R", "test-sim-performance-figures.R",
       "test-analysis-mcse-modes.R", "test-sim-performance-failures.R",
       "test-sim-compare-recorded-errors.R",
-      "test-analysis-sim-size.R", "test-qmd7-presentation.R"
+      "test-analysis-sim-size.R", "test-qmd7-presentation.R", "test-sim-compare-thesis.R"
     ),
     "7b-sim-compare-null.qmd" = c(
       "test-sim-compare-null.R", "test-sim-compare-freq_bs-simcyto.R",

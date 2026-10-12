@@ -1553,7 +1553,8 @@ test_that("figure loop combines several extra columns in one heading", {
     )
   )
   expect_true(any(out == "###### mean_shift_all; cells: 100"))
-  expect_true(file.exists(file.path(dir, "no_tailgate", "sd_inflation_1000.png")))
+  expect_true(file.exists(file.path(dir, "all_methods", "sd_inflation_1000.png")))
+  expect_false(dir.exists(file.path(dir, "no_tailgate")))
 })
 
 test_that(".simCompareFreqBsGrid writes the bandwidth-style progress summary", {
@@ -1670,9 +1671,9 @@ test_that("figure loop writes each method set to its own folder with headings", 
     )
   )
   expect_true(any(out == "#### All methods"))
-  expect_true(any(out == "#### Without Tailgate"))
+  expect_false(any(out == "#### Without Tailgate"))
   expect_true(any(out == "##### Mean position: low"))
-  for (set in c("all_methods", "no_tailgate")) {
+  for (set in "all_methods") {
     expect_true(file.exists(file.path(dir, set, "fig_low.png")))
     expect_true(file.exists(file.path(dir, set, "fig_high.png")))
   }

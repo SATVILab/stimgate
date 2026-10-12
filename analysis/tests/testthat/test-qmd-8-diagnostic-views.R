@@ -64,12 +64,14 @@ test_that("figure loops put settings in headings and distinct save paths", {
     file_fn = function(pos, extra) paste0(pos, "_", extra, ".pdf"),
     height = 6, level = 4L, extra_col = "mismatch_type"
   ))
-  expect_length(plots, 8L)
-  expect_length(unique(paths), 8L)
+  # One method set (all methods): the data have no default-settings Tailgate.
+  expect_length(plots, 4L)
+  expect_length(unique(paths), 4L)
   expect_true(all(vapply(plots, function(p) {
     is.null(p$labels$title) && is.null(p$labels$subtitle)
   }, logical(1))))
-  expect_true(any(grepl("Without Tailgate", headings, fixed = TRUE)))
+  expect_false(any(grepl("Without Tailgate", headings, fixed = TRUE)))
+  expect_true(any(grepl("All methods", headings, fixed = TRUE)))
   expect_true(any(grepl("Mean position: high", headings, fixed = TRUE)))
   expect_true(any(grepl("sd_inflation", headings, fixed = TRUE)))
   expect_true(any(grepl("high_sd_inflation.pdf", paths, fixed = TRUE)))

@@ -537,9 +537,9 @@ if (isTRUE(run_plots)) {
 
 These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
 
-The seven curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. They show the 2.5th, 10th, 25th, 50th, 75th, 90th and 97.5th percentiles together. If either outer percentile lacks an interval at any finite point, the whole figure uses the 5th/95th pair and labels that fallback; unavailable intervals are omitted without dropping points. The median is darkest and thickest; symmetric percentile pairs share progressively lighter, thinner tiers. Percentiles are calculated before applying the signed display scale.
+The curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. Each method shows its median (solid) and its 10th and 90th percentiles (dotted); unavailable intervals are omitted without dropping points. Percentiles are calculated before applying the signed display scale.
 
-Intervals bootstrap donors, carrying all their tubes together and using common donor draws across methods and strata. They describe agreement with the imperfect manual reference. All seven percentiles share each population panel; cytokine remains on the x axis.
+Intervals bootstrap donors, carrying all their tubes together and using common donor draws across methods and strata. They describe agreement with the imperfect manual reference. The three percentiles share each population panel; cytokine remains on the x axis.
 
 These percentiles pool all stimuli; intervals use donor bootstrap draws.
 
@@ -556,7 +556,7 @@ if (isTRUE(run_plots)) {
     .analysis_heading(method_set$label, 4)
     p <- .simBandwidthSignedPercentilePlot(
       manual_percentiles |> dplyr::filter(method %in% method_set$methods),
-      x = "cyt", x_label = "Cytokine", mcse = TRUE,
+      x = "cyt", x_label = "Cytokine", mcse = TRUE, percentiles = "tails",
       facet = ggplot2::facet_wrap(~pop, scales = "free_y")
     )
     .analysis_print_save_fig(p,
@@ -577,9 +577,8 @@ These figures keep stimuli separate and include every finite signed relative
 error, including exact agreement at zero. Relative error is (automated - manual)
 / manual and requires a positive manual net frequency; failed or undefined
 estimates remain in the coverage table. Manual gating is an imperfect reference.
-Each population panel shows all seven percentiles, with cytokine on the x axis.
-The outer pair is 2.5th/97.5th, or 5th/95th throughout a figure if either outer
-interval is unavailable at any finite point; the figure labels that fallback.
+Each population panel shows each method's median (solid) and 10th and 90th
+percentiles (dotted), with cytokine on the x axis.
 Quantiles are computed on raw errors before the signed display transformation.
 
 Donor-bootstrap intervals carry all tubes for a donor together, using common
@@ -603,7 +602,7 @@ if (isTRUE(run_plots)) {
       rows <- manual_percentiles_by_stimulus |>
         dplyr::filter(.data$stim == .env$stimulus, method %in% method_set$methods)
       p <- .simBandwidthSignedPercentilePlot(
-        rows, x = "cyt", x_label = "Cytokine", mcse = TRUE,
+        rows, x = "cyt", x_label = "Cytokine", mcse = TRUE, percentiles = "tails",
         facet = ggplot2::facet_wrap(~pop, scales = "free_y")
       )
       .analysis_print_save_fig(p,
