@@ -314,17 +314,29 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   effect exactly once. If upstream supports the feature, pass it through
   without also applying a local fallback; otherwise neutralise the
   upstream global effect before applying the local selective fallback.
-- ACS comparators come in two versions, set in
-  `.acsCytofComparatorSettings()`. `tailgate` and `fbeta` (the main
-  results) drop exact-zero cells before estimating the gate, while
-  frequencies stay over every cell. F-beta scales each pdf to its tube’s
-  retained fraction. Tailgate uses a fixed `tol` and a bias, because its
-  automatic tolerance is set by the zero spike. `tailgate_default` and
-  `fbeta_default` keep the published defaults and appear only in
-  Analysis 10’s appendix; filter them out of main-result tables with
-  `.acsCytofMainComparisonTable()`. Tailgate’s `tol` is an absolute
-  derivative bound, so it depends on the data’s scale. Simulations keep
-  `autoTol = TRUE` and set `tailgate_bias` in the QMD.
+- ACS comparator settings live in `.acsCytofComparatorSettings()`.
+  Analysis 9a (`9a-real-tune-acs-cytof-tailgate.qmd`) runs the eight
+  Tailgate configurations of `.acsCytofTailgateConfigs()`
+  (simulation-selected, automatic-tolerance reference, ACS-tuned and
+  cytoUtils package default, each with zeros removed or all cells) and
+  selects one by the highest mean PCC over eligible non-`p4`
+  population/cytokine/stimulus strata, scored on donors every
+  configuration gated successfully, counting only strata where every PCC
+  is defined (`acs_cytof-tailgate-select.R`). A tie or no score selects
+  nothing. The selection is saved in the projr cache
+  `acs_cytof/tailgate-selection/selection.rds` with its preprocessing
+  contexts, and Analysis 9b’s `tailgate` takes its configuration only
+  from that record (`.acsCytofReadTailgateSelection()`); never retype
+  it. Settings include the selected method, so cached results from
+  another configuration are rejected. Zero removal affects only
+  threshold estimation; frequencies stay over every cell. `fbeta` drops
+  exact zeros (each pdf scaled to its tube’s retained fraction);
+  `fbeta_default` keeps the published defaults and appears only in
+  Analysis 10’s appendix (filter with `.acsCytofMainComparisonTable()`).
+  With `autoTol = FALSE`, `tol` is an absolute derivative bound that
+  depends on the data’s scale. Simulations and the OMIP analyses use the
+  simulation-selected Tailgate (`autoTol = TRUE`, bias 0.1, all cells;
+  `tailgate_simulation_allcells`).
 - Comparator exceptions in benchmarking analyses must remain explicit
   runtime errors. A numerical fallback may be retained for diagnostics,
   but the exception must not be silently promoted or scored as a valid
@@ -433,14 +445,15 @@ Each top-level analysis QMD also has an independently runnable target in
 QMD-to-test mapping, one target number/path to run it, a
 comma/space-separated set, or `all`. Maintain the registry when adding
 or renaming top-level QMDs. Analysis 13 re-gates every ACS population
-with Analysis 9’s settings, read from Analysis 9’s `scientific-settings`
-chunk (`.acsCytofDebugSettings()`), and with the same population order
-and seed in `.acsCytofMapPopulations()` (quick mode: the tester, in the
-main session after [`set.seed()`](https://rdrr.io/r/base/Random.html)),
-so each population gets Analysis 9’s random-number stream; its summary
-records whether every final gate equals Analysis 9’s saved gate. It only
-reads Analysis 9’s caches (resolve them with `create = FALSE`; load
-GatingSets with `backend_readonly = TRUE`) and writes to its own
+with Analysis 9b’s settings, read from Analysis 9b’s
+`scientific-settings` chunk (`.acsCytofDebugSettings()`), and with the
+same population order and seed in `.acsCytofMapPopulations()` (quick
+mode: the tester, in the main session after
+[`set.seed()`](https://rdrr.io/r/base/Random.html)), so each population
+gets Analysis 9b’s random-number stream; its summary records whether
+every final gate equals Analysis 9b’s saved gate. It only reads Analysis
+9b’s caches (resolve them with `create = FALSE`; load GatingSets with
+`backend_readonly = TRUE`) and writes to its own
 `cache/acs_cytof_debug/`. Each population is built in a temporary
 sibling (`.acsCytofReplaceDir()`); records are saved as tubes are gated,
 drawn once the final gates are known (one PDF per
@@ -474,17 +487,18 @@ coverage limits.
 
 The default Slurm job list includes Analysis 2a, 2b, 7, 7b, 8, 11a and
 11b as chunked runs, Analysis 12 as a serial non-chunked simulation,
-Analyses 13 and 17 after Analysis 9, and the OMIP analyses 14, 14b, 15
-and 15b. Analysis 17 only draws plots: like the OMIP analyses it renders
-with plots on in its own job, has no plot job and waits `afterany` on
-Analysis 1’s projr build. `sim_dependency_for_script()` makes 13’s, 17’s
-and 18’s jobs wait `afterok` on 9’s (and 14b on 14, 15b on 15) when both
-are submitted, and `dev.sh` (`move_after()`) submits the analysis that
-is read first whatever the order requested. OMIP launchers reuse
-prepared data unless `RUN_PREPROCESSING=true` and draw plots by default;
-plot jobs also set `RUN_METHODS=false`. Keep enabled chunked analyses in
-the `scripts` list and `chunked_qmd_stem_for_script()` mapping, sharing
-run ID, chunk count and shuffle seed across each run. Every simulation
+Analyses 13 and 17 after Analysis 9b (which follows 9a), and the OMIP
+analyses 14, 14b, 15 and 15b. Analysis 17 only draws plots: like the
+OMIP analyses it renders with plots on in its own job, has no plot job
+and waits `afterany` on Analysis 1’s projr build.
+`sim_dependency_for_script()` makes 9b’s job wait `afterok` on 9a’s,
+13’s, 17’s and 18’s on 9b’s (and 14b on 14, 15b on 15) when both are
+submitted, and `dev.sh` (`move_after()`) submits the analysis that is
+read first whatever the order requested. OMIP launchers reuse prepared
+data unless `RUN_PREPROCESSING=true` and draw plots by default; plot
+jobs also set `RUN_METHODS=false`. Keep enabled chunked analyses in the
+`scripts` list and `chunked_qmd_stem_for_script()` mapping, sharing run
+ID, chunk count and shuffle seed across each run. Every simulation
 launcher must propagate render failures. Plot jobs receive the
 submission’s run ID and set `ANALYSIS_EXPECTED_RUN_ID` so cached reads
 reject results from another run; manual renders leave it unset. Plot
@@ -739,24 +753,25 @@ the `flowWorkspace` stack from source.
     in `analysis/_archive/`), followed by one delimited section of
     scenario/validation/collation callbacks per analysis.
   - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating,
-    comparator, manual-comparison and plotting helpers for analyses 9
-    and 10. `.acsCytofGateStim()` (in `acs_cytof-gate.R`) is the one
+    comparator, manual-comparison and plotting helpers for analyses 9a,
+    9b and 10. `.acsCytofGateStim()` (in `acs_cytof-gate.R`) is the one
     [`gateStim()`](https://satvilab.github.io/stimgate/reference/gateStim.md)
-    call shared by Analyses 9 and 13.
+    call shared by Analyses 9b and 13.
   - `acs_cytof-debug.R`: Analysis 13 (`13-real-debug-acs-cytof.qmd`):
     re-gates each ACS population inside `.simDebugLoc()` and draws one
     2c-style page per stimulated tube and cytokine, adding the final
-    `loc_minClust` gate, Analysis 9’s Tailgate/F-beta gates and manual
+    `loc_minClust` gate, Analysis 9b’s Tailgate/F-beta gates and manual
     frequencies.
   - `acs_cytof-explore-cytpos.R`: Analysis 16
-    (`16-explore-acs-cytof-cytpos.qmd`): read-only views of Analysis 9’s
-    latest ACS gates for the manually gated donors — IFNg-TNF hexagon
-    plots and IFNg/TNF densities among cells positive for another
-    cytokine (strict `x > gate`), to inform the cytokine-positive rule.
-    It never re-gates or writes to Analysis 9’s caches.
+    (`16-explore-acs-cytof-cytpos.qmd`): read-only views of Analysis
+    9b’s latest ACS gates for the manually gated donors — IFNg-TNF
+    hexagon plots and IFNg/TNF densities among cells positive for
+    another cytokine (strict `x > gate`), to inform the
+    cytokine-positive rule. It never re-gates or writes to Analysis 9b’s
+    caches.
   - `acs_cytof-explore-score.R`: Analysis 17
     (`17-explore-acs-cytof-coexpression.qmd`), also read-only on
-    Analysis 9: a two-marker co-expression score from control-tube tail
+    Analysis 9b: a two-marker co-expression score from control-tube tail
     p-values, Poisson GAM departures from independence, and gates
     lowered for cells positive for the other cytokine
     (`.coexLowerGate()`: only with a clear double-positive response; 20
@@ -771,7 +786,7 @@ the `flowWorkspace` stack from source.
     cannot change the total; the manual file has single-cytokine
     frequencies only, so the manual total is shown as the range its
     marginals allow, and the ordinary frequencies must equal Analysis
-    9’s saved StimGate frequencies. Analysis 11a reports the same total
+    9b’s saved StimGate frequencies. Analysis 11a reports the same total
     (`any`) beside its marginal and exclusive quantities.
   - `coexpression-gates.R`: the reference implementation of the
     co-expression gates for any number of markers (`.coexLowerGate()`,
@@ -782,28 +797,28 @@ the `flowWorkspace` stack from source.
     both together.
   - `acs_cytof-coexpression-gates.R`: Analysis 18
     (`18-explore-acs-cytof-coexpression-gates.qmd`), read-only on
-    Analysis 9: the co-expression gates on every population, stimulation
-    and donor from Analysis 9’s ordinary gates, over every ordered pair
-    of all six cytokines jointly (a cytokine without a gate stays in the
-    combinations as negative, so every tube has the same 64). Three
-    rules: `ordinary` (baseline), `screened` (`screen = TRUE`) and
-    `unscreened` (`screen = FALSE`); lowered pairs are identical where
-    the screen passes. Per rule: lowered-gate tables, combination counts
-    in both tubes, single- and multi-positive background-subtracted
-    frequencies, per-tube pathology flags, hexagon plots of the
-    most-changed tubes per variant, and SimpleCOMPASS on every rule’s
-    counts (all-negative category last; shared categories with at least
-    5 stimulated cells in 3 donors under any rule). Response tests per
-    population, stimulation, rule and combination (exclusive
-    combinations with a positive marker plus each marginal): per-donor
-    one-sided Fisher (`phyper`, unadjusted, counted at 0.05) and
-    across-donor one-sided paired Wilcoxon (primary; t-test secondary),
-    BH-adjusted within each population/stimulation/rule; all-zero
-    differences are untested (NA), left out of the adjustment and never
-    responding. Control-tube calls added over the ordinary gates are
-    reported per variant. ACS manual gating under-counts (one threshold
-    per cytokine), so Analysis 18 never scores agreement with it as
-    accuracy. Results are cached in the projr cache
+    Analysis 9b: the co-expression gates on every population,
+    stimulation and donor from Analysis 9b’s ordinary gates, over every
+    ordered pair of all six cytokines jointly (a cytokine without a gate
+    stays in the combinations as negative, so every tube has the same
+    64). Three rules: `ordinary` (baseline), `screened`
+    (`screen = TRUE`) and `unscreened` (`screen = FALSE`); lowered pairs
+    are identical where the screen passes. Per rule: lowered-gate
+    tables, combination counts in both tubes, single- and multi-positive
+    background-subtracted frequencies, per-tube pathology flags, hexagon
+    plots of the most-changed tubes per variant, and SimpleCOMPASS on
+    every rule’s counts (all-negative category last; shared categories
+    with at least 5 stimulated cells in 3 donors under any rule).
+    Response tests per population, stimulation, rule and combination
+    (exclusive combinations with a positive marker plus each marginal):
+    per-donor one-sided Fisher (`phyper`, unadjusted, counted at 0.05)
+    and across-donor one-sided paired Wilcoxon (primary; t-test
+    secondary), BH-adjusted within each population/stimulation/rule;
+    all-zero differences are untested (NA), left out of the adjustment
+    and never responding. Control-tube calls added over the ordinary
+    gates are reported per variant. ACS manual gating under-counts (one
+    threshold per cytokine), so Analysis 18 never scores agreement with
+    it as accuracy. Results are cached in the projr cache
     `acs_cytof_coexpression/` (semantics `acs-coexpression-gates-v2`);
     `ACS_COEX_WORKERS` forks tubes and COMPASS fits. Not in `dev.sh`’s
     default list: run it with `dev.sh 18` (waits for 9).
@@ -819,10 +834,11 @@ the `flowWorkspace` stack from source.
     sensitivity). Curated sample/marker maps and raw MD5s live in
     `_raw/data/small/comparison_data/omip016/`; prepared data and method
     results go to the projr cache `omip016/prepared` and
-    `omip016/methods`. Comparators keep their published defaults.
-    Scoring classifies each method/tube jointly across markers with
-    StimGate’s cytokine-positive rule (`x > gate`, or `x > gateCyt` when
-    ordinarily positive for another marker) and must reproduce
+    `omip016/methods`. F-beta keeps its published defaults; Tailgate
+    uses the simulation-selected settings (automatic tolerance, bias
+    0.1). Scoring classifies each method/tube jointly across markers
+    with StimGate’s cytokine-positive rule (`x > gate`, or `x > gateCyt`
+    when ordinarily positive for another marker) and must reproduce
     [`getStimStats()`](https://satvilab.github.io/stimgate/reference/getStimStats.md).
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for
     simulation.
@@ -998,6 +1014,20 @@ folder. Tests use a temporary projr project (`.local_projr_root()` in
 `analysis/tests/testthat/helper-projr.R`). Analyses without a
 simulation-size setting, including real-data analyses, pass
 `sized = FALSE` to `.analysis_mode_key()`.
+
+The projr `output` label is `_output/general`; `output-thesis`
+(`_output/thesis`) holds files for the thesis and is uploaded to a
+GitHub release on projr builds (`build: github:` in `_projr.yml`). Save
+thesis files in its `appendix/` (or other chapter) subfolder, with
+quick/dev renders one level deeper (`c("appendix", fig_key[-1L])`); do
+not add further output labels. Draw thesis figures at their printed
+size: the thesis (Manuscript22RodoThesis, stanford-thesis Typst
+template) is A4 with a 146.5 x 246.2 mm text area and 12 pt body text,
+and inserts PDF figures at full width (`.acsCytofThesisFigureSize()`,
+`.acsCytofSaveThesisFigure()`: PDF plus 300 dpi PNG). HTML reports keep
+showing the standard figures. Typst tables for the thesis are generated
+from the same formatted values as the HTML table, shown in a `typst`
+code block (copy button) and saved as a `.typ` file there.
 
 Large report tables belong in CSV companions under
 `output/table/<fig_key>/` via `.analysis_report_table()` /
@@ -1430,10 +1460,10 @@ exclude failed estimates from agreement metrics and persist cohort
 exclusions rather than hiding omitted rows behind render warnings. With
 ACS clustering enabled, score `loc_minClust`, and preserve cluster
 provenance when assembling the final package gate rows. Comparisons
-against manual gates (Analyses 9/10/13, 14/14b and 15/15b) run StimGate
-with `calcCytPosGates = FALSE`: the manual gates and the comparators set
-one gate per cytokine, so a second, conditional StimGate gate would
-score a different rule. Analyses 11a/11b, which study the
+against manual gates (Analyses 9a/9b/10/13, 14/14b and 15/15b) run
+StimGate with `calcCytPosGates = FALSE`: the manual gates and the
+comparators set one gate per cytokine, so a second, conditional StimGate
+gate would score a different rule. Analyses 11a/11b, which study the
 cytokine-positive gates, keep them on. The scoring code keeps the
 cytokine-positive counting rule, which reduces to `x > gate` when
 `gateCyt` equals `gate`.
