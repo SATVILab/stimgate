@@ -33,7 +33,7 @@
     ),
     autoTol = c(TRUE, TRUE, FALSE, FALSE),
     tol = c(1e-2, 1e-2, 2e-5, 1e-2),
-    bias = c(0.1, 0, 0.2, 0)
+    bias = c(0.15, 0, 0.2, 0)
   )
   out <- tidyr::crossing(base, removeZero = c(TRUE, FALSE))
   out <- out[order(match(out$config, base$config), !out$removeZero), ]

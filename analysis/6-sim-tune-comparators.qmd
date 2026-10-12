@@ -116,7 +116,7 @@ Tailgate settings:
   cutpoint further right; if the density never becomes that flat, Tailgate
   finds no cutpoint and the gate falls back to just above the highest cell.
 - **Bias.** The cutpoint is then moved up by the bias, as StimGate moves its
-  gates up by its own bias. Analysis 7 uses a bias of 0.1.
+  gates up by its own bias. Analyses 7 and 8 now use the bias selected here, 0.15 (previously 0.1).
 
 $F_{\beta}$ setting:
 

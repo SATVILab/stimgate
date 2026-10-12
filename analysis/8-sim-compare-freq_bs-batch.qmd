@@ -82,7 +82,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v24"
+comparison_semantics_version <- "batch-mismatch-comparison-v25"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -235,7 +235,7 @@ tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
 # Tailgate's cutpoint is moved up by this amount, as StimGate's gates are
 # moved up by its bias.
-tailgate_bias <- 0.1
+tailgate_bias <- 0.15
 tailgate_x <- "stim"
 
 background_relative_to_response <- 0.2

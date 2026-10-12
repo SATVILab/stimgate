@@ -22,14 +22,14 @@
       length(bold) != nrow(cells)) {
     stop("Table cells, header, align and bold do not match.")
   }
-  row <- function(x) paste0("| ", paste(x, collapse = " | "), " |")
+  mdRow <- function(x) paste0("| ", paste(x, collapse = " | "), " |")
   rule <- ifelse(align == "right", "---:", ":---")
   body <- vapply(seq_len(nrow(cells)), function(i) {
     cell <- cells[i, ]
     if (isTRUE(bold[[i]])) cell <- ifelse(nzchar(cell), paste0("**", cell, "**"), cell)
-    row(cell)
+    mdRow(cell)
   }, character(1))
-  paste(c(row(header), row(rule), body, "", paste0(": ", caption, " {#", label, "}")),
+  paste(c(mdRow(header), mdRow(rule), body, "", paste0(": ", caption, " {#", label, "}")),
     collapse = "\n")
 }
 

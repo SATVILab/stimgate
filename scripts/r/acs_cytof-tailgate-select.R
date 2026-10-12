@@ -12,7 +12,7 @@
 # gates stay missing; they are never scored as zero frequencies.
 
 .acsCytofTailgateSelectionSemantics <- function() {
-  "acs-tailgate-selection-v1"
+  "acs-tailgate-selection-v2"
 }
 
 # One row per stratum and configuration, including ineligible strata

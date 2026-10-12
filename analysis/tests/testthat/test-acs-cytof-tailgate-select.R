@@ -49,7 +49,13 @@ test_that("Analysis 9a compares four Tailgate parameter sets with and without ze
       as.list(configs[i, c("autoTol", "tol", "bias", "removeZero")]))
   }
   sim <- configs[configs$config == "simulation", ]
-  expect_true(all(sim$autoTol) && all(sim$tol == 0.01) && all(sim$bias == 0.1))
+  expect_true(all(sim$autoTol) && all(sim$tol == 0.01) && all(sim$bias == 0.15))
+  # The simulation-selected set is the Tailgate setting Analyses 7, 7b and 8 use.
+  for (qmd in c("7-sim-compare-freq_bs.qmd", "7b-sim-compare-null.qmd", "8-sim-compare-freq_bs-batch.qmd")) {
+    lines <- readLines(file.path(root_dir, "analysis", qmd))
+    expect_true(paste0("tailgate_bias <- ", sim$bias[[1]]) %in% lines, info = qmd)
+    expect_true("tailgate_auto_tol <- TRUE" %in% lines, info = qmd)
+  }
   pkg <- configs[configs$config == "package", ]
   expect_true(all(!pkg$autoTol) && all(pkg$tol == 0.01) && all(pkg$bias == 0))
   acs <- configs[configs$config == "acs", ]

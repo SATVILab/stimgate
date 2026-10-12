@@ -106,7 +106,7 @@ StimGate uses Analysis 9b's settings: `bwMtd = "nrd0"` with
 `locThresholdMethod = "cap"` and `biasUns` equal to the shared bandwidth. The
 comparison scores the final `loc_minClust` gates. Tailgate uses the settings selected in the simulations (Analyses 6 and 7):
 the stimulated tube, automatic tolerance (1% of the largest absolute first
-derivative of the density) and a bias of 0.1 added to the cutpoint. F-beta
+derivative of the density) and a bias of 0.15 added to the cutpoint. F-beta
 keeps its published defaults (`beta = 0.8`, `theta = 2`, `width = 10`). Both
 keep every cell: these are conventional flow data without the CyTOF zero
 spike, and tuning either against these manual gates would make the

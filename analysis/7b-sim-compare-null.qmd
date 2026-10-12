@@ -67,7 +67,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "compare-null-v1"
+comparison_semantics_version <- "compare-null-v2"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -147,7 +147,7 @@ Every method setting is Analysis 7's (see that analysis for the reasons):
 StimGate with automatic `nrd0` bandwidths shared per marker, its unstimulated
 bias equal to the shared bandwidth, threshold clustering and the capped
 local-FDR threshold method; Tailgate with automatic tolerance and a bias of
-0.1; F-beta with the standard settings. Tailgate without the bias ("Tailgate
+0.15; F-beta with the standard settings. Tailgate without the bias ("Tailgate
 (default settings)") is kept in the tables.
 
 ### Simulation settings
@@ -227,7 +227,7 @@ tailgate_tol <- 1e-2
 tailgate_auto_tol <- TRUE
 # Tailgate's cutpoint is moved up by this amount, as StimGate's gates are
 # moved up by its bias. The unbiased cutpoint is kept as "tailgate_default".
-tailgate_bias <- 0.1
+tailgate_bias <- 0.15
 tailgate_x <- "stim"
 ```
 
