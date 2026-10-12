@@ -153,7 +153,7 @@ test_that("Analysis 9b's Tailgate settings come from the recorded selection", {
   expect_error(env$.acsCytofCheckSelectionPreprocessing(selection, tbl), "differ")
 })
 
-test_that("The thesis table is a captioned Quarto table that pandoc parses", {
+test_that("The 9a thesis table follows the thesis table pattern", {
   env <- .load_tailgate_select_env()
   methods <- env$.acsCytofTailgateSelectionMethods()
   ranking <- env$.acsCytofTailgateRanking(
@@ -162,14 +162,19 @@ test_that("The thesis table is a captioned Quarto table that pandoc parses", {
   f <- env$.acsCytofTailgateFormat(ranking)
   md <- env$.acsCytofTailgateMdTable(ranking)
   lines <- strsplit(md, "\n", fixed = TRUE)[[1]]
-  expect_match(lines[[1]], "^\\| Rank \\| Configuration")
-  expect_match(utils::tail(lines, 1), "^: \\*\\*.*\\{#tbl-stimgate-appendix-acs-tailgate\\}$")
+  header <- grep("^\\| Configuration", lines, value = TRUE)
+  expect_length(header, 1L)
+  expect_false(grepl("Rank", header, fixed = TRUE))
+  expect_true(any(grepl("\\{#tbl-stimgate-appendix-acs-tailgate\\}$", lines)))
   for (value in c(f$mean_pcc, f$strata, f$failed)) {
     expect_true(grepl(value, md, fixed = TRUE))
   }
-  expect_match(md, "$2\\times10^{-5}$", fixed = TRUE)
-  expect_match(md, "(selected)**", fixed = TRUE)
-  expect_identical(sum(grepl("^\\| \\*\\*", lines)), 1L)
+  expect_match(md, "$(2 \\times 10^{-5}, 0.2)$", fixed = TRUE)
+  expect_match(md, "$(10^{-2}, 0.15)$", fixed = TRUE)
+  expect_false(grepl("(selected)", md, fixed = TRUE))
+  expect_identical(sum(grepl("\\*\\*\\$\\(", lines)), 1L)
+  expect_match(md, "bottom: if y == 0 or y == 8 {", fixed = TRUE)
+  expect_false(grepl("D6D6D6", md, fixed = TRUE))
 
   quarto <- Sys.which("quarto")
   skip_if(!nzchar(quarto), "Quarto (with pandoc) is unavailable.")

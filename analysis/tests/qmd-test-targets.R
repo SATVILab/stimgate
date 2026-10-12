@@ -25,7 +25,7 @@
     "4-sim-bw-est-norm.qmd" = c(
       "test-sim-bw-est-norm-simcyto.R", "test-analysis-mcse.R"
     ),
-    "6-sim-tune-comparators.qmd" = "test-sim-tune-comparators.R",
+    "6-sim-tune-comparators.qmd" = c("test-sim-tune-comparators.R", "test-analysis-thesis-table.R"),
     "7-sim-compare-freq_bs.qmd" = c(
       "test-signed-percentile-plots.R",
       "test-sim-compare-freq_bs-simcyto.R", "test-analysis-7-transactional-multichunk.R",
@@ -50,7 +50,7 @@
       "test-analysis-sim-size.R"
     ),
     "9a-real-tune-acs-cytof-tailgate.qmd" = c(
-      "test-acs-cytof-tailgate-select.R", "test-acs-cytof-methods.R",
+      "test-acs-cytof-tailgate-select.R", "test-acs-cytof-methods.R", "test-analysis-thesis-table.R",
       "test-acs-cytof-validation-plots.R", "test-acs-cytof-paths.R"
     ),
     "9b-real-compare-acs-cytof.qmd" = c(

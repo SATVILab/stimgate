@@ -566,55 +566,54 @@
   top <- rank |>
     dplyr::filter(.data$rank <= n | .data$used) |>
     dplyr::arrange(dplyr::desc(.data$method == "fbeta"), .data$rank)
-  num <- function(x) formatC(x, format = "f", digits = 3)
-  tolMd <- function(tol) {
-    exponent <- floor(log10(tol) + 1e-9)
-    mantissa <- signif(tol / 10^exponent, 2)
-    ifelse(abs(mantissa - 1) < 1e-9, paste0("$10^{", exponent, "}$"),
-      paste0("$", vapply(mantissa, format, character(1)), "\\times10^{", exponent, "}$"))
-  }
+  # Tailgate settings as (relative tolerance, bias); an absolute tolerance is
+  # marked as such.
+  tol <- ifelse(top$tol_type == "relative", .analysis_md_pow10(top$tol),
+    paste0(top$tol, "\\text{ (absolute)}"))
   setting <- ifelse(
-    top$method == "fbeta", paste0("$\\beta$ ", top$beta),
-    paste0(
-      ifelse(top$tol_type == "relative",
-        paste0("relative tolerance ", tolMd(top$tol)),
-        paste0("absolute tolerance ", top$tol)),
-      ", bias ", top$bias
-    )
+    top$method == "fbeta", paste0("$\\beta = ", top$beta, "$"),
+    paste0("$(", tol, ", ", top$bias, ")$")
   )
-  tag <- ifelse(top$used, " (selected)", "")
   tibble::tibble(
     method = ifelse(top$method == "fbeta", "$F_{\\beta}$", "Tailgate"),
     rank = as.character(top$rank),
-    setting = paste0(setting, tag),
-    f1_median = num(top$mean_f1_median),
-    f1_p10 = num(top$mean_f1_p10),
-    f1_width = num(top$mean_f1_width),
-    truth_in_band = paste0(top$n_truth_in_band, "/", top$n_scenarios),
+    setting = setting,
+    f1_median = .analysis_md_num(top$mean_f1_median),
+    f1_p10 = .analysis_md_num(top$mean_f1_p10),
+    f1_width = .analysis_md_num(top$mean_f1_width),
     selected = top$selected %in% TRUE,
     used = top$used
   )
 }
 
-# The ranking as a Quarto pipe table with a cross-referenceable caption
-# (needs analysis-thesis-table.R).
+# The ranking as a thesis table (needs analysis-thesis-table.R): rows in rank
+# order grouped by method, the selected setting's cell in bold.
 .simTuneMdTable <- function(display, label = "tbl-stimgate-appendix-tune-comparators") {
   method <- display$method
   # Name each method once, on its first row.
   method[duplicated(display$method)] <- ""
+  cells <- cbind(method, display$setting, display$f1_median, display$f1_width)
+  bold <- matrix(FALSE, nrow(cells), ncol(cells))
+  bold[display$used, 2L] <- TRUE
   .analysis_md_table(
-    cbind(method, display$rank, display$setting, display$f1_median, display$f1_width),
-    header = c("Method", "Rank", "Setting", "Mean median F1",
-      "Mean 10th-90th percentile F1 width"),
-    align = c("left", "right", "left", "right", "right"),
-    bold = display$used,
-    plain = 1L,
-    caption = paste0(
-      "Five best-performing $F_{\\beta}$ and Tailgate settings. The median and the width of ",
-      "the 10th-90th percentile interval of $F_1$ scores were calculated per simulation ",
-      "scenario, and averaged across scenarios. Settings within 0.02 of the best mean ",
-      "median $F_1$ are ordered by the narrowest interval. ",
-      "Bold-text row denotes parameter settings selected for comparison analyses."
+    cells,
+    header = c("Method", "Setting", "Median $F_1$", "10-90% width"),
+    align = c("left", "left", "right", "right"),
+    bold = bold,
+    groups = as.vector(table(factor(display$method, unique(display$method)))),
+    caption = c(
+      "Five highest-ranked $F_{\\beta}$ and Tailgate settings.",
+      paste0(
+        "For each method, settings with a mean median $F_1$ score within 0.02 of the ",
+        "highest were ranked by the smallest mean 10th–90th percentile width of $F_1$ scores."
+      ),
+      paste0(
+        "Both statistics (median and interval width) were calculated across samples ",
+        "within each simulation scenario and then averaged across scenarios."
+      ),
+      "Settings outside this subset were ranked by their mean median $F_1$ score.",
+      "Tailgate settings are (relative tolerance, bias).",
+      "Bold settings were selected for the comparison analyses."
     ),
     label = label
   )

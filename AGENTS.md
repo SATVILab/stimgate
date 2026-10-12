@@ -835,14 +835,64 @@ figures at their printed size: the thesis (Manuscript22RodoThesis,
 stanford-thesis Typst template) is A4 with a 146.5 x 246.2 mm text area and
 12 pt body text, and inserts PDF figures at full width
 (`.analysis_thesis_theme()`, `.analysis_save_thesis_fig()` in
-`analysis-plot-style.R`: PDF plus 300 dpi PNG). HTML reports keep showing the standard figures. Thesis tables are
-Quarto pipe tables in the thesis's own style (`| ... |` rows, then
-`: **Title**. Caption. {#tbl-<chapter>-...}`, LaTeX-style `$...$` maths), built
-with `analysis-thesis-table.R`: the HTML renders the table, shows its source in a
-copyable block and saves it as a `.md` file there. Do not write raw Typst tables;
-Quarto would not number or cross-reference them. In thesis figures and tables
-use sentence case, readable maths (2×10⁻⁵, β, $F_{\beta}$) and explain
-conventions such as the relative tolerance once, in the caption.
+`analysis-plot-style.R`: PDF plus 300 dpi PNG). HTML reports keep showing the standard figures. In thesis figures use
+sentence case and readable maths (β, $F_{\beta}$, 2×10⁻⁵), and explain
+conventions such as the relative tolerance once, in the caption. Thesis tables
+follow "Thesis tables" below.
+
+### Thesis tables
+
+StimGate generates the numbers and the table Markdown; the thesis
+(`SATVILab/Manuscript22RodoThesis`, Quarto `stanford-thesis-typst`) only
+receives them. Do not edit the thesis repository or generated Markdown by hand:
+change the generating R functions, so formatting survives reruns.
+
+- **Outputs per table:** the numerical results kept in the analysis outputs; the
+  table rendered in the analysis HTML; a copyable Quarto Markdown version with
+  caption and `{#tbl-...}` identifier, saved through `output-thesis` (normally
+  `_output/thesis/<chapter folder>/`); and, where the rules need it, the Typst
+  styling. Build them with `scripts/r/analysis-thesis-table.R`
+  (`.analysis_md_table()`, `.analysis_md_show()`), which wraps the pipe table in
+  a locally scoped `#[ #set table(stroke: ...) ... ]` Typst block.
+- **Quarto/Typst:** Quarto-native pipe tables only, each with a caption and a
+  stable identifier, so Quarto numbering, cross-references and the List of
+  Tables work. Never replace them with raw Typst `#figure(...)`. Prefer the
+  scoped styling block to template changes; rule positions come from the row
+  and group counts. Typst blocks do not show in HTML, so the HTML look is not
+  the PDF look.
+- **Design** (the Analysis 6 F-beta/Tailgate tuning table is the reference): no
+  vertical rules, no rules between ordinary rows; one rule under the headings
+  and one at the bottom; a thin pale-grey rule between row groups where useful;
+  no boxes, shading or decoration. Short headings; drop columns such as Rank
+  when row order already shows it. Group rows (e.g. by method), naming the
+  group once. Compact maths for parameters, e.g. `$(10^{-2}, 0.15)$`, with the
+  tuple defined in the caption. Mark selected settings by bolding the parameter
+  cell, not the row and not with "(selected)".
+- **Numbers:** format only when building cells (`.analysis_md_num()`): three
+  decimals by default for F1, correlations and similar bounded statistics, the
+  same decimals within a column, leading zeros, right-aligned numbers and
+  left-aligned text, thousands separators for counts, powers of ten for
+  tolerances spanning orders of magnitude (`.analysis_md_pow10()`), LaTeX maths
+  (`$F_{\beta}$`, `$\beta$`, `$10^{-2}$`, `$\times$`), ASCII source where
+  practical. Keep probabilities and percentages, absolute and relative
+  differences, and missing values and zeros distinct.
+- **Captions:** concise but self-contained. State the observational and
+  aggregation units (e.g. computed across samples within each simulation
+  scenario, then averaged across scenarios), distinguish means, medians,
+  percentiles, interval widths, SDs and SEs, explain ranking and selection
+  rules (tolerances, preferences for published defaults), distinguish the
+  highest-ranked settings from those selected, and define tuples and markers.
+- **Checks:** valid Markdown, consistent column counts, correct maths, and
+  displayed values that agree with the results. Do not claim the thesis PDF
+  looks right because the HTML does; check it in a thesis render (a copy of the
+  thesis `_extensions/` with a stub `_raw/docs/img/UCT logo circular blue
+  large.png` renders a one-table test document), or say that check is
+  outstanding.
+- **Verified pattern** (2026-10-12, Quarto 1.9.38 / Typst 0.14.2, thesis
+  commit 04e9060): the scoped stroke block gives the header, bottom and grey
+  group rules; the table is numbered (Table 1.1), `@tbl-...` resolves, and it
+  appears in the List of Tables with its full caption (`tbl-scap` has no
+  effect in this format). Reuse this pattern rather than redesigning tables.
 
 Large report tables belong in CSV companions under `output/table/<fig_key>/`
 via `.analysis_report_table()` / `.analysis_table_dir()`, guarded by the same

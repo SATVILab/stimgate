@@ -133,7 +133,7 @@ test_that("selection keeps near-best F1 settings and then prefers the narrowest 
   expect_equal(r3$bias[r3$selected & r3$method == "tailgate"], 0.1)
 })
 
-test_that("the thesis ranking table is a captioned Quarto table without estimate error", {
+test_that("the thesis ranking table follows the thesis table pattern", {
   env <- .tuneEnv()
   r <- env$.simTuneRank(env$.simTuneSummary(env$.simTuneMetrics(.tuneToyScores(env))))
   d <- env$.simTuneRankDisplay(r)
@@ -141,18 +141,20 @@ test_that("the thesis ranking table is a captioned Quarto table without estimate
   expect_identical(sum(d$used), 2L)
   md <- env$.simTuneMdTable(d)
   lines <- strsplit(md, "\n", fixed = TRUE)[[1]]
-  expect_match(utils::tail(lines, 1), "\\{#tbl-stimgate-appendix-tune-comparators\\}$")
+  header <- grep("^\\| Method", lines, value = TRUE)
+  expect_identical(header, "| Method | Setting | Median $F_1$ | 10-90% width |")
+  expect_true(any(grepl("\\{#tbl-stimgate-appendix-tune-comparators\\}$", lines)))
   for (value in c(d$f1_median, d$f1_width)) {
     expect_true(grepl(value, md, fixed = TRUE))
   }
-  expect_match(lines[[1]], "Mean 10th-90th percentile F1 width", fixed = TRUE)
-  expect_false(grepl("10th-percentile", lines[[1]], fixed = TRUE))
-  expect_false(grepl("Truth within", md, fixed = TRUE))
-  expect_false(grepl("estimate error", lines[[1]], fixed = TRUE))
-  expect_match(md, "$\\beta$ 0.8", fixed = TRUE)
-  expect_match(md, "relative tolerance $10^{-2}$", fixed = TRUE)
-  expect_false(grepl("of max slope", md, fixed = TRUE))
-  expect_identical(sum(grepl("\\*\\*", lines[-length(lines)])), 2L)
+  expect_match(md, "| **$\\beta = 0.8$** |", fixed = TRUE)
+  expect_match(md, "| **$(10^{-2}, 0.1)$** |", fixed = TRUE)
+  expect_false(grepl("(selected)", md, fixed = TRUE))
+  expect_false(grepl("Rank", header, fixed = TRUE))
+  # Typst rules: header and bottom rules, a separator after the F-beta group.
+  n_body <- sum(grepl("^\\| ", lines)) - 1L
+  expect_match(md, paste0("bottom: if y == 0 or y == ", n_body - 1L, " {"), fixed = TRUE)
+  expect_match(md, "} else if y == 1 {", fixed = TRUE)
   quarto <- Sys.which("quarto")
   skip_if(!nzchar(quarto), "Quarto (with pandoc) is unavailable.")
   dir <- withr::local_tempdir()
@@ -185,14 +187,15 @@ test_that("F-beta's used beta is bold and its top-ranked beta is not called sele
   r <- dplyr::bind_rows(r, extra)
   d <- env$.simTuneRankDisplay(r, fbetaUsedBeta = 0.8)
   fb <- d[d$method == "$F_{\\beta}$", ]
-  expect_identical(fb$used, fb$setting == "$\\beta$ 0.8 (selected)")
-  expect_true(fb$selected[fb$setting == "$\\beta$ 2"])
+  expect_identical(fb$used, fb$setting == "$\\beta = 0.8$")
+  expect_true(fb$selected[fb$setting == "$\\beta = 2$"])
   md <- env$.simTuneMdTable(d)
-  expect_match(md, "**$\\beta$ 0.8 (selected)**", fixed = TRUE)
-  expect_match(md, "| **2** | **$\\beta$ 0.8 (selected)** |", fixed = TRUE)
+  expect_match(md, "**$\\beta = 0.8$**", fixed = TRUE)
+  expect_match(md, "|  | **$\\beta = 0.8$** |", fixed = TRUE)
   # The method column is never bold.
   expect_false(grepl("**$F_{\\beta}$**", md, fixed = TRUE))
-  expect_match(md, "Bold-text row denotes parameter settings selected", fixed = TRUE)
+  expect_false(grepl("**0.", md, fixed = TRUE))
+  expect_match(md, "Bold settings were selected for the comparison analyses.", fixed = TRUE)
   cmp <- env$.simTuneCompareSettings(r, fbetaUsedBeta = 0.8)
   expect_match(cmp$setting_ref_lab[cmp$setting_ref == "fbeta_selected"], "\u03b2 2", fixed = TRUE)
   expect_match(cmp$setting_ref_lab[cmp$setting_ref == "fbeta_published"], "0.8 (default; selected)", fixed = TRUE)

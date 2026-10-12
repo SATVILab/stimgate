@@ -296,11 +296,12 @@ on the shared donors, out of all eligible strata. Failed gates counts failed
 donor/cytokine estimates in eligible strata, out of all of them. Analysis 9b
 reads the saved selection, including whether zeros are removed.
 
-The table is written as a Quarto table with a caption and label, as the
-thesis's tables are; its source follows it in a copyable block and is saved as
+The table is a Quarto table with a caption and label for the thesis. Its
+source, including the scoped Typst block that draws the thesis's table rules
+(not shown in this HTML), follows in a copyable block and is saved as
 `appendix/acs-tailgate-ranking.md` in the projr `output-thesis` folder
-(`_output/thesis`), ready to paste or `{{< include >}}` into the thesis and
-cite as `@tbl-stimgate-appendix-acs-tailgate`.
+(`_output/thesis`), ready to paste into the thesis and cite as
+`@tbl-stimgate-appendix-acs-tailgate`.
 
 ```{r}
 #| label: ranking-table

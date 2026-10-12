@@ -206,41 +206,47 @@
   paste0(format(signif(x / 10^exponent, 3)), "e", exponent)
 }
 
-# The ranking as a Quarto pipe table with a cross-referenceable caption
-# (needs analysis-thesis-table.R); the HTML renders the same source.
+# The ranking as a thesis table (needs analysis-thesis-table.R), in rank
+# order; the selected configuration's setting cells are in bold.
 .acsCytofTailgateMdTable <- function(ranking, label = "tbl-stimgate-appendix-acs-tailgate") {
   f <- .acsCytofTailgateFormat(ranking)
-  tol <- ifelse(
-    grepl("e", f$tol),
-    sub("^([0-9.]+)e(-?[0-9]+)$", "$\\1\\\\times10^{\\2}$", f$tol),
-    f$tol
+  exponent <- floor(log10(ranking$tol) + 1e-9)
+  mantissa <- signif(ranking$tol / 10^exponent, 2)
+  tol <- ifelse(abs(mantissa - 1) < 1e-9, paste0("10^{", exponent, "}"),
+    paste0(vapply(mantissa, format, character(1)), " \\times 10^{", exponent, "}"))
+  cells <- cbind(
+    .analysis_md_escape(f$configuration), f$zeros,
+    paste0("$(", tol, ", ", f$bias, ")$"),
+    .analysis_md_num(ranking$mean_pcc), f$strata, f$failed
   )
-  configuration <- .analysis_md_escape(f$configuration)
-  configuration[f$selected] <- paste0(configuration[f$selected], " (selected)")
-  selected <- f$configuration[f$selected]
-  selectedText <- if (length(selected)) {
-    paste0("The selected configuration is in bold. ")
-  } else {
-    "No single configuration has the highest mean PCC, so none is selected. "
-  }
+  bold <- matrix(FALSE, nrow(cells), ncol(cells))
+  bold[f$selected, 2:3] <- TRUE
   .analysis_md_table(
-    cbind(f$rank, configuration, f$zeros, f$auto_tol, tol, f$bias, f$mean_pcc,
-      f$strata, f$failed),
-    header = c("Rank", "Configuration", "Zeros removed", "Automatic tolerance",
-      "Tolerance", "Bias", "Mean PCC", "Strata scored", "Failed gates"),
-    align = c("right", "left", "left", "left", rep("right", 5)),
-    bold = f$selected,
-    caption = paste0(
-      "**Choosing Tailgate's configuration on the ACS CyTOF data**. Tailgate configurations ",
-      "ranked by mean Pearson correlation (PCC) with the manual background-subtracted ",
-      "frequencies over eligible population, cytokine and stimulus strata, each stratum ",
-      "weighted equally. ", selectedText,
-      "With automatic tolerance, the tolerance is a multiple of the largest absolute first ",
-      "derivative of the density; otherwise it is an absolute bound on the derivative. ",
-      "Zeros (cells with an expression of exactly zero) are removed only to estimate the ",
-      "threshold. Strata scored: eligible strata where every configuration has a PCC on the ",
-      "donors all gated successfully. Failed gates: failed donor-cytokine estimates in ",
-      "eligible strata."
+    cells,
+    header = c("Configuration", "Zeros removed", "Setting", "Mean PCC", "Strata", "Failed gates"),
+    align = c("left", "left", "left", "right", "right", "right"),
+    bold = bold,
+    caption = c(
+      "Tailgate configurations on the ACS CyTOF data.",
+      paste0(
+        "Configurations were ranked by mean Pearson correlation (PCC) with the manual ",
+        "background-subtracted frequencies over eligible population, cytokine and stimulus ",
+        "strata, each stratum weighted equally."
+      ),
+      paste0(
+        "Settings are (tolerance, bias): the tolerance is relative (a multiple of the ",
+        "largest absolute first derivative of the density) when automatic, as in the ",
+        "simulation-selected and automatic-tolerance configurations, and an absolute bound ",
+        "on the derivative otherwise."
+      ),
+      "Zeros (cells with an expression of exactly zero) were removed only to estimate the threshold.",
+      paste0(
+        "Strata: eligible strata in which every configuration has a PCC on the donors all ",
+        "gated successfully, out of all eligible strata. Failed gates: failed donor-cytokine ",
+        "estimates in eligible strata."
+      ),
+      if (any(f$selected)) "Bold settings were selected for the comparison analyses."
+      else "No single configuration had the highest mean PCC, so none was selected."
     ),
     label = label
   )
