@@ -13,10 +13,11 @@
 }
 
 # `cells`: character matrix or data frame of Markdown; `header`: column
-# headings; `align`: "left" or "right" per column; `bold`: rows set in bold.
+# headings; `align`: "left" or "right" per column; `bold`: rows set in bold,
+# except in the columns `plain` (e.g. a grouping column naming the method).
 .analysis_md_table <- function(cells, header, caption, label,
                                align = rep("left", length(header)),
-                               bold = rep(FALSE, nrow(cells))) {
+                               bold = rep(FALSE, nrow(cells)), plain = integer()) {
   cells <- as.matrix(cells)
   if (ncol(cells) != length(header) || length(align) != length(header) ||
       length(bold) != nrow(cells)) {
@@ -26,7 +27,10 @@
   rule <- ifelse(align == "right", "---:", ":---")
   body <- vapply(seq_len(nrow(cells)), function(i) {
     cell <- cells[i, ]
-    if (isTRUE(bold[[i]])) cell <- ifelse(nzchar(cell), paste0("**", cell, "**"), cell)
+    if (isTRUE(bold[[i]])) {
+      emph <- nzchar(cell) & !seq_along(cell) %in% plain
+      cell[emph] <- paste0("**", cell[emph], "**")
+    }
     mdRow(cell)
   }, character(1))
   paste(c(mdRow(header), mdRow(rule), body, "", paste0(": ", caption, " {#", label, "}")),

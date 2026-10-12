@@ -578,7 +578,7 @@
       ", bias ", top$bias
     )
   )
-  tag <- ifelse(top$used, " (selected)", ifelse(top$selected %in% TRUE, " (top-ranked)", ""))
+  tag <- ifelse(top$used, " (selected)", "")
   tibble::tibble(
     method = ifelse(top$method == "fbeta", "$F_{\\beta}$", "Tailgate"),
     rank = as.character(top$rank),
@@ -597,27 +597,16 @@
   method <- display$method
   # Name each method once, on its first row.
   method[duplicated(display$method)] <- ""
-  fbetaKept <- any(display$method == "$F_{\\beta}$" & display$selected & !display$used)
   .analysis_md_table(
     cbind(method, display$rank, display$setting, display$f1_median, display$f1_p10),
     header = c("Method", "Rank", "Setting", "Mean median F1", "Mean 10th-percentile F1"),
     align = c("left", "right", "left", "right", "right"),
     bold = display$used,
+    plain = 1L,
     caption = paste0(
-      "**Choosing the $F_{\\beta}$ and Tailgate settings**. The best settings of each ",
-      "method in the simulations (0.2% response; three transformations, two separations, ",
-      "5,000 and 100,000 cells). Settings within 0.02 ",
-      "of the best mean median F1 are ranked by how closely the 10th and 90th percentiles ",
-      "of their background-subtracted frequency estimates match the truth. The selected ",
-      "setting of each method, used in the comparisons, is in bold",
-      if (fbetaKept) paste0(
-        "; for $F_{\\beta}$ this is the published $\\beta$ 0.8, kept because the ",
-        "top-ranked $\\beta$ gates more aggressively for little gain in F1"
-      ),
-      ". A relative tolerance is a fraction of the steepest slope of the density ",
-      "(Tailgate's automatic tolerance is $10^{-2}$); an absolute tolerance bounds the ",
-      "derivative. F1 medians and 10th percentiles are over the 200 tubes of each scenario, ",
-      "averaged over the twelve scenarios."
+      "Five best-performing $F_{\\beta}$ and Tailgate settings. Median and 10th-percentile ",
+      "$F_1$ scores were calculated per simulation scenario, and averaged across scenarios. ",
+      "Bold-text row denotes parameter settings selected for comparison analyses."
     ),
     label = label
   )
