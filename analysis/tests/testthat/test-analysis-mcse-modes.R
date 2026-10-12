@@ -127,11 +127,11 @@ test_that("comparison loops print before saving and save ratios without printing
       .mcse_modes_plot(env) + env$.simBandwidthSignedErrorLayers()
     }, dir = "signed_error_fixture", file_fn = function(pos, extra) "fixture.png",
     height = 3, level = 3L, ratio_twins = TRUE, mcse_mode = "on"))
-  # Each method subset prints its original, then saves the original and ratio.
-  expect_identical(calls, rep(c("print", "save", "save"), 2L))
-  expect_equal(constructed, 2L)
-  expect_length(printed, 2L)
-  expect_length(saved, 4L)
+  # The one method set prints its original, then saves the original and ratio.
+  expect_identical(calls, c("print", "save", "save"))
+  expect_equal(constructed, 1L)
+  expect_length(printed, 1L)
+  expect_length(saved, 2L)
   expect_true(all(vapply(saved, function(x) identical(x$mode, "on"), logical(1))))
   expect_true(any(vapply(saved, function(x) grepl("ratio_fixture", x$path), logical(1))))
 })
