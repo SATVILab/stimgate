@@ -834,10 +834,11 @@ other chapter) subfolder, with quick/dev renders one level deeper
 figures at their printed size: the thesis (Manuscript22RodoThesis,
 stanford-thesis Typst template) is A4 with a 146.5 x 246.2 mm text area and
 12 pt body text, and inserts PDF figures at full width
-(`.acsCytofThesisFigureSize()`, `.acsCytofSaveThesisFigure()`: PDF plus 300 dpi
-PNG). HTML reports keep showing the standard figures. Typst tables for the
-thesis are generated from the same formatted values as the HTML table, shown
-in a `typst` code block (copy button) and saved as a `.typ` file there.
+(`.analysis_thesis_theme()`, `.analysis_save_thesis_fig()` in
+`analysis-plot-style.R`: PDF plus 300 dpi PNG). HTML reports keep showing the standard figures. Typst tables for the
+thesis are generated from the same formatted values as the HTML table
+(`analysis-typst.R`), shown in a `typst` code block (copy button) and saved as
+a `.typ` file there.
 
 Large report tables belong in CSV companions under `output/table/<fig_key>/`
 via `.analysis_report_table()` / `.analysis_table_dir()`, guarded by the same

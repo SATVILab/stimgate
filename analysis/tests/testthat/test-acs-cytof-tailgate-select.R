@@ -4,7 +4,7 @@ qmd9a_path <- file.path(root_dir, "analysis", "9a-real-tune-acs-cytof-tailgate.q
 .load_tailgate_select_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   for (f in c(
-    "analysis-runtime.R", "analysis-plot-style.R", "acs_cytof-helper.R",
+    "analysis-runtime.R", "analysis-plot-style.R", "analysis-typst.R", "acs_cytof-helper.R",
     "acs_cytof-gate.R", "acs_cytof-methods.R", "acs_cytof-manual.R",
     "acs_cytof-plot_cyt.R", "acs_cytof-tailgate-select.R"
   )) {
@@ -176,8 +176,7 @@ test_that("The Typst table matches the HTML table and compiles", {
 
 test_that("Thesis heatmaps are drawn at the thesis text width", {
   env <- .load_tailgate_select_env()
-  expect_identical(env$.acsCytofThesisFigureSize(TRUE)$width, 146.5)
-  expect_identical(env$.acsCytofThesisFigureSize(FALSE)$units, "mm")
+  expect_identical(env$.analysis_thesis_width, 146.5)
   methods <- env$.acsCytofTailgateSelectionMethods()
   strata <- env$.acsCytofTailgateScoreStrata(.tailgate_select_table(methods))
   p <- env$.acsCytofValidationPlotCorrelation(
@@ -185,7 +184,7 @@ test_that("Thesis heatmaps are drawn at the thesis text width", {
   )
   expect_null(p$labels$caption)
   dir <- withr::local_tempdir()
-  paths <- env$.acsCytofSaveThesisFigure(p, file.path(dir, "fig"), env$.acsCytofThesisFigureSize(TRUE))
+  paths <- env$.analysis_save_thesis_fig(p, file.path(dir, "fig"), env$.acsCytofThesisHeatmapHeight(TRUE))
   expect_true(all(file.exists(paths)))
   png <- png::readPNG(paths[[2]])
   expect_equal(ncol(png) / 300 * 25.4, 146.5, tolerance = 0.01)
@@ -196,7 +195,7 @@ test_that("Analysis 9a saves thesis outputs to output-thesis and selects by PCC"
   expect_match(qmd, '"output-thesis"', fixed = TRUE)
   expect_match(qmd, 'thesis_parts <- c("appendix", fig_key[-1L])', fixed = TRUE)
   expect_match(qmd, "acs-tailgate-ranking.typ", fixed = TRUE)
-  expect_match(qmd, "```typst", fixed = TRUE)
+  expect_match(qmd, ".analysis_typst_show(", fixed = TRUE)
   expect_match(qmd, "code-copy: true", fixed = TRUE)
   expect_match(qmd, "in-sample", fixed = TRUE)
   projr <- yaml::read_yaml(file.path(root_dir, "_projr.yml"))

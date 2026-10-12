@@ -418,49 +418,25 @@
     if (isTRUE(thesis)) .acsCytofThesisHeatmapTheme()
 }
 
-# Text sizes (pt) for heatmaps printed at the thesis text width
-# (.acsCytofThesisFigureSize()): 8 pt axis and strip text against 12 pt body
-# text, with the eligibility key left to the figure caption.
+# Heatmap text for printing at the thesis text width
+# (.analysis_save_thesis_fig()), with the eligibility key left to the caption.
 .acsCytofThesisHeatmapTheme <- function() {
   list(
     ggplot2::labs(caption = NULL),
+    .analysis_thesis_theme(),
     ggplot2::theme(
-      text = ggplot2::element_text(size = 8),
-      axis.text = ggplot2::element_text(size = 7.5),
-      axis.title = ggplot2::element_text(size = 8.5),
       strip.text = ggplot2::element_text(size = 8),
       legend.title = ggplot2::element_text(size = 8, vjust = 0.8),
       legend.text = ggplot2::element_text(size = 7),
       legend.key.height = ggplot2::unit(3, "mm"),
-      legend.key.width = ggplot2::unit(12, "mm"),
-      legend.margin = ggplot2::margin(0, 0, 0, 0),
-      plot.margin = ggplot2::margin(2, 4, 2, 2)
+      legend.key.width = ggplot2::unit(12, "mm")
     )
   )
 }
 
-# The thesis (Manuscript22RodoThesis, stanford-thesis Typst template) sets A4
-# with 1.5 in left and 1 in other margins: a 146.5 x 246.2 mm text area.
-# Figures are inserted at full text width, so they are drawn at that width.
-.acsCytofThesisFigureSize <- function(realPopulationsOnly = TRUE) {
-  list(
-    width = 146.5,
-    height = if (isTRUE(realPopulationsOnly)) 62 else 82,
-    units = "mm"
-  )
-}
-
-# Save a thesis figure as vector PDF and 300 dpi PNG at its printed size.
-.acsCytofSaveThesisFigure <- function(plot, pathNoExt, size) {
-  dir.create(dirname(pathNoExt), recursive = TRUE, showWarnings = FALSE)
-  for (ext in c("pdf", "png")) {
-    ggplot2::ggsave(
-      paste0(pathNoExt, ".", ext), plot,
-      width = size$width, height = size$height, units = size$units,
-      dpi = 300, device = if (ext == "pdf") grDevices::cairo_pdf else "png"
-    )
-  }
-  invisible(paste0(pathNoExt, c(".pdf", ".png")))
+# Heights (mm) at the thesis text width: T-cell populations or all of them.
+.acsCytofThesisHeatmapHeight <- function(realPopulationsOnly = TRUE) {
+  if (isTRUE(realPopulationsOnly)) 62 else 82
 }
 
 .acsCytofValidationReplaceDirectory <- function(stagedDir, targetDir) {

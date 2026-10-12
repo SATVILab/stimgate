@@ -60,6 +60,40 @@
 
 # Shared theme: white background, light grid, facet strips with a black
 # border and no fill, legend underneath.
+# Thesis figures (Manuscript22RodoThesis, stanford-thesis Typst template: A4,
+# 1.5 in left and 1 in other margins, so a 146.5 x 246.2 mm text area and
+# 12 pt body text) are drawn at their printed size and inserted at full width.
+# Save one to the projr `output-thesis` folder only when the thesis uses it.
+.analysis_thesis_width <- 146.5
+
+# Text sizes (pt) for a figure printed at the thesis text width.
+.analysis_thesis_theme <- function() {
+  ggplot2::theme(
+    text = ggplot2::element_text(size = 8),
+    axis.text = ggplot2::element_text(size = 7.5),
+    axis.title = ggplot2::element_text(size = 8.5),
+    strip.text = ggplot2::element_text(size = 7.5),
+    legend.title = ggplot2::element_text(size = 8),
+    legend.text = ggplot2::element_text(size = 7.5),
+    legend.margin = ggplot2::margin(0, 0, 0, 0),
+    plot.margin = ggplot2::margin(2, 4, 2, 2)
+  )
+}
+
+# Save as vector PDF and 300 dpi PNG at the printed size (mm).
+.analysis_save_thesis_fig <- function(plot, path_no_ext, height,
+                                      width = .analysis_thesis_width) {
+  dir.create(dirname(path_no_ext), recursive = TRUE, showWarnings = FALSE)
+  for (ext in c("pdf", "png")) {
+    ggplot2::ggsave(
+      paste0(path_no_ext, ".", ext), plot, width = width, height = height,
+      units = "mm", dpi = 300,
+      device = if (ext == "pdf") grDevices::cairo_pdf else "png"
+    )
+  }
+  invisible(paste0(path_no_ext, c(".pdf", ".png")))
+}
+
 .analysis_theme <- function(base_size = .analysis_fig_font_size, grid = "xy") {
   cowplot::theme_cowplot(font_size = base_size) +
     cowplot::background_grid(major = grid) +
