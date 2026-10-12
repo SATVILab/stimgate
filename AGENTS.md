@@ -532,12 +532,16 @@ preserve signed-error geometry and intervals, relabelling ticks as
 companions in sibling ratio folders without printing them into HTML.
 Absolute relative errors lose direction and cannot be relabelled as
 estimate/reference ratios. Unconditional signed-error percentile figures
-calculate quantiles on raw errors, including zeros, and show all seven
-percentiles in each panel: single-method figures as nested one-hue bands
-(darker towards the median) with a median line, comparison figures as
-per-method lines. Choose the outer 2.5th/97.5th pair per complete
-figure; if either interval is unavailable at any finite plotted point,
-use 5th/95th throughout that figure and label the fallback. Keep
+calculate quantiles on raw errors, including zeros. Analyses 2a, 2b and
+7 show all seven percentiles in each panel: single-method figures as
+nested one-hue bands (darker towards the median) with a median line,
+comparison figures as per-method lines. Choose the outer 2.5th/97.5th
+pair per complete figure; if either interval is unavailable at any
+finite plotted point, use 5th/95th throughout that figure and label the
+fallback. From Analysis 8 on, and in thesis figures, show only the
+median (solid) and the 10th and 90th percentiles (dotted)
+(`.simBandwidthSignedPercentilePlot(percentiles = "tails")`), keeping
+method colours and shapes; do not also map line type to method. Keep
 uncertainty eligibility independent of interval display, and never clip
 unconditional percentile intervals to one side of zero. Signed
 relative-error plots (`.simBandwidthSignedError*()` in
@@ -1033,6 +1037,18 @@ showing the standard figures. In thesis figures use sentence case and
 readable maths (β, $`F_{\beta}`$, 2×10⁻⁵), and explain conventions such
 as the relative tolerance once, in the caption. Thesis tables follow
 “Thesis tables” below.
+
+Analysis 7’s thesis figures (`sim-compare-thesis.R`, saved to
+`output-thesis/results/`, not shown in the HTML) are, per separation:
+median $`F_1`$ heat maps (rows method, columns transformation);
+estimated frequencies (median solid, 10th/90th dotted, truth as a thick
+grey line) on the signed relative-error scale labelled in each row’s
+frequencies, rows stacked with cowplot so their tick labels can differ;
+and outline threshold histograms over the stimulated density with a rug
+of simulated positive cells
+(`.simBandwidthThresholdDensities(rug_n = )`). Response probabilities
+run from highest (top) to lowest in all three. The “Without Tailgate”
+method set is gone from Analyses 7 and 8.
 
 ### Thesis tables
 
