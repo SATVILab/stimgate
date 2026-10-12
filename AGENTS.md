@@ -790,7 +790,7 @@ Use `.analysis_is_dev()` and
 errors naming the analysis, render command, matching dev/quick profile and
 required completion of all chunks.
 
-Analysis figures carry no titles or subtitles. Identify their method set and
+Analysis figures carry no titles or subtitles. Facet strips are white with a black border (`.analysis_theme()`; add `.analysis_strip_theme()` to plots built on other themes such as `theme_bw()`). Identify their method set and
 scenario settings in saved file paths and QMD headings, prose or captions. Before removing grid views as duplicates, check the summary
 grouping: one setting per baseline does not mean one baseline per plotted group.
 
