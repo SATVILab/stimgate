@@ -4,7 +4,7 @@ qmd9a_path <- file.path(root_dir, "analysis", "9a-real-tune-acs-cytof-tailgate.q
 .load_tailgate_select_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   for (f in c(
-    "analysis-runtime.R", "analysis-plot-style.R", "analysis-typst.R", "acs_cytof-helper.R",
+    "analysis-runtime.R", "analysis-plot-style.R", "analysis-thesis-table.R", "acs_cytof-helper.R",
     "acs_cytof-gate.R", "acs_cytof-methods.R", "acs_cytof-manual.R",
     "acs_cytof-plot_cyt.R", "acs_cytof-tailgate-select.R"
   )) {
@@ -147,31 +147,32 @@ test_that("Analysis 9b's Tailgate settings come from the recorded selection", {
   expect_error(env$.acsCytofCheckSelectionPreprocessing(selection, tbl), "differ")
 })
 
-test_that("The Typst table matches the HTML table and compiles", {
+test_that("The thesis table is a captioned Quarto table that pandoc parses", {
   env <- .load_tailgate_select_env()
   methods <- env$.acsCytofTailgateSelectionMethods()
   ranking <- env$.acsCytofTailgateRanking(
     env$.acsCytofTailgateScoreStrata(.tailgate_select_table(methods))
   )
-  html <- env$.acsCytofTailgateHtmlTable(ranking)
-  typst <- env$.acsCytofTailgateTypst(ranking)
-  expect_match(typst, "^#figure\\(")
-  for (value in c(html$`Mean PCC`, html$`Strata scored`, html$`Failed gates`)) {
-    expect_true(grepl(value, typst, fixed = TRUE))
+  f <- env$.acsCytofTailgateFormat(ranking)
+  md <- env$.acsCytofTailgateMdTable(ranking)
+  lines <- strsplit(md, "\n", fixed = TRUE)[[1]]
+  expect_match(lines[[1]], "^\\| Rank \\| Configuration")
+  expect_match(utils::tail(lines, 1), "^: \\*\\*.*\\{#tbl-stimgate-appendix-acs-tailgate\\}$")
+  for (value in c(f$mean_pcc, f$strata, f$failed)) {
+    expect_true(grepl(value, md, fixed = TRUE))
   }
-  expect_match(typst, "$2 times 10^(-5)$", fixed = TRUE)
-  expect_match(html$Configuration[[1]], "(selected)", fixed = TRUE)
-  expect_identical(lengths(regmatches(typst, gregexpr("\n    \\[\\*", typst))), 1L)
+  expect_match(md, "$2\\times10^{-5}$", fixed = TRUE)
+  expect_match(md, "(selected)**", fixed = TRUE)
+  expect_identical(sum(grepl("^\\| \\*\\*", lines)), 1L)
 
   quarto <- Sys.which("quarto")
-  skip_if(!nzchar(quarto), "Quarto (with Typst) is unavailable.")
+  skip_if(!nzchar(quarto), "Quarto (with pandoc) is unavailable.")
   dir <- withr::local_tempdir()
-  file <- file.path(dir, "table.typ")
-  writeLines(c('#set page(paper: "a4", margin: (left: 1.5in, rest: 1in))', typst), file)
-  status <- system2(quarto, c("typst", "compile", file, file.path(dir, "table.pdf")),
-    stdout = TRUE, stderr = TRUE)
-  expect_null(attr(status, "status"))
-  expect_true(file.exists(file.path(dir, "table.pdf")))
+  file <- file.path(dir, "table.md")
+  writeLines(md, file)
+  html <- system2(quarto, c("pandoc", "-f", "markdown", "-t", "html", file), stdout = TRUE)
+  expect_true(any(grepl("<table", html, fixed = TRUE)))
+  expect_true(any(grepl("<caption", html, fixed = TRUE)))
 })
 
 test_that("Thesis heatmaps are drawn at the thesis text width", {
@@ -194,8 +195,8 @@ test_that("Analysis 9a saves thesis outputs to output-thesis and selects by PCC"
   qmd <- paste(readLines(qmd9a_path), collapse = "\n")
   expect_match(qmd, '"output-thesis"', fixed = TRUE)
   expect_match(qmd, 'thesis_parts <- c("appendix", fig_key[-1L])', fixed = TRUE)
-  expect_match(qmd, "acs-tailgate-ranking.typ", fixed = TRUE)
-  expect_match(qmd, ".analysis_typst_show(", fixed = TRUE)
+  expect_match(qmd, ".analysis_md_show(", fixed = TRUE)
+  expect_match(qmd, "acs-tailgate-ranking.md", fixed = TRUE)
   expect_match(qmd, "code-copy: true", fixed = TRUE)
   expect_match(qmd, "in-sample", fixed = TRUE)
   projr <- yaml::read_yaml(file.path(root_dir, "_projr.yml"))

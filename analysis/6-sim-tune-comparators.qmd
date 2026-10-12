@@ -1,5 +1,5 @@
 ---
-title: Choosing the F-beta and Tailgate settings
+title: Choosing the $F_{\beta}$ and Tailgate settings
 format:
   html:
     embed-resources: true
@@ -18,12 +18,12 @@ params:
 ---
 
 Analyses 7 and 8 compare StimGate with two other ways of setting a gate,
-F-beta and Tailgate. This page chooses the settings those two methods use. It
+$F_{\beta}$ and Tailgate. This page chooses the settings those two methods use. It
 looks at a response probability of 0.2%, all three transformations, both
 degrees of separation, and parent populations of 5,000 and 100,000 cells.
 
 For Tailgate, the settings are the derivative tolerance and the bias added to
-its cutpoint. For F-beta, the setting is beta. Each choice is compared with
+its cutpoint. For $F_{\beta}$, the setting is $\beta$. Each choice is compared with
 the published default settings and with the settings Analyses 7 and 8 use now.
 
 ## Set-up
@@ -47,7 +47,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
-source(file.path(scripts_r_dir, "analysis-typst.R"))
+source(file.path(scripts_r_dir, "analysis-thesis-table.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
@@ -98,8 +98,8 @@ unstimulated tube has background responders at 0.2 times that rate (0.04%) and
 the same number of cells. The seeds differ from Analysis 7's, so the settings
 are chosen on different simulated data from the data used to report results.
 
-Only F-beta and Tailgate are run. Both use the same inputs as in Analysis 7:
-F-beta compares the stimulated tube with its unstimulated tube, and Tailgate
+Only $F_{\beta}$ and Tailgate are run. Both use the same inputs as in Analysis 7:
+$F_{\beta}$ compares the stimulated tube with its unstimulated tube, and Tailgate
 gates the stimulated tube on its own. As in Analysis 7, when a method finds
 no cutpoint (without an error), the gate is placed just above the highest
 cell. Errors are kept as missing results.
@@ -118,12 +118,12 @@ Tailgate settings:
 - **Bias.** The cutpoint is then moved up by the bias, as StimGate moves its
   gates up by its own bias. Analysis 7 uses a bias of 0.1.
 
-F-beta setting:
+$F_{\beta}$ setting:
 
-- **beta.** F-beta picks the gate that maximises the F-beta score of the
-  stimulated tube against the unstimulated tube. Beta below 1 weights
-  precision more than recall, which pushes the gate up; beta above 1 pushes
-  it down. The published value is 0.8. The other F-beta settings stay at their
+- **$\beta$.** $F_{\beta}$ picks the gate that maximises the $F_{\beta}$ score of the
+  stimulated tube against the unstimulated tube. $\beta$ below 1 weights
+  precision more than recall, which pushes the gate up; $\beta$ above 1 pushes
+  it down. The published value is 0.8. The other $F_{\beta}$ settings stay at their
   published values (theta 2, moving-average width 10).
 
 ```{r}
@@ -141,6 +141,9 @@ n_hist_sample <- 4L
 # Settings whose mean median F1 is within this of the best are compared on
 # their estimates.
 f1_tolerance <- 0.02
+# F-beta keeps its published beta: the top-ranked beta gates more aggressively
+# for little gain in F1.
+fbeta_beta_used <- 0.8
 
 sim_grid <- sim_grid_full
 # Dev keeps one debugging scenario; quick keeps the smallest grid that still
@@ -172,7 +175,7 @@ if (isTRUE(run_simulations) && !file.exists(path_fbeta)) {
 Each scenario has `r n_iter` datasets of `r n_sample` samples, so
 `r n_iter * n_sample` stimulated tubes. Tailgate is run with
 `r length(tune_settings$tailgate$tol_rel) + 1L` tolerances and
-`r length(tune_settings$tailgate$bias)` biases, and F-beta with
+`r length(tune_settings$tailgate$bias)` biases, and $F_{\beta}$ with
 `r length(tune_settings$fbeta$beta)` values of beta, all on the same tubes.
 
 ## Simulation
@@ -235,7 +238,7 @@ if (!isTRUE(run_simulations)) {
 metrics <- .simTuneMetrics(results$scores)
 summary_tbl <- .simTuneSummary(metrics)
 rank_tbl <- .simTuneRank(summary_tbl, f1_tolerance = f1_tolerance)
-compare_tbl <- .simTuneCompareSettings(rank_tbl)
+compare_tbl <- .simTuneCompareSettings(rank_tbl, fbetaUsedBeta = fbeta_beta_used)
 selected_tbl <- dplyr::filter(rank_tbl, .data$selected)
 selected_lab <- function(m) {
   lab <- selected_tbl$setting_lab[selected_tbl$method == m]
@@ -263,62 +266,45 @@ within `r f1_tolerance` of the best are kept, and of those the one with the
 smallest mean estimate error is chosen (ties go to the higher mean 10th
 percentile of F1).
 
+The table below lists the five best settings of each method by that rule,
+with each method's selected setting, used in the comparisons, in bold. It is written as a Quarto table
+with a caption and label, as the thesis's tables are; its source follows it
+in a copyable block and is saved as `appendix/sim-tune-comparators-ranking.md`
+in the projr `output-thesis` folder (`_output/thesis`), ready to paste or
+`{{< include >}}` into the thesis and cite as `@tbl-stimgate-appendix-tune-comparators`.
+
 ```{r}
 #| label: selection
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots)) {
-  cat("\n\n**Selected F-beta setting:** ", selected_lab("fbeta"), ".\n\n", sep = "")
+  cat("\n\n**F\u03b2 setting used:** \u03b2 ", fbeta_beta_used,
+    " (published). The top-ranked setting, ", selected_lab("fbeta"),
+    ", gates more aggressively for little gain in F1, so it is not used.\n\n", sep = "")
   cat("**Selected Tailgate setting:** ", selected_lab("tailgate"), ".\n\n", sep = "")
-  rank_top <- .simTuneRankDisplay(rank_tbl, n = 5L)
-  rank_display <- rank_top |>
-    dplyr::transmute(
-      method = .data$method, rank = .data$rank,
-      setting = ifelse(.data$selected, paste0("**", .data$setting, " (selected)**"), .data$setting),
-      `mean median F1` = .data$f1_median, `mean 10th pct F1` = .data$f1_p10,
-      `mean estimate error` = .data$est_error,
-      `truth in 10th-90th` = .data$truth_in_band
-    )
-  print(knitr::kable(rank_display, caption = paste(
-    "The five best settings of each method by the rule above (mean over",
-    "scenarios). Estimate error is the larger relative error of the 10th and",
-    "90th percentiles of the estimates. A relative tolerance is a fraction of",
-    "the steepest slope of the density; an absolute one bounds the derivative."
-  )))
+  rank_top <- .simTuneRankDisplay(rank_tbl, n = 5L, fbetaUsedBeta = fbeta_beta_used)
+  .analysis_md_show(.simTuneMdTable(rank_top), file.path(
+    .analysis_project_dir("output-thesis", thesis_parts, root_dir),
+    "sim-tune-comparators-ranking.md"
+  ))
   .analysis_report_table(rank_tbl, c(fig_key, "setting_rank.csv"),
     "Every setting of each method, averaged over scenarios, in selection order.",
     root_dir)
 }
 ```
 
-### Typst table for the thesis
+## Top-ranked against default settings
 
-The Typst source of the table above, from the same values. Copy it with the
-button at its top right; in a Quarto document, paste it inside a
-```` ```{=typst} ```` block. It is also saved as
-`appendix/sim-tune-comparators-ranking.typ` in the projr `output-thesis`
-folder (`_output/thesis`).
-
-```{r}
-#| label: typst-table
-#| echo: false
-#| results: asis
-if (isTRUE(run_plots)) {
-  .analysis_typst_show(.simTuneTypstTable(rank_top), file.path(
-    .analysis_project_dir("output-thesis", thesis_parts, root_dir),
-    "sim-tune-comparators-ranking.typ"
-  ))
-}
-```
-
-## Selected against default settings
-
-Each point is the median over the stimulated tubes of one scenario, and the
+$F_{\beta}$'s top-ranked setting is shown for comparison; the comparisons use its
+published $\beta$ (0.8). Each point is the median over the stimulated tubes of one scenario, and the
 bar runs from the 10th to the 90th percentile. The reference settings are
-F-beta's published beta (0.8); Tailgate with cytoUtils' default absolute
-tolerance and no bias; Tailgate with Analysis 7's automatic tolerance and no
-bias ("Tailgate (default settings)" in Analysis 7); and Tailgate as Analysis 7
-runs it now (automatic tolerance 1%, bias 0.1).
+$F_{\beta}$'s published $\beta$ (0.8); Tailgate with cytoUtils' default absolute
+tolerance (0.01) and no bias; Tailgate with a relative tolerance of $10^{-2}$
+and no bias ("Tailgate (default settings)" in Analysis 7); and Tailgate with
+bias 0.1 (relative tolerance $10^{-2}$). A relative
+tolerance is a fraction of the steepest slope of the density, and $10^{-2}$ is
+Tailgate's automatic tolerance; an absolute tolerance bounds the derivative.
+The legend lists $F_{\beta}$'s settings in one column and Tailgate's in the other, marking each method's default (published $F_{\beta}$, cytoUtils' Tailgate default) and selected setting.
 
 ### F1
 
@@ -367,7 +353,7 @@ if (isTRUE(run_plots)) {
 
 ### Paired differences within datasets
 
-For each dataset, the median F1 and the median estimate under the selected
+For each dataset, the median F1 and the median estimate under the top-ranked
 setting minus those under each reference setting. The table gives the mean
 over datasets and its standard error (datasets are independent; the tubes of a
 dataset are not separate units here).
@@ -570,7 +556,7 @@ if (isTRUE(run_plots)) {
 }
 ```
 
-## F-beta: beta
+## $F_{\beta}$: $\beta$
 
 ### F1
 

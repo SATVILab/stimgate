@@ -182,8 +182,7 @@
   invisible(TRUE)
 }
 
-# Display formatting shared by the HTML table and the Typst source, so both
-# show the same values.
+# Display formatting for the thesis table.
 .acsCytofTailgateFormat <- function(ranking) {
   tibble::tibble(
     rank = as.character(ranking$rank),
@@ -207,56 +206,41 @@
   paste0(format(signif(x / 10^exponent, 3)), "e", exponent)
 }
 
-.acsCytofTailgateHtmlTable <- function(ranking) {
+# The ranking as a Quarto pipe table with a cross-referenceable caption
+# (needs analysis-thesis-table.R); the HTML renders the same source.
+.acsCytofTailgateMdTable <- function(ranking, label = "tbl-stimgate-appendix-acs-tailgate") {
   f <- .acsCytofTailgateFormat(ranking)
-  f$tol <- sub("^([0-9.]+)e(-?[0-9]+)$", "\\1 × 10<sup>\\2</sup>", f$tol)
-  f$configuration <- ifelse(f$selected, paste0("**", f$configuration, " (selected)**"), f$configuration)
-  out <- f[c("rank", "configuration", "zeros", "auto_tol", "tol", "bias", "mean_pcc", "strata", "failed")]
-  names(out) <- c(
-    "Rank", "Configuration", "Zeros removed", "Automatic tolerance",
-    "Tolerance", "Bias", "Mean PCC", "Strata scored", "Failed gates"
-  )
-  out
-}
-
-# Complete Typst source for the ranking table, generated from the same
-# formatted values as the HTML table (needs analysis-typst.R).
-.acsCytofTailgateTypst <- function(ranking, label = "tbl-acs-tailgate-ranking") {
-  f <- .acsCytofTailgateFormat(ranking)
-  tolTypst <- ifelse(
+  tol <- ifelse(
     grepl("e", f$tol),
-    sub("^([0-9.]+)e(-?[0-9]+)$", "$\\1 times 10^(\\2)$", f$tol),
+    sub("^([0-9.]+)e(-?[0-9]+)$", "$\\1\\\\times10^{\\2}$", f$tol),
     f$tol
   )
-  cells <- cbind(
-    f$rank, .analysis_typst_escape(f$configuration), f$zeros, f$auto_tol,
-    tolTypst, f$bias, f$mean_pcc, f$strata, f$failed
-  )
+  configuration <- .analysis_md_escape(f$configuration)
+  configuration[f$selected] <- paste0(configuration[f$selected], " (selected)")
   selected <- f$configuration[f$selected]
   selectedText <- if (length(selected)) {
-    paste0("The selected configuration (bold) is ", .analysis_typst_escape(tolower(selected[[1]])),
-      if (ranking$removeZero[f$selected]) ", with zeros removed. " else ", estimated on all cells. ")
+    paste0("The selected configuration is in bold. ")
   } else {
     "No single configuration has the highest mean PCC, so none is selected. "
   }
-  .analysis_typst_table(
-    cells,
-    header = c(
-      "Rank", "Configuration", "Zeros \\ removed", "Automatic \\ tolerance",
-      "Tolerance", "Bias", "Mean \\ PCC", "Strata \\ scored", "Failed \\ gates"
-    ),
+  .analysis_md_table(
+    cbind(f$rank, configuration, f$zeros, f$auto_tol, tol, f$bias, f$mean_pcc,
+      f$strata, f$failed),
+    header = c("Rank", "Configuration", "Zeros removed", "Automatic tolerance",
+      "Tolerance", "Bias", "Mean PCC", "Strata scored", "Failed gates"),
     align = c("right", "left", "left", "left", rep("right", 5)),
     bold = f$selected,
     caption = paste0(
-      "Tailgate configurations ranked by mean Pearson correlation (PCC) ",
-      "with the manual background-subtracted frequencies over eligible population, ",
-      "cytokine and stimulus strata of the ACS CyTOF data, each stratum weighted equally. ",
-      selectedText,
+      "**Choosing Tailgate's configuration on the ACS CyTOF data**. Tailgate configurations ",
+      "ranked by mean Pearson correlation (PCC) with the manual background-subtracted ",
+      "frequencies over eligible population, cytokine and stimulus strata, each stratum ",
+      "weighted equally. ", selectedText,
       "With automatic tolerance, the tolerance is a multiple of the largest absolute first ",
       "derivative of the density; otherwise it is an absolute bound on the derivative. ",
       "Zeros (cells with an expression of exactly zero) are removed only to estimate the ",
       "threshold. Strata scored: eligible strata where every configuration has a PCC on the ",
-      "donors all gated successfully. Failed gates: failed donor-cytokine estimates in eligible strata."
+      "donors all gated successfully. Failed gates: failed donor-cytokine estimates in ",
+      "eligible strata."
     ),
     label = label
   )
