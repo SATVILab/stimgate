@@ -3479,10 +3479,6 @@
       heading = "All methods",
       methods = c("stimgate", "tailgate", "fbeta")
     ),
-    no_tailgate = list(
-      heading = "Without Tailgate",
-      methods = c("stimgate", "fbeta")
-    ),
     tailgate_default = list(
       heading = "With Tailgate at default settings",
       methods = c("stimgate", "tailgate", "tailgate_default", "fbeta")
@@ -3757,6 +3753,8 @@
     "sample_perturbation_sd", "condition_perturbation_sd",
     "cluster_perturbation_sd", "background_relative_to_response"), names(data))
   densities$transformation <- .analysis_trans_factor(densities$transformation)
+  # Rug cells (condition "positive_rug") are for the thesis figure only.
+  densities <- densities[densities$condition %in% c("unstimulated", "stimulated"), , drop = FALSE]
   densities <- dplyr::semi_join(densities, dplyr::distinct(data, dplyr::across(dplyr::all_of(keys))), by = keys)
   densities$reference_y <- pmax(densities$density, 0)
   # Histogram bins depend only on each panel's x range, which the reference

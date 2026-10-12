@@ -257,7 +257,7 @@ test_that("ACS stimulus percentile chunks print every requested method and keep 
     expect_length(unique(tables), length(plots))
     for (plot in plots) {
       expect_equal(dplyr::n_distinct(plot$data$stim), 1L)
-      expect_equal(dplyr::n_distinct(plot$data$percentile), 7L)
+      expect_equal(dplyr::n_distinct(plot$data$percentile), 3L)
       expect_setequal(plot$data$pop, c("CD4", "CD8"))
       expect_no_error(ggplot2::ggplot_build(plot))
     }
@@ -322,16 +322,16 @@ test_that("Analysis 8 per-cell percentile chunk keeps cell counts and mismatch t
     invisible(plot)
   }
   capture.output(eval(chunk("signed-percentiles-by-n-cell"), env))
-  expect_length(plots, 8L)
-  expect_length(unique(paths), 8L)
+  # One method set: there is no "Without Tailgate" set any more.
+  expect_length(plots, 4L)
+  expect_length(unique(paths), 4L)
   for (plot in plots) {
     expect_equal(dplyr::n_distinct(plot$data$n_cell), 1L)
     expect_equal(dplyr::n_distinct(plot$data$mismatch_type), 1L)
-    expect_equal(dplyr::n_distinct(plot$data$percentile), 7L)
+    expect_equal(dplyr::n_distinct(plot$data$percentile), 3L)
     expect_no_error(ggplot2::ggplot_build(plot))
   }
   expect_setequal(plots[[1]]$data$method, c("stimgate", "fbeta", "tailgate"))
-  expect_setequal(plots[[5]]$data$method, c("stimgate", "fbeta"))
   plots <- list()
   env$results_available <- FALSE
   capture.output(eval(chunk("signed-percentiles-by-n-cell"), env))
