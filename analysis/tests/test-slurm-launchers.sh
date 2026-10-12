@@ -93,6 +93,19 @@ for invalid_chunks in 0 invalid 1.5; do
   grep -Fq 'SIM_GRID_N_CHUNKS must be a positive integer' "$test_dir/output"
 done
 
+# Without SIM_GRID_N_CHUNKS, Analysis 8 has 40 chunks and the others 4; an
+# explicit SIM_GRID_N_CHUNKS applies to every chunked analysis.
+(
+  unset SIM_GRID_N_CHUNKS
+  run_selection 7 8
+  [[ $(grep -c 'dev-7-sim-compare-freq_bs.sh' "$SLURM_TEST_LOG") -eq 4 ]]
+  [[ $(grep -c 'dev-8-sim-compare-freq_bs-batch.sh' "$SLURM_TEST_LOG") -eq 40 ]]
+  grep -Fq -- 'SIM_GRID_CHUNK_INDEX=4,SIM_GRID_N_CHUNKS=4,' "$SLURM_TEST_LOG"
+  grep -Fq -- 'SIM_GRID_CHUNK_INDEX=40,SIM_GRID_N_CHUNKS=40,' "$SLURM_TEST_LOG"
+)
+run_selection 8
+[[ $(grep -c 'dev-8-sim-compare-freq_bs-batch.sh' "$SLURM_TEST_LOG") -eq 2 ]]
+
 # Plot renders wait for their own simulation jobs to succeed and for every
 # other simulation job of the submission to finish.
 run_selection 2a 7

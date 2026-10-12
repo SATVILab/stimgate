@@ -104,11 +104,30 @@ move_after dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-p
 move_after dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh
 
 poll_seconds="${POLL_SECONDS:-5}"
+sim_grid_n_chunks_set="${SIM_GRID_N_CHUNKS:-}"
 sim_grid_n_chunks="${SIM_GRID_N_CHUNKS:-4}"
 if [[ ! "$sim_grid_n_chunks" =~ ^[1-9][0-9]*$ ]]; then
   echo "ERROR: SIM_GRID_N_CHUNKS must be a positive integer. Got: $sim_grid_n_chunks" >&2
   exit 1
 fi
+
+# Chunks per chunked analysis: SIM_GRID_N_CHUNKS when the caller sets it,
+# otherwise 4, except Analysis 8, whose crossed grid of 42 baselines needs 40
+# chunks of about an hour each.
+n_chunks_for_script() {
+  if [[ -n "$sim_grid_n_chunks_set" ]]; then
+    echo "$sim_grid_n_chunks"
+    return
+  fi
+  case "$1" in
+    dev-8-sim-compare-freq_bs-batch.sh)
+      echo 40
+      ;;
+    *)
+      echo "$sim_grid_n_chunks"
+      ;;
+  esac
+}
 sim_grid_shuffle_seed="${SIM_GRID_SHUFFLE_SEED:-20260707}"
 analysis_run_id="${ANALYSIS_RUN_ID:-analysis-slurm-$(date -u +%Y%m%dT%H%M%S)-$$}"
 
@@ -340,16 +359,17 @@ for script in "${scripts[@]}"; do
     echo "Submitting transactional chunks for $script"
     echo "ANALYSIS_RUN_ID: $analysis_run_id"
 
-    for chunk_index in $(seq 1 "$sim_grid_n_chunks"); do
+    script_n_chunks="$(n_chunks_for_script "$script")"
+    for chunk_index in $(seq 1 "$script_n_chunks"); do
       log_dir="_tmp/log/sbatch/${qmd_stem}/chunk-${chunk_index}"
       job_name="${qmd_stem}-${chunk_index}"
 
-      echo "Submitting $script chunk $chunk_index of $sim_grid_n_chunks"
+      echo "Submitting $script chunk $chunk_index of $script_n_chunks"
       echo "Log directory: $log_dir"
 
       submit_job -l "$log_dir" -n "$script_dir/$script" -- \
         --job-name="$job_name" \
-        --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",SIM_GRID_CHUNK_INDEX="$chunk_index",SIM_GRID_N_CHUNKS="$sim_grid_n_chunks",SIM_GRID_SHUFFLE_SEED="$sim_grid_shuffle_seed",RUN_SIMULATIONS=true,RUN_PLOTS=false"$sim_size_export"
+        --export=ALL,PROJECT_ROOT="$project_root",ANALYSIS_RUN_ID="$analysis_run_id",SIM_GRID_CHUNK_INDEX="$chunk_index",SIM_GRID_N_CHUNKS="$script_n_chunks",SIM_GRID_SHUFFLE_SEED="$sim_grid_shuffle_seed",RUN_SIMULATIONS=true,RUN_PLOTS=false"$sim_size_export"
       script_job_ids["$script"]+=":$submitted_job_id"
       all_sim_job_ids+=("$submitted_job_id")
     done

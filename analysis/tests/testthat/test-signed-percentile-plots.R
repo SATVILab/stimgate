@@ -310,9 +310,9 @@ test_that("Analysis 8 per-cell percentile chunk keeps cell counts and mismatch t
   q <- env$.simBandwidthSignedErrorPercentiles(seq(-1, 1, length.out = 300))
   keys <- tidyr::expand_grid(method = c("stimgate", "fbeta", "tailgate"),
     n_cell = c(1000, 10000), mismatch_type = c("mean_shift_negative", "sd_inflation"),
-    mismatch_val = c(0, 1)) |>
+    mismatch_val = c(0, 1), prob_response = c(0.01, 0.2)) |>
     dplyr::mutate(transformation = "gaussian", mean_pos_setting = "high")
-  env$percentile_by_cell <- dplyr::bind_cols(keys, q[rep(1L, nrow(keys)), ])
+  env$percentile_scenario <- dplyr::bind_cols(keys, q[rep(1L, nrow(keys)), ])
   plots <- list()
   paths <- character()
   env$.analysis_print_save_fig <- function(plot, path, ..., mcse_mode) {
@@ -328,6 +328,8 @@ test_that("Analysis 8 per-cell percentile chunk keeps cell counts and mismatch t
   for (plot in plots) {
     expect_equal(dplyr::n_distinct(plot$data$n_cell), 1L)
     expect_equal(dplyr::n_distinct(plot$data$mismatch_type), 1L)
+    # Response probabilities stay in separate panels, never averaged.
+    expect_equal(dplyr::n_distinct(plot$data$prob_response), 2L)
     expect_equal(dplyr::n_distinct(plot$data$percentile), 3L)
     expect_no_error(ggplot2::ggplot_build(plot))
   }

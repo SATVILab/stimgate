@@ -146,7 +146,7 @@ test_that("QMD split headings and filenames retain response and mismatch setting
   for (label in c("threshold-placement-unstim", "upper-tail-and-fallbacks")) {
     block <- strsplit(q8, paste0("#| label: ", label), fixed = TRUE)[[1]][2]
     block <- strsplit(block, "```", fixed = TRUE)[[1]][1]
-    expect_match(block, 'extra_col = "mismatch_type"', fixed = TRUE)
+    expect_match(block, 'extra_col = c("mismatch_type", "n_cell")', fixed = TRUE)
     expect_match(block, "file_fn = .compare_mismatch_file", fixed = TRUE)
     expect_match(block, "extra_heading = .compare_mismatch_heading", fixed = TRUE)
   }
