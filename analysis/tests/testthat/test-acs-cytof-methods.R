@@ -9,7 +9,7 @@ script_bw_plot <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-pl
 script_plot_cyt <- file.path(root_dir, "scripts", "r", "acs_cytof-plot_cyt.R")
 script_compare <- file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R")
 script_fbeta <- file.path(root_dir, "scripts", "python", "fbeta.py")
-qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
+qmd_path <- file.path(root_dir, "analysis", "9b-real-compare-acs-cytof.qmd")
 
 .load_acs_method_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
@@ -24,11 +24,11 @@ qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
   env
 }
 
-test_that("ACS comparator settings pin the tuned and default comparators", {
+test_that("ACS comparator settings pin Analysis 9b's comparators", {
   env <- .load_acs_method_env()
   expect_setequal(
     env$.acsCytofComparatorMethods(),
-    c("fbeta", "tailgate", "fbeta_default", "tailgate_default")
+    c("fbeta", "tailgate", "fbeta_default")
   )
 
   for (method in c("fbeta", "fbeta_default")) {
@@ -44,25 +44,17 @@ test_that("ACS comparator settings pin the tuned and default comparators", {
   expect_equal(env$.acsCytofComparatorSettings("fbeta")$cacheVersion, 3L)
   expect_equal(env$.acsCytofComparatorSettings("fbeta_default")$cacheVersion, 2L)
 
-  for (method in c("tailgate", "tailgate_default")) {
+  for (method in env$.acsCytofTailgateSelectionMethods()) {
     tailgate <- env$.acsCytofComparatorSettings(method)
     expect_identical(tailgate$family, "tailgate")
     expect_identical(tailgate$params$tailgateX, "stim")
     expect_null(tailgate$params$bandwidth)
     expect_identical(tailgate$params$derivativeMethod, "firstDeriv")
+    expect_false(tailgate$params$strict)
   }
-  tuned <- env$.acsCytofComparatorSettings("tailgate")$params
-  expect_false(tuned$autoTol)
-  expect_equal(tuned$tol, 2e-5)
-  expect_equal(tuned$bias, 0.2)
-  expect_true(tuned$removeZero)
-  expect_equal(env$.acsCytofComparatorSettings("tailgate")$cacheVersion, 2L)
-
-  default <- env$.acsCytofComparatorSettings("tailgate_default")$params
-  expect_true(default$autoTol)
-  expect_equal(default$bias, 0)
-  expect_false(default$removeZero)
-  expect_equal(env$.acsCytofComparatorSettings("tailgate_default")$cacheVersion, 1L)
+  # Analysis 9b's "tailgate" needs Analysis 9a's selection.
+  expect_error(env$.acsCytofComparatorSettings("tailgate"), "Analysis 9a")
+  expect_error(env$.acsCytofComparatorSettings("tailgate_default"))
 })
 
 test_that("Tailgate moves its cutpoint up by the bias and can drop exact zeros", {
@@ -182,7 +174,7 @@ test_that("comparator execution errors stay explicit missing outcomes, not fallb
   env$.simCompareFbetaThreshold <- function(...) stop("reticulate worker failure")
   env$.simCompareTailgateThreshold <- function(...) stop("tailgate worker failure")
   # Tailgate checks its dependency before estimating.
-  methods <- c("fbeta", if (requireNamespace("cytoUtils", quietly = TRUE)) "tailgate")
+  methods <- c("fbeta", if (requireNamespace("cytoUtils", quietly = TRUE)) "tailgate_simulation_rmzero")
   for (method in methods) {
     expect_message(
       out <- env$.acsCytofThresholdOne(
@@ -204,10 +196,10 @@ test_that("a missing comparator implementation still stops the analysis", {
   env <- .load_acs_method_env()
   expect_error(
     env$.acsCytofThresholdOne(
-      method = "tailgate",
+      method = "tailgate_simulation_rmzero",
       xUns = c(0, 1),
       xStim = c(0, 2),
-      settings = env$.acsCytofComparatorSettings("tailgate")
+      settings = env$.acsCytofComparatorSettings("tailgate_simulation_rmzero")
     ),
     "Source scripts/r/sim-compare-freq_bs.R"
   )
@@ -316,7 +308,9 @@ test_that("a failed comparator rerun keeps the previous results", {
   expect_identical(readRDS(paths$tailgate), "old tailgate")
 
   expect_false(file.exists(paths$fbeta_default))
-  expect_false(file.exists(paths$tailgate_default))
+  for (method in env$.acsCytofTailgateSelectionMethods()) {
+    expect_false(file.exists(paths[[method]]))
+  }
 
   expect_no_error(run_with("none"))
   for (method in env$.acsCytofComparatorMethods()) {
@@ -539,7 +533,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   expect_identical(as.character(code[[1]][[2]]), "path_manual_output")
   env <- .load_acs_method_env()
   source(file.path(root_dir, "scripts", "r", "analysis-runtime.R"), local = env)
-  env$analysis_qmd <- "analysis/9-real-compare-acs-cytof.qmd"
+  env$analysis_qmd <- "analysis/9b-real-compare-acs-cytof.qmd"
   env$path_manual_output <- tempfile("acs-manual-cache-")
   dir.create(env$path_manual_output)
   withr::defer(unlink(env$path_manual_output, recursive = TRUE))
@@ -547,6 +541,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   env$run_stimgate <- FALSE
   env$run_comparators <- FALSE
   env$stimgate_loc_threshold_method <- "region"
+  env$tailgate_selection <- list(status = "selected", method = "tailgate_simulation_rmzero")
   env$comp_against_manual_cyt <- function(...) stop("Raw-data rebuild was called")
   env$.acsCytofManualSave <- function(...) stop("Cache write was called")
   env$.acsCytofManualSummaryTable <- function(x) x
@@ -566,8 +561,9 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   path <- file.path(env$path_manual_output, "manual-comparison.rds")
   saveRDS(cached, path)
   path_run_manifest <- file.path(env$path_manual_output, "manifest.rds")
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v9",
-    stimgate_loc_threshold_method = "region"), path_run_manifest)
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v10",
+    stimgate_loc_threshold_method = "region",
+    tailgate_config = "tailgate_simulation_rmzero"), path_run_manifest)
   withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA_character_)
   for (expr in as.list(code)[-1L]) eval(expr, env)
   expect_identical(env$manual_comparison_tbl, cached)
@@ -577,7 +573,8 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   for (old in list(
     list(analysis_semantics_version = "acs-cytof-v3",
       stimgate_loc_threshold_method = "region"),
-    list(analysis_semantics_version = "acs-cytof-v9")
+    list(analysis_semantics_version = "acs-cytof-v10",
+      tailgate_config = "tailgate_simulation_rmzero")
   )) {
     saveRDS(old, path_run_manifest)
     expect_error(
@@ -585,8 +582,14 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
       "RUN_SIMULATIONS=true"
     )
   }
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v9",
-    stimgate_loc_threshold_method = "region"), path_run_manifest)
+  # A comparison made with another Tailgate configuration is rejected.
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v10",
+    stimgate_loc_threshold_method = "region",
+    tailgate_config = "tailgate_acs_rmzero"), path_run_manifest)
+  expect_error(for (expr in as.list(code)[-1L]) eval(expr, env), "Analysis 9a selects")
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v10",
+    stimgate_loc_threshold_method = "region",
+    tailgate_config = "tailgate_simulation_rmzero"), path_run_manifest)
 
   unlink(path)
   expect_error(

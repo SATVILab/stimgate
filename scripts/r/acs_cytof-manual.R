@@ -211,18 +211,16 @@
   )
   pathPopulation <- do.call(file.path, as.list(pathParts))
 
-  switch(
-    method,
-    stimgate = file.path(pathPopulation, "stimgate"),
-    tailgate = file.path(pathPopulation, "tailgate", "result.rds"),
-    fbeta = file.path(pathPopulation, "fbeta", "result.rds"),
-    tailgate_default = file.path(pathPopulation, "tailgate_default", "result.rds"),
-    fbeta_default = file.path(pathPopulation, "fbeta_default", "result.rds"),
-    stop("Unknown ACS method: ", method)
-  )
+  if (identical(method, "stimgate")) {
+    return(file.path(pathPopulation, "stimgate"))
+  }
+  paths <- .acsCytofComparatorPaths(pathPopulation)
+  if (!method %in% names(paths)) stop("Unknown ACS method: ", method)
+  paths[[method]]
 }
 
-.acsCytofManualReadStats <- function(path, method, gateName) {
+.acsCytofManualReadStats <- function(path, method, gateName,
+                                     tailgateSelection = NULL) {
   if (identical(method, "stimgate")) {
     if (!dir.exists(path)) {
       stop("StimGate output not found at: ", path)
@@ -236,7 +234,9 @@
     return(statsTbl)
   }
 
-  .acsCytofReadComparatorCache(path = path, method = method)$stats
+  .acsCytofReadComparatorCache(
+    path = path, method = method, tailgateSelection = tailgateSelection
+  )$stats
 }
 
 .acsCytofCombinationToStandard <- function(cytCombn, channelMap) {
@@ -383,11 +383,15 @@
   outputGroup = NULL,
   gateName = "loc_minClust",
   sampleMap = NULL,
-  locThresholdMethod = "region"
+  locThresholdMethod = "region",
+  tailgateSelection = NULL
 ) {
   methods <- match.arg(
     methods,
-    choices = c("stimgate", .acsCytofComparatorMethods()),
+    choices = c(
+      "stimgate", .acsCytofComparatorMethods(),
+      .acsCytofTailgateSelectionMethods()
+    ),
     several.ok = TRUE
   )
   popMap <- .acsCytofManualPopulationMap()
@@ -431,7 +435,9 @@
       if (method == "stimgate") {
         .acsCytofReadStimGateManifest(paths[[method]], locThresholdMethod)
       } else {
-        object <- .acsCytofReadComparatorCache(paths[[method]], method)
+        object <- .acsCytofReadComparatorCache(
+          paths[[method]], method, tailgateSelection = tailgateSelection
+        )
         if (!identical(object$manifest$settings, object$settings)) {
           stop("Mismatched ACS comparator manifest settings; re-run all methods.")
         }
@@ -445,7 +451,9 @@
       dplyr::mutate(popCode = .env$popCode)
     mapped <- .acsCytofManualValidateSampleMap(mapped, popCode)
     purrr::map_dfr(methods, function(method) {
-      statsTbl <- .acsCytofManualReadStats(paths[[method]], method, gateName)
+      statsTbl <- .acsCytofManualReadStats(
+        paths[[method]], method, gateName, tailgateSelection
+      )
       single <- .acsCytofStatsSingleMarkers(
         statsTbl, method, popCode, unname(popMap[[popCode]]), mapped, cyt
       )
@@ -460,7 +468,9 @@
             locThresholdMethod = .env$locThresholdMethod
           )
       } else {
-        .acsCytofReadComparatorCache(paths[[method]], method)$thresholds
+        .acsCytofReadComparatorCache(
+          paths[[method]], method, tailgateSelection = tailgateSelection
+        )$thresholds
       }
       .acsCytofJoinProvenance(single, thresholds)
     })
@@ -481,7 +491,8 @@
   outputGroup = NULL,
   gateName = "loc_minClust",
   sampleMap = NULL,
-  locThresholdMethod = "region"
+  locThresholdMethod = "region",
+  tailgateSelection = NULL
 ) {
   autoTbl <- .acsCytofManualAutoTable(
     pathScratchBase = pathScratchBase,
@@ -492,7 +503,8 @@
     outputGroup = outputGroup,
     gateName = gateName,
     sampleMap = sampleMap,
-    locThresholdMethod = locThresholdMethod
+    locThresholdMethod = locThresholdMethod,
+    tailgateSelection = tailgateSelection
   )
   manualTbl <- .comp_against_manual_cyt_format_manual(
     fn = fn,
@@ -513,7 +525,8 @@
   if (anyDuplicated(manualTbl[joinBy])) stop("Duplicate ACS manual comparison keys.")
 
   methodLevels <- c(
-    "stimgate", "tailgate", "fbeta", "tailgate_default", "fbeta_default"
+    "stimgate", "tailgate", "fbeta", "fbeta_default",
+    .acsCytofTailgateSelectionMethods()
   )
   popLevels <- stats::na.omit(unname(.acsCytofManualPopulationMap()))
   cytLevels <- unname(.acsCytofChannelMap())
@@ -543,7 +556,8 @@
     methods = attr(autoTbl, "manifest"),
     comparisonSettings = list(
       gateName = gateName, pop = pop, cyt = cyt, methods = methods,
-      locThresholdMethod = locThresholdMethod
+      locThresholdMethod = locThresholdMethod,
+      tailgateConfig = tailgateSelection$method
     ),
     manualInputHash = .acsCytofHash(manualTbl)
   )
@@ -889,7 +903,8 @@ comp_against_manual_cyt <- function(
   sample_map = NULL,
   path_dir_save = NULL,
   save_plots = TRUE,
-  loc_threshold_method = "region"
+  loc_threshold_method = "region",
+  tailgate_selection = NULL
 ) {
   comparisonTbl <- .acsCytofManualComparisonTable(
     fn = fn,
@@ -901,7 +916,8 @@ comp_against_manual_cyt <- function(
     outputGroup = output_group,
     gateName = gate_name,
     sampleMap = sample_map,
-    locThresholdMethod = loc_threshold_method
+    locThresholdMethod = loc_threshold_method,
+    tailgateSelection = tailgate_selection
   )
   attr(comparisonTbl, "summary") <- .acsCytofManualSummaryTable(comparisonTbl)
 

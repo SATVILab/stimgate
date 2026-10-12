@@ -1,5 +1,5 @@
 # Analysis 17 (17-explore-acs-cytof-coexpression.qmd): a co-expression score
-# for each cell, read from Analysis 9's ACS caches. For markers A, the score is
+# for each cell, read from Analysis 9b's ACS caches. For markers A, the score is
 # -log10 of the product of each marker's survival value under the control
 # tube, S_j(x) = P_control(X_j >= x): large when a cell is jointly unusual for
 # all markers in A. Survival values are conformal tail p-values, so the
@@ -365,7 +365,7 @@
 # (stimulated minus control, %) frequency of cells positive for any of
 # `markers` and of each marker, with the ordinary gates and with the lowered
 # gates `low` (from `.acsCoexLowerSummary()`; `.coexPositive()`), beside
-# Analysis 9's manual net frequencies (`manual`: cyt, freq_stim_man,
+# Analysis 9b's manual net frequencies (`manual`: cyt, freq_stim_man,
 # freq_uns_man; unclipped here) and its StimGate frequencies from
 # getStimStats() (freq_stim_auto, freq_uns_auto). The lowered gates only add
 # a marker to cells already positive for another, so the total cannot change.

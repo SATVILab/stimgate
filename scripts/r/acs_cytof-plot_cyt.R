@@ -17,12 +17,29 @@
 }
 
 .acsCytofValidationMethodLabels <- function() {
+  configs <- .acsCytofTailgateConfigLabels()
   c(
     stimgate = "StimGate",
     fbeta = "F-beta",
     tailgate = "Tailgate",
     fbeta_default = "F-beta (default settings)",
-    tailgate_default = "Tailgate (default settings)"
+    stats::setNames(paste0("Tailgate: ", configs), names(configs))
+  )
+}
+
+# Short labels for Analysis 9a's eight Tailgate configurations. Defined here
+# (not from .acsCytofTailgateConfigs()) so Analysis 10 need not source the
+# methods helpers; test-acs-cytof-methods.R checks the two agree.
+.acsCytofTailgateConfigLabels <- function() {
+  cfg <- c(
+    simulation = "simulation-selected", autotol = "automatic-tolerance reference",
+    acs = "ACS-tuned", package = "cytoUtils default"
+  )
+  zero <- c(rmzero = "zeros removed", allcells = "all cells")
+  grid <- expand.grid(zero = names(zero), cfg = names(cfg), stringsAsFactors = FALSE)
+  stats::setNames(
+    paste0(cfg[grid$cfg], ", ", zero[grid$zero]),
+    paste0("tailgate_", grid$cfg, "_", grid$zero)
   )
 }
 
@@ -49,10 +66,11 @@
   c("stimgate", "fbeta", "tailgate")
 }
 
-# Tailgate and F-beta at their published defaults (all cells, automatic
-# Tailgate tolerance, no bias), reported in the appendix of Analysis 10.
+# F-beta at its published defaults (all cells, pdfs integrating to one),
+# reported in the appendix of Analysis 10. Tailgate's alternative settings are
+# compared in Analysis 9a.
 .acsCytofValidationAppendixMethods <- function() {
-  c("fbeta_default", "tailgate_default")
+  "fbeta_default"
 }
 
 # The main results use StimGate and the tuned comparators only.
@@ -168,6 +186,16 @@
   (2 * covariance) / denominator
 }
 
+# Manuscript signal eligibility for one population/cytokine/stimulus stratum,
+# from manual frequencies only: the 75th percentile of the stimulated frequency
+# exceeds three times the larger of 0.01% and the median unstimulated
+# frequency, and the 75th percentile of the net frequency exceeds 0.02%.
+.acsCytofValidationEligible <- function(freqStimMan, freqUnsMan, freqBsMan) {
+  stats::quantile(freqStimMan, 0.75, na.rm = TRUE) >
+    3 * max(0.01, stats::median(freqUnsMan, na.rm = TRUE)) &&
+    stats::quantile(freqBsMan, 0.75, na.rm = TRUE) > 0.02
+}
+
 .acsCytofValidationCorrelationTable <- function(comparisonTbl) {
   .acsCytofValidationValidateComparisonTable(comparisonTbl)
 
@@ -175,11 +203,9 @@
   correlationTbl <- comparisonTbl |>
     dplyr::mutate(freq_bs_auto = dplyr::if_else(.data$thresholdFailed, NA_real_, .data$freq_bs_auto)) |>
     dplyr::group_by(method, pop, cyt, stim) |>
-    dplyr::filter(
-      stats::quantile(.data$freq_stim_man, 0.75, na.rm = TRUE) >
-        3 * max(0.01, stats::median(.data$freq_uns_man, na.rm = TRUE)),
-      stats::quantile(.data$freq_bs_man, 0.75, na.rm = TRUE) > 0.02
-    ) |>
+    dplyr::filter(.acsCytofValidationEligible(
+      .data$freq_stim_man, .data$freq_uns_man, .data$freq_bs_man
+    )) |>
     dplyr::summarise(
       n_total = dplyr::n(),
       n_failed = sum(.data$thresholdFailed),
@@ -211,10 +237,7 @@
 
 .acsCytofValidationPlotScatter <- function(comparisonTbl, method) {
   .acsCytofValidationValidateComparisonTable(comparisonTbl)
-  method <- match.arg(
-    method,
-    c(.acsCytofValidationMethods(), .acsCytofValidationAppendixMethods())
-  )
+  method <- match.arg(method, names(.acsCytofValidationMethodLabels()))
   if (!method %in% as.character(unique(comparisonTbl$method))) {
     stop("No ACS validation rows are available for method: ", method, ".")
   }
@@ -284,13 +307,11 @@
   correlationTbl,
   method,
   metric = c("pcc", "ccc"),
-  realPopulationsOnly = TRUE
+  realPopulationsOnly = TRUE,
+  thesis = FALSE
 ) {
   metric <- match.arg(metric)
-  method <- match.arg(
-    method,
-    c(.acsCytofValidationMethods(), .acsCytofValidationAppendixMethods())
-  )
+  method <- match.arg(method, names(.acsCytofValidationMethodLabels()))
   requiredCols <- c("method", "pop", "cyt", "stim", metric)
   missingCols <- setdiff(requiredCols, names(correlationTbl))
   if (length(missingCols) > 0L) {
@@ -370,7 +391,7 @@
     ) +
     ggplot2::geom_text(
       ggplot2::aes(label = .data$cellLabel, colour = .data$textColour),
-      size = 3
+      size = if (isTRUE(thesis)) 2.3 else 3
     ) +
     ggplot2::scale_colour_identity() +
     ggplot2::facet_wrap(ggplot2::vars(stim), ncol = 3, scales = "fixed") +
@@ -393,7 +414,53 @@
       axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1),
       strip.text = ggplot2::element_text(size = 9.5),
       legend.title = ggplot2::element_text(size = 10)
+    ) +
+    if (isTRUE(thesis)) .acsCytofThesisHeatmapTheme()
+}
+
+# Text sizes (pt) for heatmaps printed at the thesis text width
+# (.acsCytofThesisFigureSize()): 8 pt axis and strip text against 12 pt body
+# text, with the eligibility key left to the figure caption.
+.acsCytofThesisHeatmapTheme <- function() {
+  list(
+    ggplot2::labs(caption = NULL),
+    ggplot2::theme(
+      text = ggplot2::element_text(size = 8),
+      axis.text = ggplot2::element_text(size = 7.5),
+      axis.title = ggplot2::element_text(size = 8.5),
+      strip.text = ggplot2::element_text(size = 8),
+      legend.title = ggplot2::element_text(size = 8, vjust = 0.8),
+      legend.text = ggplot2::element_text(size = 7),
+      legend.key.height = ggplot2::unit(3, "mm"),
+      legend.key.width = ggplot2::unit(12, "mm"),
+      legend.margin = ggplot2::margin(0, 0, 0, 0),
+      plot.margin = ggplot2::margin(2, 4, 2, 2)
     )
+  )
+}
+
+# The thesis (Manuscript22RodoThesis, stanford-thesis Typst template) sets A4
+# with 1.5 in left and 1 in other margins: a 146.5 x 246.2 mm text area.
+# Figures are inserted at full text width, so they are drawn at that width.
+.acsCytofThesisFigureSize <- function(realPopulationsOnly = TRUE) {
+  list(
+    width = 146.5,
+    height = if (isTRUE(realPopulationsOnly)) 62 else 82,
+    units = "mm"
+  )
+}
+
+# Save a thesis figure as vector PDF and 300 dpi PNG at its printed size.
+.acsCytofSaveThesisFigure <- function(plot, pathNoExt, size) {
+  dir.create(dirname(pathNoExt), recursive = TRUE, showWarnings = FALSE)
+  for (ext in c("pdf", "png")) {
+    ggplot2::ggsave(
+      paste0(pathNoExt, ".", ext), plot,
+      width = size$width, height = size$height, units = size$units,
+      dpi = 300, device = if (ext == "pdf") grDevices::cairo_pdf else "png"
+    )
+  }
+  invisible(paste0(pathNoExt, c(".pdf", ".png")))
 }
 
 .acsCytofValidationReplaceDirectory <- function(stagedDir, targetDir) {

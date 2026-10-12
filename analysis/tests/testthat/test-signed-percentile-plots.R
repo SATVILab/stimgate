@@ -163,7 +163,7 @@ test_that("all requested percentile QMD chunks parse and obey plot controls", {
     "7-sim-compare-freq_bs.qmd" = "signed-percentiles-cell-count",
     "8-sim-compare-freq_bs-batch.qmd" = c("signed-percentiles-averaged",
       "signed-percentiles-by-n-cell"),
-    "9-real-compare-acs-cytof.qmd" = c("manual-signed-percentiles",
+    "9b-real-compare-acs-cytof.qmd" = c("manual-signed-percentiles",
       "manual-signed-percentiles-by-stimulus"),
     "10-real-compare-acs-cytof-validation.qmd" = "validation-signed-percentiles-by-stimulus"
   )
@@ -216,7 +216,7 @@ test_that("stimulus percentile summaries retain zeros, failures and common donor
 
 test_that("ACS stimulus percentile chunks print every requested method and keep strata separate", {
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
-  docs <- c("9-real-compare-acs-cytof.qmd", "10-real-compare-acs-cytof-validation.qmd")
+  docs <- c("9b-real-compare-acs-cytof.qmd", "10-real-compare-acs-cytof-validation.qmd")
   labels <- c("manual-signed-percentiles-by-stimulus", "validation-signed-percentiles-by-stimulus")
   for (i in seq_along(docs)) {
     env <- .signed_percentile_env()
@@ -282,7 +282,7 @@ test_that("ACS stimulus percentile chunks print every requested method and keep 
 test_that("main signed percentile views precede conditional severity diagnostics", {
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   for (doc in c("7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd",
-    "9-real-compare-acs-cytof.qmd")) {
+    "9b-real-compare-acs-cytof.qmd")) {
     lines <- readLines(file.path(root, "analysis", doc), warn = FALSE)
     main <- which(grepl("^#\\| label: .*signed-percentiles", lines))
     conditional <- which(grepl("^#\\| label: (signed-error|manual-signed-error|dataset-max-severity)", lines))

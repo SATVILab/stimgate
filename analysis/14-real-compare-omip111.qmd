@@ -103,7 +103,7 @@ if (run_methods) .acsCytofEnsureCurrentCheckout(root_dir)
 ```{r}
 #| label: scientific-settings
 scientific_settings <- list(
-  semantics = "omip111-v5", seed = 20261009L,
+  semantics = "omip111-v6", seed = 20261009L,
   preprocessing = list(reference = "raw cytokine lower cutoff on common non-naive parent",
     cofactor = 150, parentRelativeTolerance = 0.02,
     frequencyTolerancePp = 0.1),
@@ -113,7 +113,7 @@ scientific_settings <- list(
     calcCytPosGates = FALSE, minCell = 100, locThresholdMethod = "cap"),
   comparators = list(
     fbeta = .acsCytofComparatorSettings("fbeta_default")$params,
-    tailgate = .acsCytofComparatorSettings("tailgate_default")$params))
+    tailgate = .acsCytofComparatorSettings("tailgate_simulation_allcells")$params))
 ```
 
 Before fitting any method, raw unmixed cytokine intensities are transformed
@@ -142,9 +142,12 @@ these equal the plain `x > gate` counts.
 F-beta uses β = 0.8, θ = 2, smoothing width 10 and automatic bin count.
 The existing Richards implementation uses common histogram edges spanning
 both tubes, rather than the original unstimulated-only range. Tailgate uses
-the stimulated distribution, automatic bandwidth and automatic derivative
-tolerance, without an added bias. We retain zero and negative fluorescence
-values, with no ACS-specific CyTOF zero-spike adjustments. Every comparator
+the settings selected in the simulations (Analyses 6 and 7): the stimulated
+distribution, automatic bandwidth, automatic derivative tolerance (1% of the
+largest absolute first derivative of the density) and a bias of 0.1 added to
+the cutpoint. They were chosen on simulated data, not on these author gates.
+We retain zero and negative fluorescence values, with no ACS-specific CyTOF
+zero-spike adjustments. Every comparator
 threshold is applied to both matched tubes using strict `x > threshold`.
 Genuine no-cutpoint outcomes retain an explicitly labelled empty-gate fallback;
 runtime errors retain missing estimates and counts.

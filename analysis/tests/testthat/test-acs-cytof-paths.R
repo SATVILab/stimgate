@@ -18,7 +18,7 @@
 
 test_that("every ACS projr path remains stable across Quarto working-directory changes", {
   root <- normalizePath(file.path(testthat::test_path(), "../../.."), winslash = "/")
-  files <- c("analysis/9-real-compare-acs-cytof.qmd",
+  files <- c("analysis/9b-real-compare-acs-cytof.qmd",
     "analysis/10-real-compare-acs-cytof-validation.qmd",
     "scripts/r/acs_cytof-manual.R", "scripts/r/acs_cytof-gate.R")
   calls <- unlist(lapply(file.path(root, files), .acs_path_document_calls), recursive = FALSE)

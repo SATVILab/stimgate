@@ -17,7 +17,8 @@ scripts=(
   "dev-7-sim-compare-freq_bs.sh"
   "dev-7b-sim-compare-null.sh"
   "dev-8-sim-compare-freq_bs-batch.sh"
-  "dev-9-real-compare-acs-cytof.sh"
+  "dev-9a-real-tune-acs-cytof-tailgate.sh"
+  "dev-9b-real-compare-acs-cytof.sh"
   "dev-11a-sim-low-separation-cyt-pos.sh"
   "dev-11b-sim-low-separation-batch.sh"
   "dev-12-sim-cluster-gates.sh"
@@ -74,7 +75,8 @@ if (( $# > 0 )); then
 fi
 
 # Some analyses read another's results, so submit the one they read first
-# when both run: 13, 17 and 18 read 9, 14b reads 14 and 15b reads 15. The OMIP
+# when both run: 9b reads 9a, 13, 17 and 18 read 9b (and 9a's selection),
+# 14b reads 14 and 15b reads 15. The OMIP
 # analyses and 17 also wait for Analysis 1's projr build, which clears the
 # figure folder.
 move_after() {
@@ -94,9 +96,10 @@ for omip_script in dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-s
   dev-17-explore-acs-cytof-coexpression.sh; do
   move_after dev-1-sim-trans.sh "$omip_script"
 done
-move_after dev-9-real-compare-acs-cytof.sh dev-13-real-debug-acs-cytof.sh
-move_after dev-9-real-compare-acs-cytof.sh dev-17-explore-acs-cytof-coexpression.sh
-move_after dev-9-real-compare-acs-cytof.sh dev-18-explore-acs-cytof-coexpression-gates.sh
+move_after dev-9a-real-tune-acs-cytof-tailgate.sh dev-9b-real-compare-acs-cytof.sh
+move_after dev-9b-real-compare-acs-cytof.sh dev-13-real-debug-acs-cytof.sh
+move_after dev-9b-real-compare-acs-cytof.sh dev-17-explore-acs-cytof-coexpression.sh
+move_after dev-9b-real-compare-acs-cytof.sh dev-18-explore-acs-cytof-coexpression-gates.sh
 move_after dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh
 move_after dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh
 
@@ -156,9 +159,12 @@ plot_qmds_for_script() {
     dev-8-sim-compare-freq_bs-batch.sh)
       echo "analysis/8-sim-compare-freq_bs-batch.qmd"
       ;;
-    # Analysis 10 only presents analysis 9's saved results.
-    dev-9-real-compare-acs-cytof.sh)
-      echo "analysis/9-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd"
+    dev-9a-real-tune-acs-cytof-tailgate.sh)
+      echo "analysis/9a-real-tune-acs-cytof-tailgate.qmd"
+      ;;
+    # Analysis 10 only presents Analysis 9b's saved results.
+    dev-9b-real-compare-acs-cytof.sh)
+      echo "analysis/9b-real-compare-acs-cytof.qmd:analysis/10-real-compare-acs-cytof-validation.qmd"
       ;;
     dev-12-sim-cluster-gates.sh)
       echo "analysis/12-sim-cluster-gates.qmd"
@@ -196,13 +202,17 @@ plots_in_sim_job() {
 
 # Simulation jobs that must wait for another launcher's jobs to succeed, as
 # ':'-prefixed job IDs (empty when that launcher is not in this submission).
-# Analyses 13 and 18 read Analysis 9's caches and results, and 17 reads its
-# gates; 14b and 15b compare against Analysis 14's and 15's saved results.
+# Analysis 9b reads Analysis 9a's GatingSets and Tailgate selection. Analyses
+# 13 and 18 read Analysis 9b's caches and results, and 17 reads its gates; 14b
+# and 15b compare against Analysis 14's and 15's saved results.
 sim_dependency_for_script() {
   case "$1" in
+    dev-9b-real-compare-acs-cytof.sh)
+      echo "${script_job_ids[dev-9a-real-tune-acs-cytof-tailgate.sh]:-}"
+      ;;
     dev-13-real-debug-acs-cytof.sh | dev-17-explore-acs-cytof-coexpression.sh | \
       dev-18-explore-acs-cytof-coexpression-gates.sh)
-      echo "${script_job_ids[dev-9-real-compare-acs-cytof.sh]:-}"
+      echo "${script_job_ids[dev-9b-real-compare-acs-cytof.sh]:-}"
       ;;
     dev-14b-real-compare-omip111-shifted-peak.sh)
       echo "${script_job_ids[dev-14-real-compare-omip111.sh]:-}"

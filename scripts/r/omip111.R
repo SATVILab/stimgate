@@ -241,7 +241,7 @@
             )
             for (method in c("F-beta", "Tailgate")) {
               comparator <- .acsCytofComparatorSettings(
-                if (method == "F-beta") "fbeta_default" else "tailgate_default"
+                if (method == "F-beta") "fbeta_default" else "tailgate_simulation_allcells"
               )
               threshold <- .acsCytofThresholdOne(
                 method = method, xUns = xUns[, marker], xStim = xStim[, marker],

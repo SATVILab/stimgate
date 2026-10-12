@@ -26,7 +26,7 @@ applied to every ACS population, stimulation and donor, starting from Analysis
 9's ordinary gates, to see what it does at scale and to catch anything
 pathological.
 
-All six cytokines Analysis 9 gates (IFNg, IL2, TNF, IL17, IL6 and IL22) are
+All six cytokines Analysis 9b gates (IFNg, IL2, TNF, IL17, IL6 and IL22) are
 considered jointly: every ordered pair of them is tried in every tube, and
 every tube is described by the same 64 combinations. A cytokine without a gate
 in a tube is negative there.
@@ -54,7 +54,7 @@ stimulated tube's gates.
 
 Each tube is scored under three rules:
 
-- **ordinary**: Analysis 9's ordinary gates (the baseline);
+- **ordinary**: Analysis 9b's ordinary gates (the baseline);
 - **coexpression (screened)**: the rule above with step 1, so only pairs
   whose double positives already show a clear response are tried;
 - **coexpression (unscreened)**: the rule without step 1, so every pair is
@@ -91,7 +91,7 @@ set one overall threshold per cytokine, so they miss cells that respond only
 weakly in one cytokine alongside another and under-count multi-positive
 cells; a frequency above the manual one is not an error.
 
-Everything is read from Analysis 9's most recent run; Analysis 9's caches are
+Everything is read from Analysis 9b's most recent run; Analysis 9b's caches are
 never changed. Results are cached under the projr cache folder
 `acs_cytof_coexpression/`.
 
@@ -127,7 +127,7 @@ compass_iterations <- as.integer(Sys.getenv("ACS_COEX_COMPASS_ITERATIONS", "1000
 #| label: settings
 #| include: false
 pop_vec <- c("tcrgd", "cd4", "cd8", "nk", "nk_pre", "b")
-# Every cytokine Analysis 9 gates, considered jointly.
+# Every cytokine Analysis 9b gates, considered jointly.
 channel_map <- .acsCytofChannelMap()
 rule_settings <- .acsCoexGatesSettings()
 rule_vec <- .acsCoexGatesRules()
@@ -142,7 +142,7 @@ compass_settings <- c(run_settings, list(iterations = compass_iterations, replic
 ```{r}
 #| label: paths
 #| include: false
-# Analysis 9's caches are only read: never create or change them here.
+# Analysis 9b's caches are only read: never create or change them here.
 path_gs_base <- projr::projr_path_get("cache", "acs_cytof", "gs", create = FALSE, format = "absolute")
 path_scratch_base <- projr::projr_path_get("cache", "acs_cytof", "scratch", create = FALSE, format = "absolute")
 cache_dir <- projr::projr_path_get_dir(

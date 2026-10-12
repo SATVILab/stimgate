@@ -1,18 +1,19 @@
 root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
 script_helper <- file.path(root_dir, "scripts", "r", "acs_cytof-helper.R")
 script_gate <- file.path(root_dir, "scripts", "r", "acs_cytof-gate.R")
-qmd_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
+qmd_path <- file.path(root_dir, "analysis", "9b-real-compare-acs-cytof.qmd")
 launcher_path <- file.path(
   root_dir,
   "scripts",
   "slurm",
-  "dev-9-real-compare-acs-cytof.sh"
+  "dev-9b-real-compare-acs-cytof.sh"
 )
 
 .load_acs_gate_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   source(script_helper, local = env)
   source(script_gate, local = env)
+  source(file.path(root_dir, "scripts", "r", "acs_cytof-methods.R"), local = env)
   env
 }
 
@@ -277,17 +278,20 @@ test_that("analysis 9 stages inherit simulation controls and allow overrides", {
       )
   }, as.list(code))
   expect_length(controls, 4L)
-  stages <- c("run_preprocessing", "run_stimgate", "run_comparators")
+  # Analysis 9a preprocesses the populations, so 9b's preprocessing is off
+  # unless requested.
+  stages <- c("run_stimgate", "run_comparators")
   for (enabled in c(TRUE, FALSE)) {
     env$params <- yaml_params$params
     env$params$run_simulations <- enabled
     for (expr in controls) eval(expr, env)
     expect_identical(vapply(stages, get, logical(1), envir = env),
-                     stats::setNames(rep(enabled, 3L), stages))
+                     stats::setNames(rep(enabled, 2L), stages))
+    expect_false(env$run_preprocessing)
   }
-  Sys.setenv(RUN_SIMULATIONS = "true", RUN_PREPROCESSING = "false")
+  Sys.setenv(RUN_SIMULATIONS = "true", RUN_PREPROCESSING = "true")
   for (expr in controls) eval(expr, env)
-  expect_false(env$run_preprocessing)
+  expect_true(env$run_preprocessing)
   expect_true(env$run_stimgate)
   expect_true(env$run_comparators)
 })

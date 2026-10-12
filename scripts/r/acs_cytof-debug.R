@@ -4,20 +4,20 @@
 # Source after analysis-runtime.R, analysis-plot-style.R, acs_cytof-helper.R,
 # acs_cytof-gate.R, acs_cytof-methods.R and sim-debug-loc.R.
 #
-# Each population is re-gated with Analysis 9's settings and random-number
+# Each population is re-gated with Analysis 9b's settings and random-number
 # stream, inside `.simDebugLoc()`, into this analysis's own cache folder.
-# Analysis 9's GatingSets, StimGate projects, comparator results and manual
+# Analysis 9b's GatingSets, StimGate projects, comparator results and manual
 # comparison are only read. Every recorded tube is written to disk as soon as
 # it is gated; once the final (clustered, cytokine-positive-refined) gates are
 # known, the pages are drawn one at a time and the records deleted.
 
-# Evaluate Analysis 9's "scientific-settings" chunk, so both analyses use the
+# Evaluate Analysis 9b's "scientific-settings" chunk, so both analyses use the
 # same populations, StimGate settings and seed without copying them.
 .acsCytofDebugSettings <- function(qmdPath) {
   lines <- readLines(qmdPath, warn = FALSE)
   start <- grep("^#\\| label: scientific-settings$", lines)
   if (length(start) != 1L) {
-    stop("Analysis 9 has no single 'scientific-settings' chunk: ", qmdPath)
+    stop("Analysis 9b has no single 'scientific-settings' chunk: ", qmdPath)
   }
   end <- start + which(lines[-seq_len(start)] == "```")[1L]
   code <- lines[(start + 1L):(end - 1L)]
@@ -46,7 +46,7 @@
 }
 
 # SampleIDs whose pages are saved. "manual" keeps the donors with manual gating
-# in Analysis 9's comparison; without that comparison every donor is kept.
+# in Analysis 9b's comparison; without that comparison every donor is kept.
 .acsCytofDebugResolveSamples <- function(samples, comparison) {
   if (!identical(samples, "manual")) {
     return(samples)
@@ -58,7 +58,7 @@
   sort(unique(as.character(comparison$SampleID)))
 }
 
-# This analysis's own folders for one population: never inside Analysis 9's.
+# This analysis's own folders for one population: never inside Analysis 9b's.
 .acsCytofDebugPaths <- function(pop, pathDebugBase, outputGroup = NULL) {
   dir <- do.call(file.path, as.list(c(pathDebugBase, outputGroup, pop)))
   list(
@@ -126,7 +126,7 @@
   if (length(hit)) g[[hit[[1L]]]] else NA_real_
 }
 
-# Analysis 9's StimGate rows against manual gating (read only), or NULL.
+# Analysis 9b's StimGate rows against manual gating (read only), or NULL.
 .acsCytofDebugReadComparison <- function(path, locThresholdMethod) {
   if (!file.exists(path)) {
     return(NULL)
@@ -153,7 +153,7 @@
 #'
 #' Within each population, stimulus and cytokine (or, with `byGroup = FALSE`,
 #' across all of them together): the `nLargest` samples where StimGate's
-#' Analysis 9 frequency differs most from the manual one, the `nClosest` that
+#' Analysis 9b frequency differs most from the manual one, the `nClosest` that
 #' agree best (among samples with a positive manual frequency when the
 #' comparison has one), and `nRandom` of the rest. Without a manual
 #' comparison, all are drawn at random.
@@ -249,7 +249,7 @@
     label = c(
       "final StimGate gate (loc_minClust)",
       "final gate if another cytokine is positive",
-      "Tailgate gate (Analysis 9)", "F-beta gate (Analysis 9)",
+      "Tailgate gate (Analysis 9b)", "F-beta gate (Analysis 9b)",
       "value matching manual frequency (not a manual gate)"
     ),
     x = c(
@@ -328,11 +328,11 @@
   info$final <- tibble::tibble(
     name = c(
       "final gate (loc_minClust)", "final gate source", "final gate reason",
-      "gate if another cytokine positive", "same gates as Analysis 9",
+      "gate if another cytokine positive", "same gates as Analysis 9b",
       "stim - unstim above final gate",
-      "StimGate frequency scored in Analysis 9", "manual stim",
+      "StimGate frequency scored in Analysis 9b", "manual stim",
       "manual unstim", "manual stim - unstim",
-      "Analysis 9 StimGate - manual",
+      "Analysis 9b StimGate - manual",
       "value matching manual frequency", "Tailgate gate",
       "stim - unstim above Tailgate gate", "F-beta gate",
       "stim - unstim above F-beta gate"
@@ -465,11 +465,12 @@
   summary
 }
 
-# Analysis 9's comparator thresholds for one population (read only).
-.acsCytofDebugComparatorGates <- function(paths9, method) {
+# Analysis 9b's comparator thresholds for one population (read only).
+# Tailgate's are read only with Analysis 9a's selection that made them.
+.acsCytofDebugComparatorGates <- function(paths9, method, tailgateSelection = NULL) {
   path <- paths9[[method]]
   obj <- tryCatch(
-    .acsCytofReadComparatorCache(path, method),
+    .acsCytofReadComparatorCache(path, method, tailgateSelection = tailgateSelection),
     error = function(e) NULL
   )
   if (is.null(obj)) {
@@ -486,7 +487,7 @@
 #' Re-gate one ACS population while recording every tube, then draw its pages
 #'
 #' @param pop character Population code.
-#' @param paths9 list Analysis 9's `.acsCytofPopulationPaths()`; read only.
+#' @param paths9 list Analysis 9b's `.acsCytofPopulationPaths()`; read only.
 #' @param pathsDebug list `.acsCytofDebugPaths()`; built in a temporary
 #'   sibling and swapped in only on success.
 #' @param settings list `.acsCytofDebugSettings()`.
@@ -510,9 +511,9 @@
   rootDir = NULL
 ) {
   if (!dir.exists(paths9$gs)) {
-    stop("Analysis 9's cached GatingSet for '", pop, "' is missing: ", paths9$gs)
+    stop("Analysis 9b's cached GatingSet for '", pop, "' is missing: ", paths9$gs)
   }
-  # The same order of steps as Analysis 9's population runner.
+  # The same order of steps as Analysis 9b's population runner.
   .acsCytofEnsureCurrentCheckout(rootDir)
   # Read-only backend: the cached GatingSet cannot be changed.
   gs <- flowWorkspace::load_gs(paths9$gs, backend_readonly = TRUE)
@@ -601,7 +602,7 @@
     if (is.null(summary$record)) summary$record <- NA_character_
     summary$recorded <- !is.na(summary$initialGate) | !is.na(summary$record)
 
-    # Gates must equal Analysis 9's saved gates: same data, settings and
+    # Gates must equal Analysis 9b's saved gates: same data, settings and
     # random-number stream.
     gates9 <- if (dir.exists(paths9$stimgate)) {
       finalGates(paths9$stimgate) |>
@@ -620,7 +621,9 @@
     )
 
     for (method in c("tailgate", "fbeta")) {
-      gatesMethod <- .acsCytofDebugComparatorGates(paths9, method)
+      gatesMethod <- .acsCytofDebugComparatorGates(
+        paths9, method, settings$tailgateSelection
+      )
       if (is.null(gatesMethod)) {
         summary[[paste0(method, "Gate")]] <- NA_real_
         summary[[paste0(method, "Fallback")]] <- NA

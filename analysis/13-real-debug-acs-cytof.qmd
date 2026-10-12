@@ -34,14 +34,14 @@ samples: where StimGate's gate falls on each stimulated tube of the ACS CyTOF
 dataset, and why. There is one page for every sample (stimulated tube),
 cytokine, population and stimulation.
 
-Each population is gated again exactly as in Analysis 9 (same settings,
+Each population is gated again exactly as in Analysis 9b (same settings,
 same data and the same random-number stream), while the local-FDR steps of
 every tube are recorded. Each page shows the raw stimulated and unstimulated
 densities, the raw and smoothed response probability, its derivative, the
 expected responding cells per bin and the taut-string density, with the
 filtering boundaries and the initial local-FDR gate. It adds the final gate
 StimGate applied after threshold sharing
-(`loc_minClust`, the gate Analysis 9 scores), Analysis 9's Tailgate and
+(`loc_minClust`, the gate Analysis 9b scores), Analysis 9b's Tailgate and
 F-beta gates, and a purple dashed line at the stimulated-tube value where
 stimulated minus unstimulated frequency equals the manual frequency. That line
 is derived from the manual frequency only; it is not a manual gate. The text
@@ -53,7 +53,7 @@ background-subtracted frequencies.
 
 `RUN_SIMULATIONS=true` re-gates the chosen populations and draws every page
 into this analysis's cache; `RUN_PLOTS=true` copies the pages to the output
-folder and writes this report. Both read Analysis 9's cached GatingSets, its
+folder and writes this report. Both read Analysis 9b's cached GatingSets, its
 StimGate gates, its Tailgate and F-beta results and its manual comparison,
 and never change them.
 
@@ -65,10 +65,10 @@ separated; `all` selects everything.
   combinations considered for this report. Across all of them together
   (`html_by_group = false`, the default; `true` chooses within each
   population, stimulation and cytokine), it shows the `html_n_largest` (20)
-  samples where StimGate's Analysis 9 frequency differs most from the manual
+  samples where StimGate's Analysis 9b frequency differs most from the manual
   one, the `html_n_closest` (5) that agree best among samples with a manual
   response, and `html_n_random` (5) of the others (seed `html_seed`); without
-  Analysis 9's manual comparison, all are chosen at random. `html_samples`
+  Analysis 9b's manual comparison, all are chosen at random. `html_samples`
   (`ACS_DEBUG_HTML_SAMPLES`) shows chosen SampleIDs instead. The report
   samples are chosen when re-gating, so change these with
   `RUN_SIMULATIONS=true`.
@@ -76,10 +76,10 @@ separated; `all` selects everything.
   (`ACS_DEBUG_CYTS`), `samples` (`ACS_DEBUG_SAMPLES`): further pages saved to
   files. `samples` defaults to `none`, so only the report's samples are drawn;
   `manual` adds every donor with manual gating and `all` every donor. Every
-  tube of a chosen population is still gated, so the gates match Analysis 9.
+  tube of a chosen population is still gated, so the gates match Analysis 9b.
 - `n_workers` (`ACS_N_WORKERS`): populations gated at once.
 
-Quick and dev renders gate only the Analysis 9 TCRgd tester GatingSet and draw
+Quick and dev renders gate only the Analysis 9b TCRgd tester GatingSet and draw
 its IL-2 pages.
 
 ```{r}
@@ -145,17 +145,17 @@ if (n_workers < 1L) stop("n_workers must be at least one.")
 
 ## Settings
 
-The populations, StimGate settings and seed are read from Analysis 9's
+The populations, StimGate settings and seed are read from Analysis 9b's
 `scientific-settings` chunk, so the two analyses cannot drift apart.
 
 ```{r}
 #| label: scientific-settings
 settings <- .acsCytofDebugSettings(
-  file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
+  file.path(root_dir, "analysis", "9b-real-compare-acs-cytof.qmd")
 )
 output_group <- NULL
 if (analysis_quick) {
-  # Analysis 9's tester: its first complete TCRgd batches, gated on their own.
+  # Analysis 9b's tester: its first complete TCRgd batches, gated on their own.
   output_group <- "tester"
   sel_pops <- "tcrgd"
   if (is.null(sel_cyts)) sel_cyts <- "IL2"
@@ -171,13 +171,22 @@ unknown_cyts <- setdiff(c(sel_cyts, html_cyts), .acsCytofChannelMap())
 if (length(unknown_cyts)) {
   stop("Unknown cytokines: ", paste(unknown_cyts, collapse = ", "))
 }
-str(settings)
+# Analysis 9a's selection identifies Analysis 9b's Tailgate gates; without it
+# the pages omit Tailgate's gate.
+settings$tailgateSelection <- tryCatch(
+  .acsCytofReadTailgateSelection(.acsCytofTailgateSelectionDir(root_dir)),
+  error = function(e) {
+    message("No usable Tailgate selection: ", conditionMessage(e))
+    NULL
+  }
+)
+str(settings[setdiff(names(settings), "tailgateSelection")])
 ```
 
 ```{r}
 #| label: paths
 #| include: false
-# Analysis 9's caches are only read: never create or change them here.
+# Analysis 9b's caches are only read: never create or change them here.
 path_gs_base <- projr::projr_path_get(
   "cache", "acs_cytof", "gs",
   create = FALSE, format = "absolute"
@@ -207,7 +216,7 @@ paths_debug <- lapply(stats::setNames(nm = settings$popVec), function(pop) {
 
 ## Re-gating
 
-Every tube of each chosen population is gated, as in Analysis 9, with one
+Every tube of each chosen population is gated, as in Analysis 9b, with one
 worker per population (`n_workers` at once) and the population's own
 random-number stream. Each recorded tube is saved as soon as it is gated;
 once the final gates are known, its page is drawn and the record deleted. The
@@ -221,12 +230,12 @@ if (isTRUE(run_simulations)) {
   comparison <- tryCatch(
     .acsCytofDebugReadComparison(path_comparison, settings$locThresholdMethod),
     error = function(e) {
-      message("Analysis 9's manual comparison is unusable: ", conditionMessage(e))
+      message("Analysis 9b's manual comparison is unusable: ", conditionMessage(e))
       NULL
     }
   )
   if (analysis_quick && !is.null(comparison)) {
-    # The tester's gates differ from the full run that Analysis 9 scored.
+    # The tester's gates differ from the full run that Analysis 9b scored.
     comparison[c("freqBsAnalysis9", "diffAnalysis9", "absDiffAnalysis9")] <- NA_real_
   }
   candidates <- dplyr::bind_rows(lapply(intersect(html_pops %||% run_pops, run_pops), function(pop) {
@@ -280,14 +289,14 @@ if (isTRUE(run_simulations)) {
     )
   }
   if (!is.null(output_group)) {
-    # Analysis 9 gates its tester in the main session after this seed.
+    # Analysis 9b gates its tester in the main session after this seed.
     set.seed(settings$seed)
     tester_run <- run_population("tcrgd")
     if (!isTRUE(tester_run$success)) {
       stop("TCRgd tester re-gating failed: ", tester_run$error)
     }
   } else {
-    # Same populations, order and seed as Analysis 9, so each population
+    # Same populations, order and seed as Analysis 9b, so each population
     # gets the random-number stream it had there. Unchosen ones return at once.
     .acsCytofMapPopulations(
       settings$popVec,
@@ -326,10 +335,10 @@ summary_tbl <- dplyr::bind_rows(summaries)
 
 ### Gates and pages per population
 
-`same gates as Analysis 9` counts tubes and cytokines whose final gates
-(ordinary and cytokine-positive) equal the gates Analysis 9 saved. Any
-difference means the re-gating did not reproduce Analysis 9 and the pages
-must not be read as Analysis 9's gating. `local FDR ran` counts tubes that
+`same gates as Analysis 9b` counts tubes and cytokines whose final gates
+(ordinary and cytokine-positive) equal the gates Analysis 9b saved. Any
+difference means the re-gating did not reproduce Analysis 9b and the pages
+must not be read as Analysis 9b's gating. `local FDR ran` counts tubes that
 reached local-FDR gating; the others had too few cells.
 
 ```{r}
@@ -353,12 +362,12 @@ if (isTRUE(run_plots) && nrow(summary_tbl)) {
     with(pop_tbl[i, ], cat(
       "- **", pop, "**: ", n, " tubes x cytokines; local FDR ran for ",
       local_fdr, "; final gate fallback for ", fallback, "; same gates as ",
-      "Analysis 9 for ", same, ", different for ", different, "; ", pages,
+      "Analysis 9b for ", same, ", different for ", different, "; ", pages,
       " pages saved (", failed, " failed).\n", sep = ""
     ))
   }
   if (any(summary_tbl$matchesAnalysis9 %in% FALSE)) {
-    cat("\n\n**Warning: some re-gated gates differ from Analysis 9's saved gates.**\n\n")
+    cat("\n\n**Warning: some re-gated gates differ from Analysis 9b's saved gates.**\n\n")
   }
 }
 ```
@@ -389,7 +398,7 @@ if (isTRUE(run_plots) && nrow(summary_tbl)) {
     .analysis_report_table(
       c(fig_key, "combination-summary.csv"),
       paste(
-        "Tubes, local-FDR and fallback counts, agreement with Analysis 9's gates",
+        "Tubes, local-FDR and fallback counts, agreement with Analysis 9b's gates",
         "and absolute StimGate - manual difference (percentage points) per",
         "population, stimulation and cytokine."
       ),
@@ -435,7 +444,7 @@ if (isTRUE(run_plots)) {
 ### Chosen samples
 
 Each figure is one saved page. Its heading gives why it was chosen and
-StimGate's frequency scored in Analysis 9 against the manual frequency, both background subtracted and
+StimGate's frequency scored in Analysis 9b against the manual frequency, both background subtracted and
 clipped at zero, in percent of the population.
 
 ```{r}

@@ -3,7 +3,7 @@ root_dir <- normalizePath(
   mustWork = TRUE
 )
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
-qmd9_path <- file.path(root_dir, "analysis", "9-real-compare-acs-cytof.qmd")
+qmd9_path <- file.path(root_dir, "analysis", "9b-real-compare-acs-cytof.qmd")
 qmd10_path <- file.path(
   root_dir, "analysis", "10-real-compare-acs-cytof-validation.qmd"
 )
@@ -181,12 +181,12 @@ test_that("cached ACS comparisons must record the StimGate threshold method", {
 test_that("the analysis 9 run manifest must record the threshold method", {
   env <- .load_acs_threshold_env()
   check <- env$.acsCytofCheckRunManifestMethod
-  qmd <- "analysis/9-real-compare-acs-cytof.qmd"
+  qmd <- "analysis/9b-real-compare-acs-cytof.qmd"
   expect_no_error(check(
     list(stimgate_loc_threshold_method = "region"), "region", qmd
   ))
   expect_error(
-    check(list(analysis_semantics_version = "acs-cytof-v9"), "region", qmd),
+    check(list(analysis_semantics_version = "acs-cytof-v10"), "region", qmd),
     "stimgate_loc_threshold_method"
   )
   expect_error(
@@ -239,7 +239,7 @@ test_that("analyses 9 and 10 set and record the threshold method", {
   for (qmd in list(qmd9, qmd10)) {
     expect_true(grepl(".acsCytofCheckRunManifestMethod(", qmd, fixed = TRUE))
     expect_true(grepl(forwarded, qmd, fixed = TRUE))
-    expect_true(grepl('"acs-cytof-v9"', qmd, fixed = TRUE))
+    expect_true(grepl('"acs-cytof-v10"', qmd, fixed = TRUE))
     expect_false(grepl('"acs-cytof-v3"', qmd, fixed = TRUE))
   }
 })
