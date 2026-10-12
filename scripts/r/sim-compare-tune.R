@@ -718,7 +718,7 @@
     scale_fill_viridis_c(name = fill_lab, direction = direction, na.value = "grey85") +
     .simTuneFacet() +
     labs(x = "Derivative tolerance (fraction of the steepest slope, or absolute)", y = "Bias") +
-    theme_bw() +
+    theme_bw() + .analysis_strip_theme() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
   if (!is.null(selected)) {
     sel <- selected |>
@@ -759,7 +759,7 @@
     scale_colour_viridis_d(name = "Tolerance", end = 0.9, aesthetics = c("colour", "fill")) +
     .simTuneFacet() +
     labs(x = "Bias") +
-    theme_bw()
+    theme_bw() + .analysis_strip_theme()
   if (which == "f1") {
     p + labs(y = "F1 (median; band: 10th-90th percentile)") + coord_cartesian(ylim = c(0, 1))
   } else {
@@ -793,7 +793,7 @@
     scale_colour_viridis_d(name = "Bias", end = 0.9, aesthetics = c("colour", "fill")) +
     .simTuneFacet() +
     labs(x = "Tolerance (fraction of the steepest slope, log10 scale)") +
-    theme_bw()
+    theme_bw() + .analysis_strip_theme()
   if (which == "f1") {
     p + labs(y = "F1 (median; band: 10th-90th percentile)") + coord_cartesian(ylim = c(0, 1))
   } else {
@@ -822,7 +822,7 @@
     scale_x_log10(breaks = sort(unique(tbl$beta))) +
     .simTuneFacet() +
     labs(x = "beta (log scale; dotted: published 0.8)") +
-    theme_bw() +
+    theme_bw() + .analysis_strip_theme() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
   if (which == "f1") {
     p + labs(y = "F1 (median; bars: 10th-90th percentile)") + coord_cartesian(ylim = c(0, 1))
@@ -851,7 +851,7 @@
     scale_x_discrete(labels = NULL) +
     .simTuneFacet() +
     labs(x = NULL) +
-    theme_bw() +
+    theme_bw() + .analysis_strip_theme() +
     theme(legend.position = "bottom", legend.direction = "vertical",
       axis.ticks.x = element_blank())
   if (which == "f1") {
@@ -876,7 +876,7 @@
       labeller = ggplot2::label_wrap_gen(width = 30, multi_line = FALSE)
     ) +
     labs(x = NULL, y = "Gate") +
-    theme_bw() +
+    theme_bw() + .analysis_strip_theme() +
     theme(legend.position = "bottom", legend.direction = "vertical", axis.ticks.x = element_blank())
 }
 
@@ -926,6 +926,6 @@
     ggplot2::facet_wrap(ggplot2::vars(.data$sample), ncol = 2,
       labeller = ggplot2::as_labeller(sample_lab)) +
     labs(x = "Expression", y = "Cells (pseudo-log scale; outline: unstimulated)") +
-    theme_bw() +
+    theme_bw() + .analysis_strip_theme() +
     theme(legend.position = "bottom", legend.direction = "vertical")
 }

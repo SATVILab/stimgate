@@ -146,6 +146,17 @@ test_that("the Typst ranking table shows the HTML table's values and compiles", 
   expect_null(attr(status, "status"))
 })
 
+test_that("figures and the thesis theme draw white facet strips with a black border", {
+  env <- .tuneEnv()
+  strip <- ggplot2::theme_bw() + env$.analysis_thesis_theme()
+  expect_identical(strip$strip.background$fill, "white")
+  expect_identical(strip$strip.background$colour, "black")
+  code <- readLines(file.path(root_dir, "scripts", "r", "sim-compare-tune.R"))
+  bw <- grep("theme_bw()", code, fixed = TRUE, value = TRUE)
+  expect_true(length(bw) > 0L)
+  expect_true(all(grepl(".analysis_strip_theme()", bw, fixed = TRUE)))
+})
+
 test_that("Analysis 6 saves only its ranking table and F1 figure for the thesis", {
   qmd <- readLines(file.path(root_dir, "analysis", "6-sim-tune-comparators.qmd"))
   thesis_lines <- grep("^[^#]*\"output-thesis\"", qmd, value = TRUE)

@@ -66,9 +66,17 @@
 # Save one to the projr `output-thesis` folder only when the thesis uses it.
 .analysis_thesis_width <- 146.5
 
-# Text sizes (pt) for a figure printed at the thesis text width.
-.analysis_thesis_theme <- function() {
+# Facet strips: white background with a black border.
+.analysis_strip_theme <- function() {
   ggplot2::theme(
+    strip.background = ggplot2::element_rect(fill = "white", colour = "black")
+  )
+}
+
+# Text sizes (pt) for a figure printed at the thesis text width, with white
+# facet strips.
+.analysis_thesis_theme <- function() {
+  .analysis_strip_theme() + ggplot2::theme(
     text = ggplot2::element_text(size = 8),
     axis.text = ggplot2::element_text(size = 7.5),
     axis.title = ggplot2::element_text(size = 8.5),
