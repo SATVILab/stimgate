@@ -100,9 +100,6 @@ test_that("QMD table exports are guarded and large inline table printers stay ab
             # Analysis 6 prints its five best settings per method (ten rows).
             allowed <- list(
               "8-sim-compare-freq_bs-batch.qmd" = ".simCompareMethodOutcomeCounts",
-              "6-sim-tune-comparators.qmd" = "knitr::kable(rank_display",
-              # The eight Tailgate configurations, ranked.
-              "9a-real-tune-acs-cytof-tailgate.qmd" = "knitr::kable(.acsCytofTailgateHtmlTable(ranking_tbl)",
               # One row per population and stimulation (four rows).
               "17-explore-acs-cytof-coexpression.qmd" = "knitr::kable(low_summary",
               # One row per ACS population (six rows); responding counts per

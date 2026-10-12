@@ -55,7 +55,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
-source(file.path(scripts_r_dir, "analysis-typst.R"))
+source(file.path(scripts_r_dir, "analysis-thesis-table.R"))
 fig_key <- .analysis_mode_key("9a-real-tune-acs-cytof-tailgate", sized = FALSE)
 analysis_qmd <- "analysis/9a-real-tune-acs-cytof-tailgate.qmd"
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
@@ -97,7 +97,7 @@ path_scratch_base <- projr::projr_path_get(
   "cache", "acs_cytof", "scratch", format = "absolute"
 )
 path_selection <- .acsCytofTailgateSelectionDir(root_dir)
-# The Typst table goes to the projr "output-thesis" label (_output/thesis,
+# The ranking table goes to the projr "output-thesis" label (_output/thesis,
 # uploaded to a GitHub release on projr builds), in its appendix folder
 # (quick/dev renders in a subfolder). Thesis figures are saved there only
 # when requested for the thesis.
@@ -296,13 +296,21 @@ on the shared donors, out of all eligible strata. Failed gates counts failed
 donor/cytokine estimates in eligible strata, out of all of them. Analysis 9b
 reads the saved selection, including whether zeros are removed.
 
+The table is written as a Quarto table with a caption and label, as the
+thesis's tables are; its source follows it in a copyable block and is saved as
+`appendix/acs-tailgate-ranking.md` in the projr `output-thesis` folder
+(`_output/thesis`), ready to paste or `{{< include >}}` into the thesis and
+cite as `@tbl-stimgate-appendix-acs-tailgate`.
+
 ```{r}
 #| label: ranking-table
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots)) {
-  print(knitr::kable(.acsCytofTailgateHtmlTable(ranking_tbl), format = "pipe", escape = FALSE))
-  cat("\n\n")
+  .analysis_md_show(.acsCytofTailgateMdTable(ranking_tbl), file.path(
+    .analysis_project_dir("output-thesis", thesis_parts, root_dir),
+    "acs-tailgate-ranking.md"
+  ))
   .analysis_report_table(
     ranking_tbl |> dplyr::select(
       rank, method, config, removeZero, autoTol, tol, bias, mean_pcc,
@@ -322,26 +330,6 @@ if (isTRUE(run_plots)) {
     "PCC, CCC, donor coverage and failures per stratum and configuration.",
     path_root = root_dir
   )
-}
-```
-
-### Typst table for the thesis
-
-The block below is the Typst source of the ranking table, generated from the
-same values as the table above. Copy it with the button at its top right; in a
-Quarto document, paste it inside a ```` ```{=typst} ```` block. The same source
-is saved as `appendix/acs-tailgate-ranking.typ` in the projr `output-thesis`
-folder (`_output/thesis`).
-
-```{r}
-#| label: typst-table
-#| echo: false
-#| results: asis
-if (isTRUE(run_plots)) {
-  .analysis_typst_show(.acsCytofTailgateTypst(ranking_tbl), file.path(
-    .analysis_project_dir("output-thesis", thesis_parts, root_dir),
-    "acs-tailgate-ranking.typ"
-  ))
 }
 ```
 

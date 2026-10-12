@@ -76,13 +76,13 @@
   tibble::tribble(
     ~setting_ref, ~method, ~tol_type, ~tol, ~bias, ~beta, ~setting_ref_lab,
     "fbeta_published", "fbeta", NA, NA, NA, 0.8,
-    "F-beta, published (beta 0.8)",
+    "F\u03b2: \u03b2 0.8 (default)",
     "tailgate_cytoutils", "tailgate", "absolute", 0.01, 0, NA,
-    "Tailgate, cytoUtils default (tol 0.01, no bias)",
+    "Tailgate: absolute tolerance 0.01, no bias (default)",
     "tailgate_default", "tailgate", "relative", 0.01, 0, NA,
-    "Tailgate, Analysis 7 default (auto tol 1%, no bias)",
+    "Tailgate: relative tolerance 0.01, no bias",
     "tailgate_current", "tailgate", "relative", 0.01, 0.1, NA,
-    "Tailgate, Analysis 7 current (auto tol 1%, bias 0.1)"
+    "Tailgate: relative tolerance 0.01, bias 0.1"
   )
 }
 
@@ -92,25 +92,42 @@
   "prob_response", "n_cell"
 )
 
+# A relative tolerance is a fraction of the steepest slope of the density
+# (Tailgate's automatic tolerance is 10^-2); an absolute one bounds the
+# derivative. Figures and tables explain this once rather than in each label.
 .simTuneSettingLab <- function(method, tol_type, tol, bias, beta) {
   dplyr::case_when(
-    method == "fbeta" ~ paste0("F-beta, beta ", beta),
-    tol_type == "absolute" ~ paste0("Tailgate, tol ", tol, ", bias ", bias),
-    TRUE ~ paste0("Tailgate, tol ", .simTuneTolText(tol), " of max slope, bias ", bias)
+    method == "fbeta" ~ paste0("F\u03b2: \u03b2 ", beta),
+    tol_type == "absolute" ~ paste0("Tailgate: absolute tolerance ", tol, ", bias ", bias),
+    TRUE ~ paste0("Tailgate: relative tolerance ", .simTuneTolPretty(tol), ", bias ", bias)
   )
 }
 
-# A relative tolerance as a power of ten, e.g. 1e-2 or 3.2e-5.
-.simTuneTolText <- function(tol) {
-  out <- formatC(tol, format = "e", digits = 1)
-  sub("[.]0e", "e", sub("e([+-])0?", "e\\1", out))
+# Tolerances in labels: decimals from 0.001 up (0.01, 0.0032), otherwise
+# "3.2 × 10^-5". Plot fonts lack a superscript minus, so axes use
+# .simTuneTolExpr() (plot maths) instead.
+.simTuneTolPretty <- function(tol) {
+  exponent <- floor(log10(tol) + 1e-9)
+  mantissa <- signif(tol / 10^exponent, 2)
+  small <- ifelse(abs(mantissa - 1) < 1e-9, paste0("10^", exponent),
+    paste0(vapply(mantissa, format, character(1)), " \u00d7 10^", exponent))
+  ifelse(tol >= 1e-3 - 1e-12, vapply(signif(tol, 2), format, character(1), scientific = FALSE), small)
 }
 
+# Plot-maths labels for tolerances, e.g. 10^-2 and 3.2 %*% 10^-3.
+.simTuneTolExpr <- function(tol) {
+  exponent <- floor(log10(tol) + 1e-9)
+  mantissa <- signif(tol / 10^exponent, 2)
+  text <- ifelse(abs(mantissa - 1) < 1e-9, paste0("10^", exponent),
+    paste0(vapply(mantissa, format, character(1)), " %*% 10^", exponent))
+  parse(text = text)
+}
+
+
+# Two lines, e.g. "Gamma," over "low separation".
 .simTuneScenarioLab <- function(tbl) {
-  paste0(
-    tbl$transformation, ", ", tbl$mean_pos_setting, " separation (",
-    tbl$mean_pos, ")"
-  )
+  cap <- function(x) paste0(toupper(substring(x, 1, 1)), substring(x, 2))
+  paste0(cap(tbl$transformation), ",\n", tbl$mean_pos_setting, " separation")
 }
 
 .simTuneCellLab <- function(n_cell) {
@@ -530,73 +547,88 @@
     dplyr::ungroup()
 }
 
-# The `n` best settings of each method by the selection rule, formatted for
-# both the HTML table and the Typst source (needs analysis-typst.R for the
-# Typst column), so the two show the same values.
-.simTuneRankDisplay <- function(rank, n = 5L) {
+# Whether each setting is the one the comparisons use: the top-ranked
+# setting, except Fβ's when `fbetaUsedBeta` is given (Analysis 6 keeps the
+# published beta, 0.8, because the top-ranked beta gates more aggressively).
+.simTuneUsed <- function(rank, fbetaUsedBeta = NULL) {
+  if (is.null(fbetaUsedBeta)) return(rank$selected %in% TRUE)
+  ifelse(rank$method == "fbeta", rank$beta %in% fbetaUsedBeta, rank$selected %in% TRUE)
+}
+
+# The `n` best settings of each method by the selection rule, plus any used
+# setting ranked lower, as Markdown cells for the thesis table.
+.simTuneRankDisplay <- function(rank, n = 5L, fbetaUsedBeta = NULL) {
+  rank$used <- .simTuneUsed(rank, fbetaUsedBeta)
   top <- rank |>
-    dplyr::group_by(.data$method) |>
-    dplyr::slice_head(n = n) |>
-    dplyr::ungroup() |>
+    dplyr::filter(.data$rank <= n | .data$used) |>
     dplyr::arrange(dplyr::desc(.data$method == "fbeta"), .data$rank)
   num <- function(x) formatC(x, format = "f", digits = 3)
-  tol <- ifelse(
-    top$tol_type == "relative",
-    paste0(.simTuneTolText(top$tol), " (relative)"),
-    paste0(top$tol, " (absolute)")
+  tolMd <- function(tol) {
+    exponent <- floor(log10(tol) + 1e-9)
+    mantissa <- signif(tol / 10^exponent, 2)
+    ifelse(abs(mantissa - 1) < 1e-9, paste0("$10^{", exponent, "}$"),
+      paste0("$", vapply(mantissa, format, character(1)), "\\times10^{", exponent, "}$"))
+  }
+  setting <- ifelse(
+    top$method == "fbeta", paste0("$\\beta$ ", top$beta),
+    paste0(
+      ifelse(top$tol_type == "relative",
+        paste0("relative tolerance ", tolMd(top$tol)),
+        paste0("absolute tolerance ", top$tol)),
+      ", bias ", top$bias
+    )
   )
+  tag <- ifelse(top$used, " (selected)", ifelse(top$selected %in% TRUE, " (top-ranked)", ""))
   tibble::tibble(
-    method = ifelse(top$method == "fbeta", "F-beta", "Tailgate"),
+    method = ifelse(top$method == "fbeta", "$F_{\\beta}$", "Tailgate"),
     rank = as.character(top$rank),
-    setting = ifelse(top$method == "fbeta", paste0("beta ", top$beta),
-      paste0("tolerance ", tol, ", bias ", top$bias)),
-    setting_typst = ifelse(
-      top$method == "fbeta", paste0("$beta = ", top$beta, "$"),
-      paste0(
-        ifelse(top$tol_type == "relative", .analysis_typst_sci(top$tol), top$tol),
-        ifelse(top$tol_type == "relative", " (relative)", " (absolute)"),
-        ", bias ", top$bias
-      )
-    ),
+    setting = paste0(setting, tag),
     f1_median = num(top$mean_f1_median),
     f1_p10 = num(top$mean_f1_p10),
-    est_error = num(top$mean_est_band_error),
     truth_in_band = paste0(top$n_truth_in_band, "/", top$n_scenarios),
-    selected = top$selected %in% TRUE
+    selected = top$selected %in% TRUE,
+    used = top$used
   )
 }
 
-.simTuneTypstTable <- function(display, label = "tbl-sim-tune-comparators") {
-  method <- ifelse(display$method == "F-beta", "$F_beta$", "Tailgate")
+# The ranking as a Quarto pipe table with a cross-referenceable caption
+# (needs analysis-thesis-table.R).
+.simTuneMdTable <- function(display, label = "tbl-stimgate-appendix-tune-comparators") {
+  method <- display$method
   # Name each method once, on its first row.
   method[duplicated(display$method)] <- ""
-  .analysis_typst_table(
-    cbind(
-      method, display$rank, display$setting_typst, display$f1_median,
-      display$f1_p10, display$est_error, display$truth_in_band
-    ),
-    header = c(
-      "Method", "Rank", "Setting", "Mean \\ median F1", "Mean 10th \\ percentile F1",
-      "Mean estimate \\ error", "Truth within \\ 10th-90th"
-    ),
-    align = c("left", "right", "left", rep("right", 4)),
-    bold = display$selected,
+  fbetaKept <- any(display$method == "$F_{\\beta}$" & display$selected & !display$used)
+  .analysis_md_table(
+    cbind(method, display$rank, display$setting, display$f1_median,
+      display$f1_p10, display$truth_in_band),
+    header = c("Method", "Rank", "Setting", "Mean median F1",
+      "Mean 10th-percentile F1", "Truth within 10th-90th percentiles"),
+    align = c("left", "right", "left", "right", "right", "right"),
+    bold = display$used,
     caption = paste0(
-      "The best settings of $F_beta$ and Tailgate in the simulations (0.2% response, ",
-      "three transformations, two separations, 5,000 and 100,000 cells), averaged over ",
-      "the twelve scenarios. Settings within 0.02 of the best mean median F1 are ranked by ",
-      "mean estimate error, the larger relative error of the 10th and 90th percentiles ",
-      "of the background-subtracted frequency; the selected setting of each method is in ",
-      "bold. A relative tolerance is a fraction of the steepest slope of the density; an ",
-      "absolute tolerance bounds the derivative. Truth within 10th-90th: scenarios whose ",
-      "10th-90th percentile range of estimates contains the true frequency."
+      "**Choosing the $F_{\\beta}$ and Tailgate settings**. The best settings of each ",
+      "method in the simulations (0.2% response; three transformations, two separations, ",
+      "5,000 and 100,000 cells), averaged over the twelve scenarios. Settings within 0.02 ",
+      "of the best mean median F1 are ranked by how closely the 10th and 90th percentiles ",
+      "of their background-subtracted frequency estimates match the truth. The selected ",
+      "setting of each method, used in the comparisons, is in bold",
+      if (fbetaKept) paste0(
+        "; for $F_{\\beta}$ this is the published $\\beta$ 0.8, kept because the ",
+        "top-ranked $\\beta$ gates more aggressively for little gain in F1"
+      ),
+      ". A relative tolerance is a fraction of the steepest slope of the density ",
+      "(Tailgate's automatic tolerance is $10^{-2}$); an absolute tolerance bounds the ",
+      "derivative. Truth within 10th-90th percentiles: scenarios whose 10th-90th ",
+      "percentile range of estimates contains the true frequency."
     ),
     label = label
   )
 }
 
-# The selected setting of each method beside the reference settings.
-.simTuneCompareSettings <- function(rank) {
+# The top-ranked setting of each method beside the reference settings. With
+# `fbetaUsedBeta` (see .simTuneUsed()) differing from F-beta's top-ranked
+# beta, F-beta's top-ranked beta is not labelled "selected".
+.simTuneCompareSettings <- function(rank, fbetaUsedBeta = NULL) {
   ref <- .simTuneReferenceSettings()
   sel <- rank |>
     dplyr::filter(.data$selected) |>
@@ -604,11 +636,18 @@
       setting_ref = paste0(.data$method, "_selected"),
       method = .data$method, tol_type = .data$tol_type, tol = .data$tol,
       bias = .data$bias, beta = .data$beta,
-      setting_ref_lab = paste0(
-        ifelse(.data$method == "fbeta", "F-beta", "Tailgate"), ", selected (",
-        sub("^[^,]*, ", "", .data$setting_lab), ")"
-      )
+      setting_ref_lab = paste0(.data$setting_lab, " (selected)")
     )
+  fbetaTop <- sel$beta[sel$method == "fbeta"]
+  if (!is.null(fbetaUsedBeta) && length(fbetaTop) && !isTRUE(fbetaTop == fbetaUsedBeta)) {
+    isFbeta <- sel$method == "fbeta"
+    sel$setting_ref_lab[isFbeta] <- sub(" (selected)", "",
+      sel$setting_ref_lab[isFbeta], fixed = TRUE)
+    if (isTRUE(fbetaUsedBeta == 0.8)) {
+      ref$setting_ref_lab[ref$setting_ref == "fbeta_published"] <-
+        "F\u03b2: \u03b2 0.8 (default; selected)"
+    }
+  }
   out <- dplyr::bind_rows(ref, sel)
   levels <- c(
     "fbeta_published", "fbeta_selected", "tailgate_cytoutils",
@@ -682,7 +721,7 @@
 .simTuneFacet <- function() {
   ggplot2::facet_grid(
     rows = ggplot2::vars(.data$scenario_lab), cols = ggplot2::vars(.data$cell_lab),
-    labeller = ggplot2::label_wrap_gen(width = 18)
+    labeller = ggplot2::label_value
   )
 }
 
@@ -694,9 +733,14 @@
   tbl
 }
 
+# Plot-maths text for tolerance axes and legends (parse with
+# .simTuneParseLab()), e.g. 10^-2 or 0.01~"(absolute)".
 .simTuneTolLab <- function(tol_type, tol) {
-  ifelse(tol_type == "absolute", paste0("abs ", tol), .simTuneTolText(tol))
+  rel <- vapply(as.list(.simTuneTolExpr(tol)), function(e) paste(deparse(e), collapse = ""), character(1))
+  ifelse(tol_type == "absolute", paste0(tol, '~"(absolute)"'), rel)
 }
+
+.simTuneParseLab <- function(x) parse(text = x)
 
 # Tailgate tolerance-by-bias heat map of one summary statistic.
 .simTunePlotTailgateHeat <- function(summary, stat, fill_lab, selected = NULL,
@@ -716,9 +760,11 @@
     geom_tile(colour = "white") +
     geom_text(aes(label = sprintf("%.2f", .data$value)), size = 2) +
     scale_fill_viridis_c(name = fill_lab, direction = direction, na.value = "grey85") +
+    scale_x_discrete(labels = .simTuneParseLab) +
     .simTuneFacet() +
-    labs(x = "Derivative tolerance (fraction of the steepest slope, or absolute)", y = "Bias") +
+    labs(x = "Derivative tolerance (relative unless marked absolute)", y = "Bias") +
     theme_bw() + .analysis_strip_theme() +
+    cowplot::background_grid(major = "xy", minor = "x") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
   if (!is.null(selected)) {
     sel <- selected |>
@@ -756,10 +802,12 @@
     geom_ribbon(aes(ymin = .data$lo, ymax = .data$hi), alpha = 0.08, colour = NA) +
     geom_line() +
     geom_point(size = 0.8) +
-    scale_colour_viridis_d(name = "Tolerance", end = 0.9, aesthetics = c("colour", "fill")) +
+    scale_colour_viridis_d(name = "Tolerance", end = 0.9, aesthetics = c("colour", "fill"),
+      labels = .simTuneParseLab) +
     .simTuneFacet() +
     labs(x = "Bias") +
-    theme_bw() + .analysis_strip_theme()
+    theme_bw() + .analysis_strip_theme() +
+    cowplot::background_grid(major = "xy", minor = "x")
   if (which == "f1") {
     p + labs(y = "F1 (median; band: 10th-90th percentile)") + coord_cartesian(ylim = c(0, 1))
   } else {
@@ -789,11 +837,12 @@
     geom_ribbon(aes(ymin = .data$lo, ymax = .data$hi), alpha = 0.06, colour = NA) +
     geom_line() +
     geom_point(size = 0.8) +
-    scale_x_log10(breaks = 10^(-6:-1), labels = .simTuneTolText) +
+    scale_x_log10(breaks = 10^(-6:-1), labels = .simTuneTolExpr) +
     scale_colour_viridis_d(name = "Bias", end = 0.9, aesthetics = c("colour", "fill")) +
     .simTuneFacet() +
-    labs(x = "Tolerance (fraction of the steepest slope, log10 scale)") +
-    theme_bw() + .analysis_strip_theme()
+    labs(x = "Relative tolerance (log scale)") +
+    theme_bw() + .analysis_strip_theme() +
+    cowplot::background_grid(major = "xy", minor = "x")
   if (which == "f1") {
     p + labs(y = "F1 (median; band: 10th-90th percentile)") + coord_cartesian(ylim = c(0, 1))
   } else {
@@ -821,8 +870,9 @@
     geom_point(colour = "#0072B2") +
     scale_x_log10(breaks = sort(unique(tbl$beta))) +
     .simTuneFacet() +
-    labs(x = "beta (log scale; dotted: published 0.8)") +
+    labs(x = "\u03b2 (log scale; dotted: published 0.8)") +
     theme_bw() + .analysis_strip_theme() +
+    cowplot::background_grid(major = "xy", minor = "x") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
   if (which == "f1") {
     p + labs(y = "F1 (median; bars: 10th-90th percentile)") + coord_cartesian(ylim = c(0, 1))
@@ -833,7 +883,9 @@
   }
 }
 
-# Selected against reference settings: median and 10th-90th percentiles.
+# Top-ranked against reference settings: median and 10th-90th percentiles.
+# Fβ is drawn with `colour` and Tailgate with `fill` (thin bars and filled
+# points), so each method gets its own legend column.
 .simTunePlotCompare <- function(summary, compare, which = c("f1", "est")) {
   which <- match.arg(which)
   tbl <- .simTuneJoinSettings(summary, compare) |> .simTuneAddLabs()
@@ -844,16 +896,39 @@
   if (which == "est") {
     tbl <- dplyr::mutate(tbl, dplyr::across(c("lo", "mid", "hi"), ~ .x / .data$truth))
   }
-  labs_vec <- stats::setNames(compare$setting_ref_lab, as.character(compare$setting_ref))
-  p <- ggplot(tbl, aes(x = .data$setting_ref, y = .data$mid, colour = .data$setting_ref)) +
-    geom_pointrange(aes(ymin = .data$lo, ymax = .data$hi), size = 0.3) +
-    scale_colour_manual(values = .simTuneSettingColours, labels = labs_vec, name = NULL) +
-    scale_x_discrete(labels = NULL) +
+  short <- stats::setNames(sub("^[^:]*: ", "", compare$setting_ref_lab), as.character(compare$setting_ref))
+  # Sentence case for labels starting with a plain lower-case word (not a
+  # Greek letter such as beta).
+  upper <- grepl("^[a-z]", short)
+  short[upper] <- paste0(toupper(substring(short[upper], 1, 1)), substring(short[upper], 2))
+  isFbeta <- compare$method == "fbeta"
+  fbeta <- tbl[tbl$method == "fbeta", ]
+  tailgate <- tbl[tbl$method == "tailgate", ]
+  p <- ggplot(tbl, aes(x = .data$setting_ref, y = .data$mid)) +
+    geom_linerange(data = fbeta, aes(ymin = .data$lo, ymax = .data$hi, colour = .data$setting_ref),
+      linewidth = 0.6, show.legend = FALSE) +
+    geom_point(data = fbeta, aes(colour = .data$setting_ref), size = 1.6) +
+    geom_tile(data = tailgate, aes(y = (.data$lo + .data$hi) / 2, height = .data$hi - .data$lo,
+      fill = .data$setting_ref), width = 0.07, show.legend = FALSE) +
+    geom_point(data = tailgate, aes(fill = .data$setting_ref), shape = 23,
+      colour = "transparent", stroke = 0.01, size = 2.2) +
+    scale_colour_manual(values = .simTuneSettingColours,
+      breaks = names(short)[isFbeta], labels = unname(short[isFbeta]), name = "F\u03b2") +
+    scale_fill_manual(values = .simTuneSettingColours,
+      breaks = names(short)[!isFbeta], labels = unname(short[!isFbeta]), name = "Tailgate") +
+    scale_x_discrete(labels = NULL, drop = FALSE) +
     .simTuneFacet() +
     labs(x = NULL) +
+    guides(
+      colour = guide_legend(order = 1, ncol = 1, override.aes = list(size = 2.2)),
+      fill = guide_legend(order = 2, ncol = 1, override.aes = list(size = 2.6))
+    ) +
     theme_bw() + .analysis_strip_theme() +
-    theme(legend.position = "bottom", legend.direction = "vertical",
-      axis.ticks.x = element_blank())
+    cowplot::background_grid(major = "xy", minor = "x") +
+    theme(
+      legend.position = "bottom", legend.box = "horizontal", legend.direction = "vertical",
+      legend.title.position = "top", legend.box.just = "top", axis.ticks.x = element_blank()
+    )
   if (which == "f1") {
     p + labs(y = "F1 (median and 10th-90th percentile)") + coord_cartesian(ylim = c(0, 1))
   } else {
@@ -873,10 +948,11 @@
     scale_x_discrete(labels = NULL) +
     ggplot2::facet_wrap(
       ggplot2::vars(.data$scenario_lab, .data$cell_lab), scales = "free_y", ncol = 2,
-      labeller = ggplot2::label_wrap_gen(width = 30, multi_line = FALSE)
+      labeller = function(x) ggplot2::label_value(x, multi_line = FALSE)
     ) +
     labs(x = NULL, y = "Gate") +
     theme_bw() + .analysis_strip_theme() +
+    cowplot::background_grid(major = "xy", minor = "x") +
     theme(legend.position = "bottom", legend.direction = "vertical", axis.ticks.x = element_blank())
 }
 
@@ -927,5 +1003,6 @@
       labeller = ggplot2::as_labeller(sample_lab)) +
     labs(x = "Expression", y = "Cells (pseudo-log scale; outline: unstimulated)") +
     theme_bw() + .analysis_strip_theme() +
+    cowplot::background_grid(major = "xy", minor = "x") +
     theme(legend.position = "bottom", legend.direction = "vertical")
 }

@@ -3,7 +3,7 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
 .tuneEnv <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   for (f in c(
-    "analysis-runtime.R", "analysis-plot-style.R", "analysis-typst.R", "sim-misc.R",
+    "analysis-runtime.R", "analysis-plot-style.R", "analysis-thesis-table.R", "sim-misc.R",
     "sim-bandwidth.R", "sim-compare-freq_bs.R", "sim-compare-tune.R"
   )) {
     source(file.path(root_dir, "scripts", "r", f), local = env)
@@ -71,7 +71,10 @@ test_that("the relative tolerance 1% reproduces Tailgate's automatic tolerance",
   expect_equal(cuts$cut[cuts$tol_type == "relative" & cuts$tol == 0.01], auto)
   # Half steps on a log10 scale, from 1e-6 to 1e-1.
   expect_equal(log10(env$.simTuneSettings()$tailgate$tol_rel), seq(-6, -1, by = 0.5))
-  expect_equal(env$.simTuneTolText(c(1e-6, 10^-5.5, 1e-2)), c("1e-6", "3.2e-6", "1e-2"))
+  expect_equal(env$.simTuneTolPretty(c(1e-6, 10^-5.5, 1e-2, 10^-2.5)),
+    c("10^-6", "3.2 \u00d7 10^-6", "0.01", "0.0032"))
+  expect_equal(env$.simTuneTolLab(c("relative", "absolute"), c(10^-2.5, 0.01)),
+    c("3.2 %*% 10^-3", '0.01~"(absolute)"'))
   absolute <- env$.simCompareTailgateThreshold(x, autoTol = FALSE, tol = 0.01, bias = 0)$threshold
   expect_equal(cuts$cut[cuts$tol_type == "absolute"], absolute)
   # A smaller tolerance never moves the cutpoint left.
@@ -121,29 +124,30 @@ test_that("selection keeps near-best F1 settings and then prefers accurate estim
   expect_equal(r2$bias[r2$selected & r2$method == "tailgate"], 0.1)
 })
 
-test_that("the Typst ranking table shows the HTML table's values and compiles", {
+test_that("the thesis ranking table is a captioned Quarto table without estimate error", {
   env <- .tuneEnv()
   r <- env$.simTuneRank(env$.simTuneSummary(env$.simTuneMetrics(.tuneToyScores(env))))
   d <- env$.simTuneRankDisplay(r)
-  expect_identical(d$method[[1]], "F-beta")
-  expect_identical(sum(d$selected), 2L)
-  typst <- env$.simTuneTypstTable(d)
-  expect_match(typst, "^#figure\\(")
-  for (value in c(d$f1_median, d$est_error, d$truth_in_band)) {
-    expect_true(grepl(value, typst, fixed = TRUE))
+  expect_identical(d$method[[1]], "$F_{\\beta}$")
+  expect_identical(sum(d$used), 2L)
+  md <- env$.simTuneMdTable(d)
+  lines <- strsplit(md, "\n", fixed = TRUE)[[1]]
+  expect_match(utils::tail(lines, 1), "\\{#tbl-stimgate-appendix-tune-comparators\\}$")
+  for (value in c(d$f1_median, d$truth_in_band)) {
+    expect_true(grepl(value, md, fixed = TRUE))
   }
-  expect_match(typst, "$beta = 0.8$", fixed = TRUE)
-  expect_match(typst, "$1 times 10^(-2)$ (relative)", fixed = TRUE)
-  expect_match(typst, "[Mean \\ median F1]", fixed = TRUE)
-  expect_identical(lengths(regmatches(typst, gregexpr("\n    \\[\\*", typst))), 2L)
+  expect_false(grepl("estimate error", lines[[1]], fixed = TRUE))
+  expect_match(md, "$\\beta$ 0.8", fixed = TRUE)
+  expect_match(md, "relative tolerance $10^{-2}$", fixed = TRUE)
+  expect_false(grepl("of max slope", md, fixed = TRUE))
+  expect_identical(sum(grepl("\\*\\*", lines[-length(lines)])), 2L)
   quarto <- Sys.which("quarto")
-  skip_if(!nzchar(quarto), "Quarto (with Typst) is unavailable.")
+  skip_if(!nzchar(quarto), "Quarto (with pandoc) is unavailable.")
   dir <- withr::local_tempdir()
-  file <- file.path(dir, "table.typ")
-  writeLines(c('#set page(paper: "a4", margin: (left: 1.5in, rest: 1in))', typst), file)
-  status <- system2(quarto, c("typst", "compile", file, file.path(dir, "table.pdf")),
-    stdout = TRUE, stderr = TRUE)
-  expect_null(attr(status, "status"))
+  file <- file.path(dir, "table.md")
+  writeLines(md, file)
+  html <- system2(quarto, c("pandoc", "-f", "markdown", "-t", "html", file), stdout = TRUE)
+  expect_true(any(grepl("<caption", html, fixed = TRUE)))
 })
 
 test_that("figures and the thesis theme draw white facet strips with a black border", {
@@ -157,12 +161,35 @@ test_that("figures and the thesis theme draw white facet strips with a black bor
   expect_true(all(grepl(".analysis_strip_theme()", bw, fixed = TRUE)))
 })
 
+test_that("F-beta's used beta is bold and its top-ranked beta is not called selected", {
+  env <- .tuneEnv()
+  r <- env$.simTuneRank(env$.simTuneSummary(env$.simTuneMetrics(.tuneToyScores(env))))
+  # Pretend beta 2 ranked first, ahead of the published 0.8.
+  extra <- r[r$method == "fbeta", ]
+  extra$beta <- 2
+  extra$setting_lab <- "F\u03b2: \u03b2 2"
+  r$selected[r$method == "fbeta"] <- FALSE
+  r$rank[r$method == "fbeta"] <- 2L
+  r <- dplyr::bind_rows(r, extra)
+  d <- env$.simTuneRankDisplay(r, fbetaUsedBeta = 0.8)
+  fb <- d[d$method == "$F_{\\beta}$", ]
+  expect_identical(fb$used, fb$setting == "$\\beta$ 0.8 (selected)")
+  expect_true(fb$selected[fb$setting == "$\\beta$ 2 (top-ranked)"])
+  md <- env$.simTuneMdTable(d)
+  expect_match(md, "**$\\beta$ 0.8 (selected)**", fixed = TRUE)
+  expect_match(md, "kept because the top-ranked", fixed = TRUE)
+  cmp <- env$.simTuneCompareSettings(r, fbetaUsedBeta = 0.8)
+  expect_match(cmp$setting_ref_lab[cmp$setting_ref == "fbeta_selected"], "\u03b2 2", fixed = TRUE)
+  expect_match(cmp$setting_ref_lab[cmp$setting_ref == "fbeta_published"], "0.8 (default; selected)", fixed = TRUE)
+  expect_false(grepl("selected", cmp$setting_ref_lab[cmp$setting_ref == "fbeta_selected"], fixed = TRUE))
+})
+
 test_that("Analysis 6 saves only its ranking table and F1 figure for the thesis", {
   qmd <- readLines(file.path(root_dir, "analysis", "6-sim-tune-comparators.qmd"))
   thesis_lines <- grep("^[^#]*\"output-thesis\"", qmd, value = TRUE)
   expect_length(thesis_lines, 2L)
   text <- paste(qmd, collapse = "\n")
-  expect_match(text, '"sim-tune-comparators-ranking.typ"', fixed = TRUE)
+  expect_match(text, '"sim-tune-comparators-ranking.md"', fixed = TRUE)
   expect_match(text, '"sim-tune-comparators-compare-f1"', fixed = TRUE)
   expect_match(text, 'thesis_parts <- c("appendix", fig_key[-1L])', fixed = TRUE)
   expect_match(text, "code-copy: true", fixed = TRUE)
