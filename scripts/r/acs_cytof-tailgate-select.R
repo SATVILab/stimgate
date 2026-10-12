@@ -219,12 +219,8 @@
   out
 }
 
-.acsCytofTypstEscape <- function(x) {
-  gsub("([\\\\#*_$@<>\\[\\]`~])", "\\\\\\1", x, perl = TRUE)
-}
-
 # Complete Typst source for the ranking table, generated from the same
-# formatted values as the HTML table.
+# formatted values as the HTML table (needs analysis-typst.R).
 .acsCytofTailgateTypst <- function(ranking, label = "tbl-acs-tailgate-ranking") {
   f <- .acsCytofTailgateFormat(ranking)
   tolTypst <- ifelse(
@@ -233,43 +229,26 @@
     f$tol
   )
   cells <- cbind(
-    f$rank, .acsCytofTypstEscape(f$configuration), f$zeros, f$auto_tol,
+    f$rank, .analysis_typst_escape(f$configuration), f$zeros, f$auto_tol,
     tolTypst, f$bias, f$mean_pcc, f$strata, f$failed
   )
-  rows <- vapply(seq_len(nrow(cells)), function(i) {
-    cell <- cells[i, ]
-    if (f$selected[[i]]) cell <- paste0("*", cell, "*")
-    paste0("    ", paste0("[", cell, "]", collapse = ", "), ",")
-  }, character(1))
   selected <- f$configuration[f$selected]
   selectedText <- if (length(selected)) {
-    paste0("The selected configuration (bold) is ", .acsCytofTypstEscape(tolower(selected[[1]])),
+    paste0("The selected configuration (bold) is ", .analysis_typst_escape(tolower(selected[[1]])),
       if (ranking$removeZero[f$selected]) ", with zeros removed. " else ", estimated on all cells. ")
   } else {
     "No single configuration has the highest mean PCC, so none is selected. "
   }
-  paste(c(
-    "#figure(",
-    "  {",
-    "  set text(size: 9pt)",
-    "  set par(justify: false)",
-    "  table(",
-    "    columns: 9,",
-    "    align: (right, left, left, left, right, right, right, right, right),",
-    "    stroke: none,",
-    "    inset: (x: 4pt, y: 3pt),",
-    "    table.hline(),",
-    "    table.header(",
-    "      [Rank], [Configuration], [Zeros \\ removed], [Automatic \\ tolerance],",
-    "      [Tolerance], [Bias], [Mean \\ PCC], [Strata \\ scored], [Failed \\ gates],",
-    "    ),",
-    "    table.hline(stroke: 0.5pt),",
-    rows,
-    "    table.hline(),",
-    "  )",
-    "  },",
-    paste0(
-      "  caption: [Tailgate configurations ranked by mean Pearson correlation (PCC) ",
+  .analysis_typst_table(
+    cells,
+    header = c(
+      "Rank", "Configuration", "Zeros \\ removed", "Automatic \\ tolerance",
+      "Tolerance", "Bias", "Mean \\ PCC", "Strata \\ scored", "Failed \\ gates"
+    ),
+    align = c("right", "left", "left", "left", rep("right", 5)),
+    bold = f$selected,
+    caption = paste0(
+      "Tailgate configurations ranked by mean Pearson correlation (PCC) ",
       "with the manual background-subtracted frequencies over eligible population, ",
       "cytokine and stimulus strata of the ACS CyTOF data, each stratum weighted equally. ",
       selectedText,
@@ -277,8 +256,8 @@
       "derivative of the density; otherwise it is an absolute bound on the derivative. ",
       "Zeros (cells with an expression of exactly zero) are removed only to estimate the ",
       "threshold. Strata scored: eligible strata where every configuration has a PCC on the ",
-      "donors all gated successfully. Failed gates: failed donor-cytokine estimates in eligible strata.],"
+      "donors all gated successfully. Failed gates: failed donor-cytokine estimates in eligible strata."
     ),
-    paste0(") <", label, ">")
-  ), collapse = "\n")
+    label = label
+  )
 }

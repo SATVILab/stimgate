@@ -3,7 +3,7 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
 .tuneEnv <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
   for (f in c(
-    "analysis-runtime.R", "analysis-plot-style.R", "sim-misc.R",
+    "analysis-runtime.R", "analysis-plot-style.R", "analysis-typst.R", "sim-misc.R",
     "sim-bandwidth.R", "sim-compare-freq_bs.R", "sim-compare-tune.R"
   )) {
     source(file.path(root_dir, "scripts", "r", f), local = env)
@@ -119,6 +119,42 @@ test_that("selection keeps near-best F1 settings and then prefers accurate estim
   s2$f1_median[s2$method == "tailgate" & s2$bias == 0.1] <- 1
   r2 <- env$.simTuneRank(s2, f1_tolerance = 0.02)
   expect_equal(r2$bias[r2$selected & r2$method == "tailgate"], 0.1)
+})
+
+test_that("the Typst ranking table shows the HTML table's values and compiles", {
+  env <- .tuneEnv()
+  r <- env$.simTuneRank(env$.simTuneSummary(env$.simTuneMetrics(.tuneToyScores(env))))
+  d <- env$.simTuneRankDisplay(r)
+  expect_identical(d$method[[1]], "F-beta")
+  expect_identical(sum(d$selected), 2L)
+  typst <- env$.simTuneTypstTable(d)
+  expect_match(typst, "^#figure\\(")
+  for (value in c(d$f1_median, d$est_error, d$truth_in_band)) {
+    expect_true(grepl(value, typst, fixed = TRUE))
+  }
+  expect_match(typst, "$beta = 0.8$", fixed = TRUE)
+  expect_match(typst, "$1 times 10^(-2)$ (relative)", fixed = TRUE)
+  expect_match(typst, "[Mean \\ median F1]", fixed = TRUE)
+  expect_identical(lengths(regmatches(typst, gregexpr("\n    \\[\\*", typst))), 2L)
+  quarto <- Sys.which("quarto")
+  skip_if(!nzchar(quarto), "Quarto (with Typst) is unavailable.")
+  dir <- withr::local_tempdir()
+  file <- file.path(dir, "table.typ")
+  writeLines(c('#set page(paper: "a4", margin: (left: 1.5in, rest: 1in))', typst), file)
+  status <- system2(quarto, c("typst", "compile", file, file.path(dir, "table.pdf")),
+    stdout = TRUE, stderr = TRUE)
+  expect_null(attr(status, "status"))
+})
+
+test_that("Analysis 6 saves only its ranking table and F1 figure for the thesis", {
+  qmd <- readLines(file.path(root_dir, "analysis", "6-sim-tune-comparators.qmd"))
+  thesis_lines <- grep("^[^#]*\"output-thesis\"", qmd, value = TRUE)
+  expect_length(thesis_lines, 2L)
+  text <- paste(qmd, collapse = "\n")
+  expect_match(text, '"sim-tune-comparators-ranking.typ"', fixed = TRUE)
+  expect_match(text, '"sim-tune-comparators-compare-f1"', fixed = TRUE)
+  expect_match(text, 'thesis_parts <- c("appendix", fig_key[-1L])', fixed = TRUE)
+  expect_match(text, "code-copy: true", fixed = TRUE)
 })
 
 test_that("compared settings include every reference and survive a selected setting equal to one", {

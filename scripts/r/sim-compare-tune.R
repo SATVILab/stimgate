@@ -530,6 +530,71 @@
     dplyr::ungroup()
 }
 
+# The `n` best settings of each method by the selection rule, formatted for
+# both the HTML table and the Typst source (needs analysis-typst.R for the
+# Typst column), so the two show the same values.
+.simTuneRankDisplay <- function(rank, n = 5L) {
+  top <- rank |>
+    dplyr::group_by(.data$method) |>
+    dplyr::slice_head(n = n) |>
+    dplyr::ungroup() |>
+    dplyr::arrange(dplyr::desc(.data$method == "fbeta"), .data$rank)
+  num <- function(x) formatC(x, format = "f", digits = 3)
+  tol <- ifelse(
+    top$tol_type == "relative",
+    paste0(.simTuneTolText(top$tol), " (relative)"),
+    paste0(top$tol, " (absolute)")
+  )
+  tibble::tibble(
+    method = ifelse(top$method == "fbeta", "F-beta", "Tailgate"),
+    rank = as.character(top$rank),
+    setting = ifelse(top$method == "fbeta", paste0("beta ", top$beta),
+      paste0("tolerance ", tol, ", bias ", top$bias)),
+    setting_typst = ifelse(
+      top$method == "fbeta", paste0("$beta = ", top$beta, "$"),
+      paste0(
+        ifelse(top$tol_type == "relative", .analysis_typst_sci(top$tol), top$tol),
+        ifelse(top$tol_type == "relative", " (relative)", " (absolute)"),
+        ", bias ", top$bias
+      )
+    ),
+    f1_median = num(top$mean_f1_median),
+    f1_p10 = num(top$mean_f1_p10),
+    est_error = num(top$mean_est_band_error),
+    truth_in_band = paste0(top$n_truth_in_band, "/", top$n_scenarios),
+    selected = top$selected %in% TRUE
+  )
+}
+
+.simTuneTypstTable <- function(display, label = "tbl-sim-tune-comparators") {
+  method <- ifelse(display$method == "F-beta", "$F_beta$", "Tailgate")
+  # Name each method once, on its first row.
+  method[duplicated(display$method)] <- ""
+  .analysis_typst_table(
+    cbind(
+      method, display$rank, display$setting_typst, display$f1_median,
+      display$f1_p10, display$est_error, display$truth_in_band
+    ),
+    header = c(
+      "Method", "Rank", "Setting", "Mean \\ median F1", "Mean 10th \\ percentile F1",
+      "Mean estimate \\ error", "Truth within \\ 10th-90th"
+    ),
+    align = c("left", "right", "left", rep("right", 4)),
+    bold = display$selected,
+    caption = paste0(
+      "The best settings of $F_beta$ and Tailgate in the simulations (0.2% response, ",
+      "three transformations, two separations, 5,000 and 100,000 cells), averaged over ",
+      "the twelve scenarios. Settings within 0.02 of the best mean median F1 are ranked by ",
+      "mean estimate error, the larger relative error of the 10th and 90th percentiles ",
+      "of the background-subtracted frequency; the selected setting of each method is in ",
+      "bold. A relative tolerance is a fraction of the steepest slope of the density; an ",
+      "absolute tolerance bounds the derivative. Truth within 10th-90th: scenarios whose ",
+      "10th-90th percentile range of estimates contains the true frequency."
+    ),
+    label = label
+  )
+}
+
 # The selected setting of each method beside the reference settings.
 .simTuneCompareSettings <- function(rank) {
   ref <- .simTuneReferenceSettings()

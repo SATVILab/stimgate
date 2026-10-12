@@ -55,6 +55,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-typst.R"))
 fig_key <- .analysis_mode_key("9a-real-tune-acs-cytof-tailgate", sized = FALSE)
 analysis_qmd <- "analysis/9a-real-tune-acs-cytof-tailgate.qmd"
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
@@ -337,12 +338,10 @@ folder (`_output/thesis`).
 #| echo: false
 #| results: asis
 if (isTRUE(run_plots)) {
-  typst_source <- .acsCytofTailgateTypst(ranking_tbl)
-  writeLines(typst_source, file.path(
+  .analysis_typst_show(.acsCytofTailgateTypst(ranking_tbl), file.path(
     .analysis_project_dir("output-thesis", thesis_parts, root_dir),
     "acs-tailgate-ranking.typ"
   ))
-  cat("\n```typst\n", typst_source, "\n```\n\n", sep = "")
 }
 ```
 

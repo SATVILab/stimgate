@@ -4,6 +4,7 @@ format:
   html:
     embed-resources: true
     toc: true
+    code-copy: true
 knitr:
   opts_chunk:
     fig.retina: 1
@@ -46,6 +47,7 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-typst.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
@@ -180,6 +182,9 @@ Each scenario has `r n_iter` datasets of `r n_sample` samples, so
 #| include: false
 analysis_key <- .analysis_mode_key(c("sim", "tune-comparators"))
 fig_key <- .analysis_mode_key("6-sim-tune-comparators")
+# Files the thesis uses go to the projr "output-thesis" label
+# (_output/thesis), in its appendix folder (quick/dev renders one level down).
+thesis_parts <- c("appendix", fig_key[-1L])
 dir_cache <- .analysis_cache_dir(analysis_key, root_dir, create = run_simulations)
 path_results <- file.path(dir_cache, "results.rds")
 
@@ -265,25 +270,44 @@ percentile of F1).
 if (isTRUE(run_plots)) {
   cat("\n\n**Selected F-beta setting:** ", selected_lab("fbeta"), ".\n\n", sep = "")
   cat("**Selected Tailgate setting:** ", selected_lab("tailgate"), ".\n\n", sep = "")
-  rank_display <- rank_tbl |>
-    dplyr::group_by(.data$method) |>
-    dplyr::slice_head(n = 5L) |>
-    dplyr::ungroup() |>
+  rank_top <- .simTuneRankDisplay(rank_tbl, n = 5L)
+  rank_display <- rank_top |>
     dplyr::transmute(
-      setting = .data$setting_lab,
-      `mean median F1` = round(.data$mean_f1_median, 3),
-      `mean 10th pct F1` = round(.data$mean_f1_p10, 3),
-      `mean estimate error` = round(.data$mean_est_band_error, 3),
-      `truth in 10th-90th` = paste0(.data$n_truth_in_band, " / ", .data$n_scenarios)
+      method = .data$method, rank = .data$rank,
+      setting = ifelse(.data$selected, paste0("**", .data$setting, " (selected)**"), .data$setting),
+      `mean median F1` = .data$f1_median, `mean 10th pct F1` = .data$f1_p10,
+      `mean estimate error` = .data$est_error,
+      `truth in 10th-90th` = .data$truth_in_band
     )
   print(knitr::kable(rank_display, caption = paste(
     "The five best settings of each method by the rule above (mean over",
     "scenarios). Estimate error is the larger relative error of the 10th and",
-    "90th percentiles of the estimates."
+    "90th percentiles of the estimates. A relative tolerance is a fraction of",
+    "the steepest slope of the density; an absolute one bounds the derivative."
   )))
   .analysis_report_table(rank_tbl, c(fig_key, "setting_rank.csv"),
     "Every setting of each method, averaged over scenarios, in selection order.",
     root_dir)
+}
+```
+
+### Typst table for the thesis
+
+The Typst source of the table above, from the same values. Copy it with the
+button at its top right; in a Quarto document, paste it inside a
+```` ```{=typst} ```` block. It is also saved as
+`appendix/sim-tune-comparators-ranking.typ` in the projr `output-thesis`
+folder (`_output/thesis`).
+
+```{r}
+#| label: typst-table
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  .analysis_typst_show(.simTuneTypstTable(rank_top), file.path(
+    .analysis_project_dir("output-thesis", thesis_parts, root_dir),
+    "sim-tune-comparators-ranking.typ"
+  ))
 }
 ```
 
@@ -298,6 +322,10 @@ runs it now (automatic tolerance 1%, bias 0.1).
 
 ### F1
 
+A thesis version of this figure, drawn at the thesis text width (146.5 mm by
+215 mm), is saved as `appendix/sim-tune-comparators-compare-f1.pdf` (and
+`.png`) in the projr `output-thesis` folder.
+
 ```{r}
 #| label: fig-compare-f1
 #| echo: false
@@ -308,6 +336,15 @@ if (isTRUE(run_plots)) {
   .analysis_print_save_fig(p, file.path(
     .analysis_fig_dir(c(fig_key, "compare"), root_dir), "compare-f1.png"
   ), height = 22)
+  # The thesis version, at the thesis text width.
+  .analysis_save_thesis_fig(
+    p + .analysis_thesis_theme(),
+    file.path(
+      .analysis_project_dir("output-thesis", thesis_parts, root_dir),
+      "sim-tune-comparators-compare-f1"
+    ),
+    height = 215
+  )
 }
 ```
 
