@@ -133,9 +133,10 @@ test_that("the thesis ranking table is a captioned Quarto table without estimate
   md <- env$.simTuneMdTable(d)
   lines <- strsplit(md, "\n", fixed = TRUE)[[1]]
   expect_match(utils::tail(lines, 1), "\\{#tbl-stimgate-appendix-tune-comparators\\}$")
-  for (value in c(d$f1_median, d$truth_in_band)) {
+  for (value in d$f1_median) {
     expect_true(grepl(value, md, fixed = TRUE))
   }
+  expect_false(grepl("Truth within", md, fixed = TRUE))
   expect_false(grepl("estimate error", lines[[1]], fixed = TRUE))
   expect_match(md, "$\\beta$ 0.8", fixed = TRUE)
   expect_match(md, "relative tolerance $10^{-2}$", fixed = TRUE)
