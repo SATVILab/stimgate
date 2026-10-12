@@ -1029,10 +1029,15 @@ thesis figures at their printed size: the thesis
 146.5 x 246.2 mm text area and 12 pt body text, and inserts PDF figures
 at full width (`.analysis_thesis_theme()`, `.analysis_save_thesis_fig()`
 in `analysis-plot-style.R`: PDF plus 300 dpi PNG). HTML reports keep
-showing the standard figures. Typst tables for the thesis are generated
-from the same formatted values as the HTML table (`analysis-typst.R`),
-shown in a `typst` code block (copy button) and saved as a `.typ` file
-there.
+showing the standard figures. Thesis tables are Quarto pipe tables in
+the thesis’s own style (`| ... |` rows, then
+`: **Title**. Caption. {#tbl-<chapter>-...}`, LaTeX-style `$...$`
+maths), built with `analysis-thesis-table.R`: the HTML renders the
+table, shows its source in a copyable block and saves it as a `.md` file
+there. Do not write raw Typst tables; Quarto would not number or
+cross-reference them. In thesis figures and tables use sentence case,
+readable maths (2×10⁻⁵, β, $`F_{\beta}`$) and explain conventions such
+as the relative tolerance once, in the caption.
 
 Large report tables belong in CSV companions under
 `output/table/<fig_key>/` via `.analysis_report_table()` /
