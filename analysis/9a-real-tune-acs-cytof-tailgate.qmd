@@ -96,10 +96,10 @@ path_scratch_base <- projr::projr_path_get(
   "cache", "acs_cytof", "scratch", format = "absolute"
 )
 path_selection <- .acsCytofTailgateSelectionDir(root_dir)
-# Thesis-ready figures and the Typst table go to the projr "output-thesis"
-# label (_output/thesis, uploaded to a GitHub release on projr builds), in its
-# appendix folder (quick/dev renders in a subfolder); the HTML shows the
-# standard figures.
+# The Typst table goes to the projr "output-thesis" label (_output/thesis,
+# uploaded to a GitHub release on projr builds), in its appendix folder
+# (quick/dev renders in a subfolder). Thesis figures are saved there only
+# when requested for the thesis.
 thesis_parts <- c("appendix", fig_key[-1L])
 if (isTRUE(run_comparators) && !requireNamespace("cytoUtils", quietly = TRUE)) {
   stop("The Tailgate comparison requires the cytoUtils package.")
@@ -356,12 +356,6 @@ are strata excluded by the eligibility rule; white cells labelled `NA` are
 eligible strata where the PCC is undefined. Blank positions have no matched
 stratum.
 
-Thesis versions are saved as PDF and 300 dpi PNG at the thesis's text width
-(146.5 mm: A4 with 1.5 in left and 1 in other margins), 62 mm high for the
-T-cell populations and 82 mm for all populations, under
-`appendix/acs-tailgate-heatmaps/` in the projr `output-thesis` folder
-(`_output/thesis`). Their text is 7–8.5 pt at that size; the eligibility key
-is left out, so their caption should explain the `excl.` and `NA` cells.
 
 ```{r}
 #| label: tailgate-heatmaps
@@ -383,19 +377,6 @@ if (isTRUE(run_plots)) {
         .analysis_fig_dir(c(fig_key, "heatmaps", pops_key), root_dir),
         paste0("pcc-", method, ".png")
       ), height = if (real_only) 9 else 12)
-      .acsCytofSaveThesisFigure(
-        .acsCytofValidationPlotCorrelation(
-          correlation_tbl, method = method, metric = "pcc",
-          realPopulationsOnly = real_only, thesis = TRUE
-        ),
-        file.path(
-          .analysis_project_dir(
-            "output-thesis", c(thesis_parts, "acs-tailgate-heatmaps", pops_key), root_dir
-          ),
-          paste0("pcc-", method)
-        ),
-        .acsCytofThesisFigureSize(real_only)
-      )
     }
   }
 }

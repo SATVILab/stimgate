@@ -827,7 +827,8 @@ including real-data analyses, pass `sized = FALSE` to `.analysis_mode_key()`.
 
 The projr `output` label is `_output/general`; `output-thesis` (`_output/thesis`)
 holds files for the thesis and is uploaded to a GitHub release on projr builds
-(`build: github:` in `_projr.yml`). Save thesis files in its `appendix/` (or
+(`build: github:` in `_projr.yml`). Save only the files the operator has asked
+for there, never every variant a QMD draws. Save thesis files in its `appendix/` (or
 other chapter) subfolder, with quick/dev renders one level deeper
 (`c("appendix", fig_key[-1L])`); do not add further output labels. Draw thesis
 figures at their printed size: the thesis (Manuscript22RodoThesis,
