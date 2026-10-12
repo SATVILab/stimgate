@@ -589,6 +589,7 @@
     setting = paste0(setting, tag),
     f1_median = num(top$mean_f1_median),
     f1_p10 = num(top$mean_f1_p10),
+    f1_width = num(top$mean_f1_width),
     truth_in_band = paste0(top$n_truth_in_band, "/", top$n_scenarios),
     selected = top$selected %in% TRUE,
     used = top$used
@@ -602,14 +603,17 @@
   # Name each method once, on its first row.
   method[duplicated(display$method)] <- ""
   .analysis_md_table(
-    cbind(method, display$rank, display$setting, display$f1_median, display$f1_p10),
-    header = c("Method", "Rank", "Setting", "Mean median F1", "Mean 10th-percentile F1"),
+    cbind(method, display$rank, display$setting, display$f1_median, display$f1_width),
+    header = c("Method", "Rank", "Setting", "Mean median F1",
+      "Mean 10th-90th percentile F1 width"),
     align = c("left", "right", "left", "right", "right"),
     bold = display$used,
     plain = 1L,
     caption = paste0(
-      "Five best-performing $F_{\\beta}$ and Tailgate settings. Median and 10th-percentile ",
-      "$F_1$ scores were calculated per simulation scenario, and averaged across scenarios. ",
+      "Five best-performing $F_{\\beta}$ and Tailgate settings. The median and the width of ",
+      "the 10th-90th percentile interval of $F_1$ scores were calculated per simulation ",
+      "scenario, and averaged across scenarios. Settings within 0.02 of the best mean ",
+      "median $F_1$ are ordered by the narrowest interval. ",
       "Bold-text row denotes parameter settings selected for comparison analyses."
     ),
     label = label
