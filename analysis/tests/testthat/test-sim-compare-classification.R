@@ -425,8 +425,8 @@ test_that("analysis 7 reports FDP, sensitivity and F1 by cell count for every me
   expect_true(any(grepl("Median false discovery proportion", out, fixed = TRUE)))
   expect_true(any(grepl("10th percentile sensitivity", out, fixed = TRUE)))
   expect_true(any(grepl("Median F1 score", out, fixed = TRUE)))
-  # Six statistics, each for all methods and without Tailgate.
-  expect_length(plots, 12L)
+  # Six statistics, each for all methods.
+  expect_length(plots, 6L)
   expect_setequal(as.character(unique(plots[[1]]$data$method)), c("stimgate", "fbeta", "tailgate"))
 
   env$run_plots <- FALSE
