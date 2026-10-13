@@ -25,6 +25,10 @@ test_that("bandwidth QMDs set the threshold method explicitly", {
       collapse = "\n"
     )
     expect_match(txt, 'loc_threshold_method <- "cap"', fixed = TRUE)
+    if (!startsWith(qmd, "_archive/")) {
+      expect_match(txt, "loc_plateau_step <- TRUE", fixed = TRUE, info = qmd)
+      expect_match(txt, "locPlateauStep = loc_plateau_step", fixed = TRUE, info = qmd)
+    }
     # scenario_settings is recorded in the manifest's required parameters.
     expect_match(
       txt, "locThresholdMethod = loc_threshold_method\n)",
@@ -37,6 +41,8 @@ test_that("bandwidth QMDs set the threshold method explicitly", {
     collapse = "\n"
   )
   expect_match(txt, 'locThresholdMethod = "region"\n)', fixed = TRUE)
+  expect_match(txt, "loc_plateau_step <- TRUE", fixed = TRUE)
+  expect_match(txt, "locPlateauStep = loc_plateau_step", fixed = TRUE)
 })
 
 test_that("results recorded without the threshold method are rejected", {
@@ -66,6 +72,12 @@ test_that("results recorded without the threshold method are rejected", {
     "required manifest parameters: scenario_settings", fixed = TRUE
   )
   required$scenario_settings$locThresholdMethod <- NULL
+  required$scenario_settings$locPlateauStep <- TRUE
+  expect_error(
+    env$.analysis_current_file(ctx, "result.rds", required),
+    "required manifest parameters: scenario_settings", fixed = TRUE
+  )
+  required$scenario_settings$locPlateauStep <- NULL
   expect_true(file.exists(
     env$.analysis_current_file(ctx, "result.rds", required)
   ))

@@ -383,6 +383,7 @@
   outputGroup = NULL,
   gateName = "loc_minClust",
   sampleMap = NULL,
+  locPlateauStep = FALSE,
   locThresholdMethod = "region",
   tailgateSelection = NULL
 ) {
@@ -433,7 +434,7 @@
     names(paths) <- methods
     saved <- lapply(methods, function(method) {
       if (method == "stimgate") {
-        .acsCytofReadStimGateManifest(paths[[method]], locThresholdMethod)
+        .acsCytofReadStimGateManifest(paths[[method]], locThresholdMethod, locPlateauStep)
       } else {
         object <- .acsCytofReadComparatorCache(
           paths[[method]], method, tailgateSelection = tailgateSelection
@@ -465,6 +466,7 @@
             thresholdOrigin = .data$locSource,
             thresholdFallbackUsed = !(.data$locGenerated %in% TRUE),
             cyt = unname(.acsCytofChannelMap()[.data$chnl]),
+            locPlateauStep = .env$locPlateauStep,
             locThresholdMethod = .env$locThresholdMethod
           )
       } else {
@@ -491,6 +493,7 @@
   outputGroup = NULL,
   gateName = "loc_minClust",
   sampleMap = NULL,
+  locPlateauStep = FALSE,
   locThresholdMethod = "region",
   tailgateSelection = NULL
 ) {
@@ -503,6 +506,7 @@
     outputGroup = outputGroup,
     gateName = gateName,
     sampleMap = sampleMap,
+    locPlateauStep = locPlateauStep,
     locThresholdMethod = locThresholdMethod,
     tailgateSelection = tailgateSelection
   )
@@ -556,6 +560,7 @@
     methods = attr(autoTbl, "manifest"),
     comparisonSettings = list(
       gateName = gateName, pop = pop, cyt = cyt, methods = methods,
+      locPlateauStep = locPlateauStep,
       locThresholdMethod = locThresholdMethod,
       tailgateConfig = tailgateSelection$method
     ),
@@ -904,6 +909,7 @@ comp_against_manual_cyt <- function(
   path_dir_save = NULL,
   save_plots = TRUE,
   loc_threshold_method = "region",
+  loc_plateau_step = FALSE,
   tailgate_selection = NULL
 ) {
   comparisonTbl <- .acsCytofManualComparisonTable(
@@ -916,6 +922,7 @@ comp_against_manual_cyt <- function(
     outputGroup = output_group,
     gateName = gate_name,
     sampleMap = sample_map,
+    locPlateauStep = isTRUE(loc_plateau_step),
     locThresholdMethod = loc_threshold_method,
     tailgateSelection = tailgate_selection
   )
@@ -938,7 +945,7 @@ comp_against_manual_cyt <- function(
     dplyr::mutate(ind = as.character(.data$ind)) |>
     dplyr::select(dplyr::all_of(required), dplyr::any_of(c(
       "thresholdRaw", "gateCyt", "locGenerated", "locGeneratedDirect",
-      "locSource", "locReason", "locThresholdMethod"
+      "locSource", "locReason", "locThresholdMethod", "locPlateauStep"
     )))
   keys <- c("ind", "cyt")
   if (anyDuplicated(provenance[keys]) ||

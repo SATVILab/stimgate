@@ -379,6 +379,30 @@
     ))
   }
 
+  plateauStep <- settings[["locPlateauStep"]]
+  if (!is.null(plateauStep) &&
+      (!is.logical(plateauStep) || length(plateauStep) != 1L || is.na(plateauStep))) {
+    stop(paste0(prefix, "`locPlateauStep` must be TRUE or FALSE."))
+  }
+  minCells <- settings[["locPlateauMinCells"]]
+  if (!.verifyIsNullOrNa(minCells) &&
+      (!is.numeric(minCells) || length(minCells) != 1L || !is.finite(minCells) ||
+        minCells < 1)) {
+    stop(paste0(prefix, "`locPlateauMinCells` must be a single number of at least 1."))
+  }
+  gapBw <- settings[["locPlateauGapBw"]]
+  if (!.verifyIsNullOrNa(gapBw) &&
+      (!is.numeric(gapBw) || length(gapBw) != 1L || is.na(gapBw) || gapBw <= 0)) {
+    stop(paste0(prefix, "`locPlateauGapBw` must be a single positive number."))
+  }
+  for (nm in c("locPlateauAlignMax", "locPlateauAlignUpper")) {
+    val <- settings[[nm]]
+    if (!.verifyIsNullOrNa(val) &&
+        (!is.numeric(val) || length(val) != 1L || !is.finite(val) || val < 1)) {
+      stop(paste0(prefix, "`", nm, "` must be a single finite number of at least 1."))
+    }
+  }
+
   # Sharing limits; Inf switches a limit off.
   for (nm in c("locShareCap", "locShareCellCap")) {
     val <- settings[[nm]]

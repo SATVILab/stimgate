@@ -56,7 +56,7 @@ test_that("Analysis 11 forwards the threshold and cytokine-positive settings", {
   withr::local_preserve_seed()
   seen <- NULL
   env$gateStim <- function(..., calcCytPosGates, control) {
-    seen <<- list(method = control$locThresholdMethod, cyt_pos = calcCytPosGates,
+    seen <<- list(method = control$locThresholdMethod, plateau = control$locPlateauStep, cyt_pos = calcCytPosGates,
       cyt_pos_method = control$cytPosMethod)
     stop("captured threshold control")
   }
@@ -65,10 +65,10 @@ test_that("Analysis 11 forwards the threshold and cytokine-positive settings", {
   row$n_cell <- 200
   for (method in c("region", "match")) {
     seen <- NULL
-    settings <- env$.simLowSepMainSettings(loc_threshold_method = method, n_sample = 1L)
+    settings <- env$.simLowSepMainSettings(loc_threshold_method = method, n_sample = 1L, locPlateauStep = TRUE)
     expect_identical(settings$loc_threshold_method, method)
     expect_error(env$.simLowSepScenario(row, settings), "captured threshold control")
-    expect_identical(seen, list(method = method, cyt_pos = TRUE, cyt_pos_method = "antimode"))
+    expect_identical(seen, list(method = method, plateau = TRUE, cyt_pos = TRUE, cyt_pos_method = "antimode"))
   }
   settings$loc_threshold_method <- NULL
   expect_error(env$.simLowSepScenario(row, settings), "set explicitly")
@@ -101,8 +101,10 @@ test_that("QMDs 11a and 11b set the threshold method explicitly to cap", {
     code <- paste(.threshold_method_qmd_chunk(qmd, "main-settings"),
       collapse = "\n")
     expect_match(code,
-      '.simLowSepMainSettings(loc_threshold_method = "cap", n_sample = sizes$n_sample)',
+      'loc_threshold_method = "cap", n_sample = sizes$n_sample,',
       fixed = TRUE, info = name)
+    expect_match(code, "loc_plateau_step <- TRUE", fixed = TRUE)
+    expect_match(code, "locPlateauStep = loc_plateau_step", fixed = TRUE)
     grid <- paste(.threshold_method_qmd_chunk(qmd, "grid"), collapse = "\n")
     expect_match(grid, "scenario_settings = main_settings", fixed = TRUE, info = name)
     sim <- paste(.threshold_method_qmd_chunk(qmd, "simulate"), collapse = "\n")
@@ -118,7 +120,7 @@ test_that("Analysis 12 wrappers forward the threshold method", {
   withr::local_preserve_seed()
   seen <- NULL
   capture_gate <- function(..., control) {
-    seen <<- control$locThresholdMethod
+    seen <<- list(method = control$locThresholdMethod, plateau = control$locPlateauStep)
     stop("captured threshold control")
   }
   testthat::local_mocked_bindings(gateStim = capture_gate,
@@ -129,12 +131,12 @@ test_that("Analysis 12 wrappers forward the threshold method", {
   for (method in c("region", "match")) {
     seen <- NULL
     expect_error(env$.simClusterLabRun(558L, 2L, 50L, 4,
-      loc_threshold_method = method), "captured threshold control")
-    expect_identical(seen, method)
+      loc_threshold_method = method, locPlateauStep = TRUE), "captured threshold control")
+    expect_identical(seen, list(method = method, plateau = TRUE))
     seen <- NULL
     expect_error(env$.simClusterWeakRun(utils::modifyList(weak,
-      list(loc_threshold_method = method))), "captured threshold control")
-    expect_identical(seen, method)
+      list(loc_threshold_method = method, locPlateauStep = TRUE))), "captured threshold control")
+    expect_identical(seen, list(method = method, plateau = TRUE))
   }
   expect_identical(formals(env$.simClusterLabRun)$loc_threshold_method,
     "region")
@@ -150,13 +152,13 @@ test_that("Analysis 12 weak-response validation rejects old caches", {
     loc_threshold_method = "region")
   old_settings <- settings[setdiff(names(settings), "loc_threshold_method")]
   scores <- tibble::tibble(ind = "2", stage = c("Before", "After"))
-  expect_identical(env$.simClusterWeakSemantics, "cluster-weak-v6")
+  expect_identical(env$.simClusterWeakSemantics, "cluster-weak-v7")
   expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v1",
     settings = old_settings, scores = scores), settings), "settings changed")
-  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v6",
+  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v7",
     settings = settings, scores = scores), settings), "locThresholdMethod")
   scores$locThresholdMethod <- "match"
-  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v6",
+  expect_error(env$.simClusterWeakValidate(list(semantics = "cluster-weak-v7",
     settings = settings, scores = scores), settings), "locThresholdMethod")
 })
 
@@ -176,7 +178,9 @@ test_that("QMD 12 sets the method to cap and rejects old lab caches", {
   eval(parse(text = .threshold_method_qmd_chunk(qmd, "lab-settings")),
     envir = env)
   expect_identical(env$lab_settings$loc_threshold_method, "cap")
-  expect_identical(env$lab_semantics, "cluster-lab-v6")
+  expect_true(env$lab_settings$locPlateauStep)
+  expect_match(weak_code, "locPlateauStep = loc_plateau_step", fixed = TRUE)
+  expect_identical(env$lab_semantics, "cluster-lab-v7")
   # The lab settings are passed to .simClusterLabRun() through do.call().
   expect_true(all(names(env$lab_settings) %in%
     names(formals(env$.simClusterLabRun))))
@@ -190,12 +194,13 @@ test_that("QMD 12 sets the method to cap and rejects old lab caches", {
     result = result), env$lab_cache_file)
   expect_error(eval(read_code, envir = env), "different scientific settings")
 
-  saveRDS(list(semantics = "cluster-lab-v6", settings = env$lab_settings,
+  saveRDS(list(semantics = "cluster-lab-v7", settings = env$lab_settings,
     result = result), env$lab_cache_file)
   expect_error(eval(read_code, envir = env), "different scientific settings")
 
   result$allocations$locThresholdMethod <- "cap"
-  saveRDS(list(semantics = "cluster-lab-v6", settings = env$lab_settings,
+  result$allocations$locPlateauStep <- TRUE
+  saveRDS(list(semantics = "cluster-lab-v7", settings = env$lab_settings,
     result = result), env$lab_cache_file)
   expect_no_error(eval(read_code, envir = env))
   expect_identical(env$lab_result, result)

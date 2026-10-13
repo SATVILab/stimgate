@@ -1,3 +1,15 @@
+# stimgate 0.99.37
+
+## New features
+
+- `stimControl(locPlateauStep = TRUE)` lowers each tube's gate in steps of
+  one bandwidth towards the start of the flat stretch of the stimulated
+  density that holds it, while the cells added are mostly responders. It is
+  used only where stimulated and unstimulated negative tails agree across a
+  marker's tubes, and lowered gates are flagged in the `locPlateauStep`
+  column of `getStimGates()`. Off by default; `locPlateauMinCells`,
+  `locPlateauGapBw`, `locPlateauAlignMax` and `locPlateauAlignUpper` tune it.
+
 # stimgate 0.99.36
 
 ## Breaking changes

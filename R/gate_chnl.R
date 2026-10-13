@@ -7,6 +7,17 @@
   pathProject,
   stage
 ) {
+  # The plateau step needs every stimulated tube's tail alignment first.
+  if (isTRUE(chnlSettings$locPlateauStep)) {
+    chnlSettings <- .gateChnlPlateauAlign(
+      .data = .data,
+      indBatchList = indBatchList,
+      chnlSettings = chnlSettings,
+      stage = stage,
+      pathProject = pathProject
+    )
+  }
+
   # Initial gates
   # ----------------
   gateTbl <- .gateChnlPreAdjGatesGate(

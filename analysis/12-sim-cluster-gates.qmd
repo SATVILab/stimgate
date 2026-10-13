@@ -80,16 +80,18 @@ clusters used for shared bandwidth estimation.
 ```{r}
 #| label: lab-settings
 #| echo: false
+loc_plateau_step <- TRUE
 lab_settings <- list(
   seed = 558L,
   n_sample_lab = if (analysis_quick || analysis_dev) 3L else 6L,
   n_cell = if (analysis_quick || analysis_dev) 500L else 2000L,
   lab_shift = 4,
-  loc_threshold_method = "cap"
+  loc_threshold_method = "cap",
+  locPlateauStep = loc_plateau_step
 )
 # v2: the threshold method is a recorded setting and output column; v1 caches
 # used probability-sum matching without recording it.
-lab_semantics <- "cluster-lab-v6"
+lab_semantics <- "cluster-lab-v7"
 lab_cache_file <- file.path(
   .analysis_cache_dir(c(analysis_key, "lab"), root_dir, create = FALSE),
   "result.rds"
@@ -114,7 +116,9 @@ lab_cache <- .analysis_read_rds(lab_cache_file, c(analysis_key, "lab"), analysis
 if (!identical(lab_cache$semantics, lab_semantics) ||
     !identical(lab_cache$settings, lab_settings) ||
     !identical(unique(lab_cache$result$allocations$locThresholdMethod),
-      lab_settings$loc_threshold_method)) {
+      lab_settings$loc_threshold_method) ||
+    !identical(unique(lab_cache$result$allocations$locPlateauStep),
+      lab_settings$locPlateauStep)) {
   .analysis_cache_error(c(analysis_key, "lab"),
     "Cached lab demonstration has different scientific settings.", analysis_qmd)
 }
@@ -224,7 +228,8 @@ weak_settings <- list(
   variance = 1.5,
   bw = 0.25,
   bias_uns = 0.25,
-  loc_threshold_method = "cap"
+  loc_threshold_method = "cap",
+  locPlateauStep = loc_plateau_step
 )
 weak_cache_key <- .analysis_mode_key(c("sim", "cluster-gates", "weak"), sized = FALSE)
 weak_cache_file <- file.path(

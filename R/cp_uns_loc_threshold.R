@@ -31,6 +31,9 @@
   method <- .getCpUnsLocThresholdMethod(chnlSettings)
   regionX <- NA_real_
   shiftedPeakRef <- attr(dataMod, "locShiftedPeakRef")
+  # Kept for the plateau step, which needs the untrimmed bandwidth and bound.
+  dataModInput <- dataMod
+  plateauInfo <- NULL
 
   if (!is.data.frame(dataMod)) {
     .intSaveNm("noDataModDf", NULL, ind, stageChnl, pathProject)
@@ -144,6 +147,20 @@
             stage = stage
           )
         }
+        if (isTRUE(chnlSettings$locPlateauStep)) {
+          plateau <- .getCpUnsLocPlateauApply(
+            cpObj = cpObj,
+            ind = ind,
+            dataMod = dataModInput,
+            exTblStimOrig = exTblStimOrig,
+            exTblUnsOrig = exTblUnsOrig,
+            bias = bias,
+            chnlSettings = chnlSettings
+          )
+          cpObj <- plateau$cpObj
+          plateauInfo <- plateau$info
+          .intSaveNm("locPlateauStep", plateauInfo, ind, stageChnl, pathProject)
+        }
         .intSave(ind, stageChnl, pathProject, cpObj$cp)
         .debug("Completed loc gate for single sample") # nolint
       }
@@ -157,6 +174,13 @@
   if (!is.null(shiftedPeakRef)) {
     cpObj$locShiftedPeakRef <- isTRUE(shiftedPeakRef$applied)
     attr(cpObj, "locShiftedPeakInfo") <- shiftedPeakRef
+  }
+  # Only when the plateau step was requested, so default outputs are
+  # unchanged.
+  if (isTRUE(chnlSettings$locPlateauStep)) {
+    cpObj$locPlateauStep <- isTRUE(plateauInfo$applied)
+    attr(cpObj, "locPlateauStepInfo") <- plateauInfo %||%
+      list(applied = FALSE, reason = "no_local_fdr_gate")
   }
   # Carried with the gate to limit how far shared gates may lower it.
   cpObj$propBsEst <- .getCpUnsLocProbBsEst(dataThreshold)

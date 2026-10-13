@@ -15,8 +15,8 @@ root_dir <- normalizePath(
 }
 
 .compare_method_qmds <- c(
-  "7-sim-compare-freq_bs.qmd" = "corrected-comparison-v25",
-  "8-sim-compare-freq_bs-batch.qmd" = "batch-mismatch-comparison-v25"
+  "7-sim-compare-freq_bs.qmd" = "corrected-comparison-v26",
+  "8-sim-compare-freq_bs-batch.qmd" = "batch-mismatch-comparison-v27"
 )
 
 test_that("comparison QMDs set and record the threshold method", {
@@ -34,6 +34,8 @@ test_that("comparison QMDs set and record the threshold method", {
       ),
       fixed = TRUE, info = qmd
     )
+    expect_match(txt, "loc_plateau_step <- TRUE", fixed = TRUE)
+    expect_match(txt, "locPlateauStep = loc_plateau_step", fixed = TRUE)
     # Every StimGate wrapper call passes the method explicitly.
     n_calls <- sum(grepl(
       "locEnforceShapeThreshold = loc_enforce_shape_threshold,", lines,
@@ -46,6 +48,10 @@ test_that("comparison QMDs set and record the threshold method", {
     expect_gt(n_calls, 0L)
     expect_identical(n_method, n_calls, info = qmd)
 
+    expect_identical(sum(grepl(
+      "locPlateauStep = loc_plateau_step,", lines, fixed = TRUE
+    )), n_calls, info = qmd)
+
     # The method is part of the settings recorded in the manifest and
     # required by canonical reads.
     start <- which(grepl("^analysis_result_params <- list", lines))
@@ -57,6 +63,7 @@ test_that("comparison QMDs set and record the threshold method", {
       quote(stimgate_loc_threshold_method),
       info = qmd
     )
+    expect_identical(as.list(expr)$loc_plateau_step, quote(loc_plateau_step), info = qmd)
     expect_match(
       txt, "required_params = analysis_result_params",
       fixed = TRUE, info = qmd
@@ -83,9 +90,10 @@ test_that("canonical comparison results without the method are rejected", {
     file.path(current, "manifest.rds")
   )
   required <- list(
-    comparison_semantics_version = "corrected-comparison-v25",
+    comparison_semantics_version = "corrected-comparison-v26",
     cluster_gates = TRUE,
-    stimgate_loc_threshold_method = "region"
+    stimgate_loc_threshold_method = "region",
+    loc_plateau_step = TRUE
   )
   expect_error(
     env$.analysis_current_file(ctx, "result.rds", required),
@@ -93,7 +101,7 @@ test_that("canonical comparison results without the method are rejected", {
     fixed = TRUE
   )
   # Only the version bump: the missing method alone still rejects the cache.
-  old$comparison_semantics_version <- "corrected-comparison-v25"
+  old$comparison_semantics_version <- "corrected-comparison-v26"
   saveRDS(
     list(analysis_key = ctx$analysis_key, params = old),
     file.path(current, "manifest.rds")
@@ -101,6 +109,15 @@ test_that("canonical comparison results without the method are rejected", {
   expect_error(
     env$.analysis_current_file(ctx, "result.rds", required),
     "parameters: stimgate_loc_threshold_method", fixed = TRUE
+  )
+  old$stimgate_loc_threshold_method <- "region"
+  saveRDS(
+    list(analysis_key = ctx$analysis_key, params = old),
+    file.path(current, "manifest.rds")
+  )
+  expect_error(
+    env$.analysis_current_file(ctx, "result.rds", required),
+    "parameters: loc_plateau_step", fixed = TRUE
   )
   saveRDS(
     list(analysis_key = ctx$analysis_key, params = required),

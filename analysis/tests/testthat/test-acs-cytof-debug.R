@@ -226,6 +226,8 @@ test_that("Analysis 13 shares Analysis 9's settings and never writes its caches"
   expect_identical(settings$bwMtd, ref$stimgate_bw_mtd)
   expect_identical(settings$bwScope, ref$stimgate_bw_scope)
   expect_identical(settings$locThresholdMethod, ref$stimgate_loc_threshold_method)
+  expect_true(settings$locPlateauStep)
+  expect_identical(settings$locPlateauStep, ref$loc_plateau_step)
   expect_identical(settings$biasUns, ref$bias_uns_vec_by_pop)
   expect_identical(settings$seed, ref$analysis_seed)
 
@@ -411,15 +413,16 @@ test_that("HTML selection uses Analysis 9 preprocessing and comparison layouts",
   attr(comparison, "manifest") <- list(
     methods = list(tcrgd = list(stimgate = list(
       context = list(preprocessing = list(sampleMap = sampleMap)),
-      settings = list(locThresholdMethod = "region"),
-      channelSettings = list(IL2 = list(locThresholdMethod = "region"))
+      settings = list(locThresholdMethod = "region", locPlateauStep = TRUE),
+      channelSettings = list(IL2 = list(locThresholdMethod = "region", locPlateauStep = TRUE))
     ))),
-    comparisonSettings = list(locThresholdMethod = "region"),
+    comparisonSettings = list(locThresholdMethod = "region", locPlateauStep = TRUE),
     manualInputHash = "fixture"
   )
   env$path_comparison <- file.path(base, "manual-comparison.rds")
   saveRDS(comparison, env$path_comparison)
-  env$settings <- list(locThresholdMethod = "region")
+  env$settings <- list(locThresholdMethod = "region", locPlateauStep = TRUE)
+  env$loc_plateau_step <- TRUE
   env$analysis_quick <- FALSE
   env$run_simulations <- TRUE
   env$html_stims <- "p1"

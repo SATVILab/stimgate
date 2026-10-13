@@ -162,6 +162,8 @@ if (analysis_quick) {
   html_pops <- "tcrgd"
   html_cyts <- intersect(html_cyts %||% sel_cyts, sel_cyts)
 }
+loc_plateau_step <- TRUE
+stopifnot(identical(settings$locPlateauStep, loc_plateau_step))
 run_pops <- intersect(settings$popVec, sel_pops %||% settings$popVec)
 unknown_pops <- setdiff(c(sel_pops, html_pops), settings$popVec)
 if (length(unknown_pops)) {
@@ -228,7 +230,7 @@ once the population has finished.
 #| include: false
 if (isTRUE(run_simulations)) {
   comparison <- tryCatch(
-    .acsCytofDebugReadComparison(path_comparison, settings$locThresholdMethod),
+    .acsCytofDebugReadComparison(path_comparison, settings$locThresholdMethod, loc_plateau_step),
     error = function(e) {
       message("Analysis 9b's manual comparison is unusable: ", conditionMessage(e))
       NULL
@@ -261,7 +263,7 @@ if (isTRUE(run_simulations)) {
   # Pages for the report's samples are drawn even if not selected here.
   select <- list(stim = sel_stims, cyt = sel_cyts, sample = sel_samples)
   manifest <- list(
-    analysis_semantics_version = "acs-cytof-debug-v3",
+    analysis_semantics_version = "acs-cytof-debug-v4",
     run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = "")),
     settings = settings,
     select = select,
@@ -325,7 +327,7 @@ if (isTRUE(run_plots)) {
     obj <- .analysis_read_rds(path, "acs_cytof_debug", analysis_qmd)
     .analysis_check_expected_run(
       obj$manifest, "acs_cytof_debug", analysis_qmd,
-      semantics_version = "acs-cytof-debug-v3"
+      semantics_version = "acs-cytof-debug-v4"
     )
     summaries[[pop]] <- obj$table
   }

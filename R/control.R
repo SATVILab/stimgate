@@ -146,6 +146,35 @@
 #' @param locShiftedPeakBwMult numeric Number of bandwidths by which the
 #'   stimulated main peak must exceed the unstimulated main peak for
 #'   `locShiftedPeakRef` to apply. Must be positive. Default: 2.
+#' @param locPlateauStep logical After each tube's gate is chosen, step it
+#'   lower in steps of one local-FDR bandwidth, towards the left edge of the
+#'   flat stretch of the stimulated taut-string density that holds the gate.
+#'   A step is kept while the cells it adds are pure enough: their stimulated
+#'   excess over unstimulated cells (shifted by `biasUns`), as a share of
+#'   stimulated cells, must be at least `locMarginalPurityRel` times that above
+#'   the gate. The scan stops after two failed steps in a row. The step is used
+#'   only where stimulated and unstimulated negative tails agree: a first
+#'   gating pass measures each stimulated tube's ratio of stimulated to
+#'   unstimulated cells (without `biasUns`) 4 to 8 bandwidths below the left edge of that flat
+#'   stretch, and the step is switched off for the marker unless the pooled
+#'   ratio is at
+#'   most `locPlateauAlignMax` and its upper bound for a single tube, allowing
+#'   for spread between tubes, is at most `locPlateauAlignUpper`; tubes whose
+#'   own ratio is clearly above `locPlateauAlignMax` are skipped. Lowered gates
+#'   are flagged in the `locPlateauStep` column of [getStimGates()]. Gating
+#'   takes about twice as long when this is TRUE. Default: FALSE.
+#' @param locPlateauMinCells numeric Fewest stimulated cells a plateau step
+#'   must add before its purity is judged, so that single stray cells cannot
+#'   move the gate. Default: 2.
+#' @param locPlateauGapBw numeric Stop the plateau step after crossing this
+#'   many bandwidths without any stimulated cells. Use Inf to switch this off.
+#'   Default: 1.
+#' @param locPlateauAlignMax numeric Largest pooled ratio of stimulated to
+#'   unstimulated negative-tail cells for which the plateau step is used.
+#'   Default: 1.1.
+#' @param locPlateauAlignUpper numeric Largest upper bound for a single tube's
+#'   ratio, allowing for spread between tubes, for which the plateau step is
+#'   used. Default: 1.25.
 #' @param locDipAlpha numeric Dip-test p-value cutoff for inspecting density
 #'   antimodes before thresholding. Default: 0.2.
 #' @param locAntimodeHeightFrac numeric Maximum antimode height as a fraction
@@ -258,6 +287,11 @@ stimControl <- function(
   locEnforceShapeThreshold = FALSE,
   locShiftedPeakRef = FALSE,
   locShiftedPeakBwMult = 2,
+  locPlateauStep = FALSE,
+  locPlateauMinCells = 2,
+  locPlateauGapBw = 1,
+  locPlateauAlignMax = 1.1,
+  locPlateauAlignUpper = 1.25,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1 / 6,
   locAntimodeLowRel = 0.25,
@@ -324,6 +358,27 @@ stimControl <- function(
       is.na(locShiftedPeakRef)
   ) {
     stop("`locShiftedPeakRef` must be TRUE or FALSE")
+  }
+  if (!is.logical(locPlateauStep) || length(locPlateauStep) != 1L ||
+      is.na(locPlateauStep)) {
+    stop("`locPlateauStep` must be TRUE or FALSE")
+  }
+  if (!is.numeric(locPlateauMinCells) || length(locPlateauMinCells) != 1L ||
+      !is.finite(locPlateauMinCells) || locPlateauMinCells < 1) {
+    stop("`locPlateauMinCells` must be a single number of at least 1.")
+  }
+  if (!is.numeric(locPlateauGapBw) || length(locPlateauGapBw) != 1L ||
+      is.na(locPlateauGapBw) || locPlateauGapBw <= 0) {
+    stop("`locPlateauGapBw` must be a single positive number (Inf allowed).")
+  }
+  for (nm in c("locPlateauAlignMax", "locPlateauAlignUpper")) {
+    if (!is.numeric(ctrl[[nm]]) || length(ctrl[[nm]]) != 1L ||
+        !is.finite(ctrl[[nm]]) || ctrl[[nm]] < 1) {
+      stop("`", nm, "` must be a single finite number of at least 1.")
+    }
+  }
+  if (locPlateauAlignUpper < locPlateauAlignMax) {
+    stop("`locPlateauAlignUpper` must be at least `locPlateauAlignMax`.")
   }
 
   if (

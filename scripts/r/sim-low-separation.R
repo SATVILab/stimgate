@@ -100,7 +100,9 @@
 # is passed to stimControl(locThresholdMethod = ). The antimode rule is run
 # by gateStim(); both co-expression rules are applied afterwards to the
 # ordinary gates with `coexpr`.
-.simLowSepMainSettings <- function(loc_threshold_method = "region", n_sample = 12L) {
+.simLowSepMainSettings <- function(
+  loc_threshold_method = "region", n_sample = 12L, locPlateauStep = FALSE
+) {
   list(
     transformation = "gaussian",
     cov_ev = 1.5,
@@ -114,6 +116,7 @@
     cyt_pos_method = "antimode",
     cluster_gates = TRUE,
     loc_threshold_method = loc_threshold_method,
+    locPlateauStep = locPlateauStep,
     n_sample = as.integer(n_sample)
   )
 }
@@ -628,7 +631,8 @@
     control = stimControl(
       cytPosMethod = settings$cyt_pos_method,
       clusterGates = settings$cluster_gates,
-      locThresholdMethod = loc_threshold_method
+      locThresholdMethod = loc_threshold_method,
+      locPlateauStep = isTRUE(settings$locPlateauStep)
     )
   ))
   method <- .simLowSepThresholdMethod(path_project, loc_threshold_method)
@@ -652,7 +656,8 @@
       gate_cyt = unname(g[c("tnf_cyt", "ifng_cyt")]),
       gate_name = rows$gateName[match(.simLowSepChnl, rows$chnl)],
       loc_source = if ("locSource" %in% names(rows)) rows$locSource[match(.simLowSepChnl, rows$chnl)] else NA_character_,
-      locThresholdMethod = method
+      locThresholdMethod = method,
+      locPlateauStep = isTRUE(settings$locPlateauStep)
     )
   })
   coex <- purrr::map_dfr(seq_len(n_sample), function(s) {
@@ -682,7 +687,7 @@
 # runtime errors): every dataset has the expected samples, both
 # co-expression rules for both ordered pairs, a full confusion table per
 # tube and rule, and the requested local-FDR threshold method.
-.simLowSepValidator <- function(n_sample, loc_threshold_method) {
+.simLowSepValidator <- function(n_sample, loc_threshold_method, locPlateauStep = NULL) {
   function(tbl) {
     need <- c("n_sample_run", "gates", "coex_gates", "counts", "cells")
     if (!all(need %in% names(tbl))) {
@@ -698,6 +703,18 @@
     if (any(bad)) {
       problems <- paste0("unexpected result sizes for sim_id: ",
         paste(sort(as.integer(tbl$sim_id[bad])), collapse = ", "))
+    }
+    if (!is.null(locPlateauStep)) {
+      plateau_ok <- vapply(tbl$gates, function(g) {
+        "locPlateauStep" %in% names(g) &&
+          all(g$locPlateauStep %in% locPlateauStep)
+      }, logical(1))
+      if (!all(plateau_ok)) {
+        problems <- c(problems, paste0(
+          "gates without the requested locPlateauStep for sim_id: ",
+          paste(sort(as.integer(tbl$sim_id[!plateau_ok])), collapse = ", ")
+        ))
+      }
     }
     method_ok <- vapply(tbl$gates, function(g) {
       !is.null(g) && "locThresholdMethod" %in% names(g) &&

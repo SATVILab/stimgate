@@ -584,6 +584,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `cp_uns_loc_derivative.R`: Appendix derivative thresholds for local-FDR filtering.
   - `cp_uns_loc_filtering.R`: Local-FDR filtering after probability smoothing.
   - `cp_uns_loc_output.R`: Local-FDR diagnostics, metadata, and output assembly.
+  - `cp_uns_loc_plateau.R`: Optional plateau step (`locPlateauStep`): bandwidth steps below each tube's chosen gate, used only where stimulated and unstimulated negative tails agree across the marker's tubes.
   - `cp_uns_loc_smoothing.R`: Local-FDR probability smoothing.
   - `cp_uns_loc_threshold.R`: Local-FDR response estimate and final threshold.
   - `cpp11.R`: Automatically generated C++ wrapper functions via `cpp11`.
@@ -1272,6 +1273,9 @@ Keep the ordinary-method plots unchanged when that table is unavailable.
      top under its new version.
 
 16. **Local-FDR threshold method (`locThresholdMethod`)**:
+   Analyses explicitly set `locPlateauStep = TRUE` and record it in scientific
+   settings and run/cache manifests. Changing the plateau step requires a new
+   semantics version, so results cached with the previous setting are rejected.
    Marginal scans leave empty bins pending until a non-empty acceptance and
    trim acceptance spans [new cut, previous cut) from the left while their raw
    stim fraction minus raw unstim fraction is non-positive (skip trimming when

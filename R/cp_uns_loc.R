@@ -379,7 +379,17 @@
       locGeneratedDirect = .data$locGeneratedDirect %in% TRUE,
       locResponder = .data$locResponder %in% TRUE
     ) |>
-    .getCpUnsLocMetaAddShiftedPeak(attr(cp, "locShiftedPeakRef"))
+    .getCpUnsLocMetaAddShiftedPeak(attr(cp, "locShiftedPeakRef")) |>
+    .getCpUnsLocMetaAddPlateau(attr(cp, "locPlateauStep"))
+}
+
+# The plateau-step flag is carried only when the step was requested.
+#' @keywords internal
+.getCpUnsLocMetaAddPlateau <- function(meta, plateauStep) {
+  if (!is.null(plateauStep)) {
+    meta$locPlateauStep <- plateauStep %in% TRUE
+  }
+  meta
 }
 
 # The shifted-peak flag is carried only when the rule was requested.
@@ -415,6 +425,9 @@
   )
   if (!is.null(meta[["locShiftedPeakRef"]])) {
     attr(cp, "locShiftedPeakRef") <- meta[["locShiftedPeakRef"]] %in% TRUE
+  }
+  if (!is.null(meta[["locPlateauStep"]])) {
+    attr(cp, "locPlateauStep") <- meta[["locPlateauStep"]] %in% TRUE
   }
   cp
 }

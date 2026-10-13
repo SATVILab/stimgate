@@ -268,7 +268,7 @@
         dplyr::any_of(c(
           "locGenerated", "locGeneratedDirect", "locSource", "locReason",
           "locResponder", "propBsEst", "locOwnFreq", "locShareLimit",
-          "locShareProposed", "locShiftedPeakRef"
+          "locShareProposed", "locShiftedPeakRef", "locPlateauStep"
         ))
       ) # nolint
   })

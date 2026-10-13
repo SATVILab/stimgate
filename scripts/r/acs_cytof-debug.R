@@ -30,6 +30,7 @@
     bwMtd = env$stimgate_bw_mtd,
     bwScope = env$stimgate_bw_scope,
     locThresholdMethod = env$stimgate_loc_threshold_method,
+    locPlateauStep = env$loc_plateau_step,
     biasUns = env$bias_uns_vec_by_pop,
     seed = env$analysis_seed
   )
@@ -127,12 +128,12 @@
 }
 
 # Analysis 9b's StimGate rows against manual gating (read only), or NULL.
-.acsCytofDebugReadComparison <- function(path, locThresholdMethod) {
+.acsCytofDebugReadComparison <- function(path, locThresholdMethod, locPlateauStep = NULL) {
   if (!file.exists(path)) {
     return(NULL)
   }
   tbl <- readRDS(path)
-  .acsCytofValidateComparisonManifest(tbl, locThresholdMethod)
+  .acsCytofValidateComparisonManifest(tbl, locThresholdMethod, locPlateauStep)
   tbl |>
     dplyr::filter(as.character(.data$method) == "stimgate") |>
     dplyr::transmute(
@@ -569,7 +570,8 @@
         biasUns = settings$biasUns[[pop]],
         bwMtd = settings$bwMtd,
         bwScope = settings$bwScope,
-        locThresholdMethod = settings$locThresholdMethod
+        locThresholdMethod = settings$locThresholdMethod,
+        locPlateauStep = isTRUE(settings$locPlateauStep)
       ),
       sample = NULL,
       tubeInfo = .acsCytofDebugTubeInfo(sampleMap, pop),

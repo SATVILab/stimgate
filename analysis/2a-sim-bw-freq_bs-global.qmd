@@ -95,7 +95,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "global")
-analysis_semantics_version <- "global-bw-freq-v16"
+analysis_semantics_version <- "global-bw-freq-v17"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -202,6 +202,7 @@ bandwidth_value_vec <- c(
 # Share thresholds across clusters of similar samples via stimControl(clusterGates = ).
 cluster_gates <- FALSE
 loc_enforce_shape_threshold <- FALSE
+loc_plateau_step <- TRUE
 calc_cyt_pos_gates <- FALSE
 # Gate at the lower boundary of the filtered local-FDR region (the package
 # default), not at the probability-sum match.
@@ -404,6 +405,7 @@ scenario_settings <- list(
   covEvMax = 1.5,
   clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
+  locPlateauStep = loc_plateau_step,
   calcCytPosGates = calc_cyt_pos_gates,
   locThresholdMethod = loc_threshold_method
 )

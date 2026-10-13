@@ -30,6 +30,11 @@ test_that("shifted-peak settings change only the rule and the semantics", {
 test_that("OMIP-016 settings keep Analysis 15's saved form when the rule is off", {
   env <- .omipShiftedPeakTestEnv()
   default <- env$.omip016StimGateSettings()
+  expect_false(default$locPlateauStep)
+  expect_identical(default$semantics, "omip016-stimgate-v1")
+  enabled <- env$.omip016StimGateSettings(locPlateauStep = TRUE)
+  expect_true(enabled$locPlateauStep)
+  expect_false(identical(enabled, default))
   expect_false("locShiftedPeakRef" %in% names(default))
   shifted <- env$.omip016StimGateSettings(locShiftedPeakRef = TRUE)
   expect_true(shifted$locShiftedPeakRef)

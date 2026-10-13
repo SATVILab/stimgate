@@ -91,10 +91,13 @@ path_methods <- .analysis_project_dir("cache", c("omip016", "shifted-peak", "met
 ```{r}
 #| label: scientific-settings
 analysis_seed <- 20261009L
+loc_plateau_step <- TRUE
 default_settings <- .omip016StimGateSettings(
+  locPlateauStep = loc_plateau_step,
   locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = FALSE
 )
 stimgate_settings <- .omip016StimGateSettings(
+  locPlateauStep = loc_plateau_step,
   locThresholdMethod = "cap", clusterGates = TRUE, calcCytPosGates = FALSE,
   locShiftedPeakRef = TRUE
 )

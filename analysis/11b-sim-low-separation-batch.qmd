@@ -64,7 +64,7 @@ show_mcse <- mcse_mode != "off"
 sim_retry_errors <- .as_flag(.get_qmd_param_env("sim_retry_errors", "SIM_RETRY_ERRORS", TRUE))
 analysis_run_id <- .get_qmd_param_env("analysis_run_id", "ANALYSIS_RUN_ID", NULL)
 
-analysis_semantics_version <- "sim-low-separation-batch-v1"
+analysis_semantics_version <- "sim-low-separation-batch-v2"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 sim_size <- .analysis_sim_size()
@@ -102,7 +102,11 @@ Each baseline scenario keeps Analysis 11a's scenario ID (`base_scenario_id`) and
 ```{r}
 #| label: main-settings
 sizes <- .simLowSepSizes(sim_size, quick = analysis_quick, dev = analysis_dev)
-main_settings <- .simLowSepMainSettings(loc_threshold_method = "cap", n_sample = sizes$n_sample)
+loc_plateau_step <- TRUE
+main_settings <- .simLowSepMainSettings(
+  loc_threshold_method = "cap", n_sample = sizes$n_sample,
+  locPlateauStep = loc_plateau_step
+)
 scenario_grid_full <- .simLowSepBatchGrid(simulation_seed)
 mismatch_tbl <- .simLowSepBatchMismatch()
 ```
@@ -221,7 +225,9 @@ if (isTRUE(run_simulations)) {
     run_ctx = run_ctx,
     sim_grid = sim_grid,
     sim_grid_all = sim_grid_all,
-    validate_fn = .simLowSepValidator(main_settings$n_sample, main_settings$loc_threshold_method),
+    validate_fn = .simLowSepValidator(
+      main_settings$n_sample, main_settings$loc_threshold_method, main_settings$locPlateauStep
+    ),
     collate_fn = .simLowSepCollate,
     label = "analysis 11b"
   )

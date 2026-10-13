@@ -37,13 +37,16 @@
 .omip016StimGateSettings <- function(locThresholdMethod = "cap",
                                      clusterGates = TRUE,
                                      calcCytPosGates = FALSE,
-                                     locShiftedPeakRef = FALSE) {
+                                     locShiftedPeakRef = FALSE,
+                                     locPlateauStep = FALSE) {
   settings <- list(
+    semantics = "omip016-stimgate-v1",
     biasUns = NULL, biasUnsFactor = 1, bwMtd = "nrd0", bwScope = "cytokine",
     bwNcellMax = 1e4, bwFallback = "auto", bwMin = "none", bwMax = "none",
     gateCombn = "min", clusterGates = clusterGates,
     calcCytPosGates = calcCytPosGates, minCell = 100,
     locThresholdMethod = locThresholdMethod,
+    locPlateauStep = locPlateauStep,
     gateName = if (isTRUE(clusterGates)) "loc_minClust" else "loc"
   )
   if (isTRUE(locShiftedPeakRef)) settings$locShiftedPeakRef <- TRUE
@@ -118,6 +121,7 @@
       clusterGates = clusterGates,
       minCell = settings$minCell,
       locThresholdMethod = settings$locThresholdMethod,
+      locPlateauStep = isTRUE(settings$locPlateauStep),
       locShiftedPeakRef = isTRUE(settings$locShiftedPeakRef)
     )
   )
