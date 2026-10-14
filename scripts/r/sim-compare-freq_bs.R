@@ -4225,6 +4225,7 @@
       specificity_q10 = q(.data$specificity, 0.1),
       f1_median = q(.data$f1, 0.5),
       f1_q10 = q(.data$f1, 0.1),
+      f1_q90 = q(.data$f1, 0.9),
       fpr_median = q(.data$false_positive_rate, 0.5),
       fpr_q90 = q(.data$false_positive_rate, 0.9),
       selected_fraction_median = q(.data$selected_fraction, 0.5),
@@ -4240,7 +4241,7 @@
     sensitivity_median = item("sensitivity", 0.5), sensitivity_q10 = item("sensitivity", 0.1),
     precision_median = item("precision", 0.5), precision_q10 = item("precision", 0.1),
     specificity_median = item("specificity", 0.5), specificity_q10 = item("specificity", 0.1),
-    f1_median = item("f1", 0.5), f1_q10 = item("f1", 0.1),
+    f1_median = item("f1", 0.5), f1_q10 = item("f1", 0.1), f1_q90 = item("f1", 0.9),
     fpr_median = item("false_positive_rate", 0.5), fpr_q90 = item("false_positive_rate", 0.9)
   )
   out <- dplyr::select(out, -dplyr::any_of(names(spec)))

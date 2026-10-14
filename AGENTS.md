@@ -851,10 +851,12 @@ Analysis 7's thesis figures (`sim-compare-thesis.R`, saved to
 `output-thesis/results/qmd7/` in `f1/`, `frequency/` and `thresholds/`
 subfolders, not shown in the HTML) are, per separation: median
 and 10th-percentile $F_1$ heat maps (rows method, columns transformation;
-`.simCompareThesisF1Plot(stat = )`); estimated frequencies
-(median solid, 10th/90th dotted, truth as a thick grey line) on the signed
-relative-error scale labelled in each row's frequencies, rows stacked with
-cowplot so their tick labels can differ; and outline threshold histograms over
+`.simCompareThesisF1Plot(stat = )`); median $F_1$ and background-subtracted
+frequency with 10th-90th percentile error bars, dodged by method so single
+points show their range (`.simCompareThesisPctPlot(measure = , rows = )`), with
+rows for response probability against cells (frequency in percent, truth as a
+grey line, y free per row) or rows for cells against response probability
+(frequency as estimated over true, 1 = correct); and outline threshold histograms over
 the stimulated density with a rug of simulated positive cells
 (`.simBandwidthThresholdDensities(rug_n = )`), in four versions: thresholds
 pooled over cell counts, one outline per method and cell count, one figure per

@@ -1362,19 +1362,27 @@ subfolder per figure type. Each covers StimGate, $F_{\beta}$ and Tailgate (with
 its bias) without condition perturbation, per separation (mean position)
 setting, with response probabilities from highest (top) to lowest:
 
-- `f1/`: heat maps of the median $F_1$ score of the gates against the simulated
-  labels (`sim-compare-f1-<separation>-separation`) and of its 10th percentile
-  over the samples of each scenario (`sim-compare-f1-q10-<separation>-separation`),
-  as number of cells by response probability, with rows for method and columns
-  for transformation.
-- `frequency/`: the estimated background-subtracted response frequency
-  (`sim-compare-frequency-<separation>-separation`), as each method's median
-  (solid) and 10th and 90th percentiles (dotted) over the samples of a
-  scenario, against the number of cells, with rows for response probability
-  and columns for transformation. The thick grey line is the true frequency.
-  The y axis uses the scale of the signed relative-error plots (linear from
-  zero up to the truth, doubling above it), labelled in each row's
-  frequencies; every row shows zero and twice the truth.
+- `f1/heatmap/`: heat maps of the median $F_1$ score of the gates against the
+  simulated labels (`sim-compare-f1-<separation>-separation`) and of its 10th
+  percentile over the samples of each scenario
+  (`sim-compare-f1-q10-<separation>-separation`), as number of cells by
+  response probability, with rows for method and columns for transformation.
+- `f1/percentiles/`: each method's median $F_1$ (points joined by lines) with
+  its 10th to 90th percentiles over the samples of a scenario as error bars,
+  on 0 to 1, in two layouts: rows for response probability against the number
+  of cells (`sim-compare-f1-percentiles-<separation>-separation`), and rows for
+  number of cells against the response probability
+  (`sim-compare-f1-percentiles-by-cells-<separation>-separation`). Columns are
+  transformations.
+- `frequency/`: the estimated background-subtracted response frequency, drawn
+  the same way, in two layouts: rows for response probability against the
+  number of cells, with the frequency in percent, each row's y range set by
+  its own data and the true frequency as a thick grey line
+  (`sim-compare-frequency-<separation>-separation`); and rows for number of
+  cells against the response probability, as the estimated over the true
+  frequency, 1 (grey line) being correct
+  (`sim-compare-frequency-by-cells-<separation>-separation`), because the
+  response probabilities differ by orders of magnitude.
 - `thresholds/`: outline histograms of each method's thresholds over the
   stimulated tube's density (grey; a seeded 100,000-cell reference simulation
   of the biological setting, scaled to the tallest threshold bin), with a rug
@@ -1405,11 +1413,18 @@ if (isTRUE(run_plots)) {
   thesis_cls <- class_summary |> dplyr::filter(condition_perturbation_sd == 0)
   for (pos in intersect(c("low", "high"), unique(as.character(thesis_pct$mean_pos_setting)))) {
     stem <- function(dir, kind) file.path(dir, paste0("sim-compare-", kind, "-", pos, "-separation"))
-    .analysis_save_thesis_fig(.simCompareThesisF1Plot(thesis_cls, pos), stem(thesis_dir("f1"), "f1"), height = 165)
+    .analysis_save_thesis_fig(.simCompareThesisF1Plot(thesis_cls, pos),
+      stem(thesis_dir("f1", "heatmap"), "f1"), height = 165)
     .analysis_save_thesis_fig(.simCompareThesisF1Plot(thesis_cls, pos, stat = "q10"),
-      stem(thesis_dir("f1"), "f1-q10"), height = 165)
-    .analysis_save_thesis_fig(.simCompareThesisFreqPlot(thesis_pct, pos),
-      stem(thesis_dir("frequency"), "frequency"), height = 215)
+      stem(thesis_dir("f1", "heatmap"), "f1-q10"), height = 165)
+    for (lay in c("prob", "cells")) {
+      suffix <- if (identical(lay, "cells")) "-by-cells" else ""
+      h <- if (identical(lay, "cells")) 190 else 215
+      .analysis_save_thesis_fig(.simCompareThesisPctPlot(thesis_cls, pos, "f1", lay),
+        stem(thesis_dir("f1", "percentiles"), paste0("f1-percentiles", suffix)), height = h)
+      .analysis_save_thesis_fig(.simCompareThesisPctPlot(thesis_pct, pos, "frequency", lay),
+        stem(thesis_dir("frequency"), paste0("frequency", suffix)), height = h)
+    }
     thr <- function(data, ...) {
       .simCompareThesisThresholdPlot(data, threshold_reference_densities, pos, ...)
     }

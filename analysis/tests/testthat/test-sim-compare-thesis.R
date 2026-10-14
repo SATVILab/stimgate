@@ -16,6 +16,7 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
   g$q10 <- -0.5; g$median <- 0.1; g$q90 <- 3
   g$f1_median <- seq(0, 1, length.out = nrow(g))
   g$f1_q10 <- rev(g$f1_median)
+  g$f1_q90 <- pmax(g$f1_median, g$f1_q10)
   g
 }
 
@@ -49,7 +50,8 @@ test_that("frequency axis labels are actual frequencies on the signed scale", {
 test_that("Analysis 7 saves its thesis figures to output-thesis results/qmd7", {
   qmd <- paste(readLines(file.path(root_dir, "analysis", "7-sim-compare-freq_bs.qmd")), collapse = "\n")
   expect_match(qmd, 'thesis_parts <- c("results", "qmd7", fig_key[-1L])', fixed = TRUE)
-  for (kind in c('"f1")', '"f1-q10")', '"frequency")', '"thresholds")', '"thresholds-by-cells")',
+  for (kind in c('"f1")', '"f1-q10")', 'paste0("f1-percentiles", suffix)', 'paste0("frequency", suffix)',
+    '"thresholds")', '"thresholds-by-cells")',
     'paste0("thresholds-", tr)', 'paste0("thresholds-", .analysis_label_cells(nc))')) {
     expect_match(qmd, kind, fixed = TRUE)
   }
@@ -101,4 +103,27 @@ test_that("threshold figures pool, split by cell count and change columns", {
   expect_setequal(as.character(unique(per_small$layers[[2]]$data$prob_response)), "0.01")
   expect_equal(env$.simCompareThesisThresholdHeight(1), 79)
   expect_equal(env$.simCompareThesisThresholdHeight(10), 215)
+})
+
+test_that("percentile figures show background-subtracted frequency and F1 with error bars", {
+  env <- .thesisCompareEnv()
+  g <- .thesisGrid()
+  # one response probability present at one cell count only, as 0.01% is
+  g <- rbind(g, transform(g[g$prob_response == 0.2 & g$n_cell == 1e5, ], prob_response = 1e-4))
+  freq <- env$.simCompareThesisPctPlot(g, "low", "frequency", "prob")
+  b <- ggplot2::ggplot_build(freq)
+  expect_identical(freq$labels$y, "Background-subtracted frequency (%)")
+  # percent of cells: the median 0.1 relative error at 20% response is 22%
+  expect_equal(unique(freq$data$mid[freq$data$prob_response == 0.2]), 22)
+  bars <- b$data[[2]]
+  # the single-cell-count row still gets error bars
+  expect_true(all(c("ymin", "ymax") %in% names(bars)))
+  expect_true(any(abs(bars$ymin - 100 * 1e-4 * 0.5) < 1e-9))
+  cells <- env$.simCompareThesisPctPlot(g, "low", "frequency", "cells")
+  expect_equal(unique(cells$data$mid), 1.1)
+  expect_no_error(ggplot2::ggplot_build(cells))
+  f1 <- env$.simCompareThesisPctPlot(g, "low", "f1", "prob")
+  expect_equal(f1$data$hi, pmax(f1$data$mid, f1$data$lo))
+  expect_no_error(ggplot2::ggplot_build(f1))
+  expect_false("tailgate_default" %in% as.character(f1$data$method))
 })

@@ -20,90 +20,99 @@
 # Response probability strip labels, e.g. "Response 0.2%".
 .simCompareThesisProbLab <- function(x) paste("Response", .simCompareThesisPercent(as.numeric(x)))
 
-# Estimated response frequency: median (solid) and 10th and 90th percentiles
-# (dotted) of each method's per-sample estimates against the number of cells,
-# rows for response probability and columns for transformation. The y axis is
-# the signed display scale of the relative error (linear from an estimate of
-# zero up to the truth, doubling above it), labelled in each row's actual
-# frequencies. Rows are built separately so their tick labels can differ, then
-# stacked. The truth is the thick grey line; every row shows zero and twice
-# the truth, so the truth sits at most halfway up its row.
-.simCompareThesisFreqPlot <- function(pct, pos) {
-  trans <- .simBandwidthSignedErrorTrans()
-  tbl <- pct[pct$mean_pos_setting == pos & pct$method %in% .simCompareThesisMethods, , drop = FALSE]
-  long <- tidyr::pivot_longer(
-    tbl[c("method", "transformation", "prob_response", "n_cell", "q10", "median", "q90")],
-    c("q10", "median", "q90"), names_to = "stat", values_to = "value"
-  )
-  long$stat <- factor(long$stat, c("q10", "median", "q90"),
-    c("10th percentile", "Median", "90th percentile"))
-  long$tier <- factor(ifelse(long$stat == "Median", "Median", "10th and 90th percentiles"),
-    c("Median", "10th and 90th percentiles"))
-  long$y <- trans$transform(.simBandwidthSignedErrorSquish(long$value))
-  long$transformation <- .analysis_trans_factor(long$transformation)
-  long$method <- factor(long$method, .simCompareThesisMethods)
-  long$series <- interaction(long$method, long$stat, drop = TRUE)
-  probs <- sort(unique(long$prob_response), decreasing = TRUE)
-  cols <- .analysis_method_colours[.simCompareThesisMethods]
-  shapes <- .analysis_method_shapes[.simCompareThesisMethods]
-  labs <- .simCompareThesisMethodLabels()
-  method_scales <- list(
-    ggplot2::scale_colour_manual(values = cols, labels = scales::label_parse()(labs), name = "Method"),
-    ggplot2::scale_shape_manual(values = shapes, labels = scales::label_parse()(labs), name = "Method"),
-    ggplot2::scale_linetype_manual(values = c(Median = "solid", `10th and 90th percentiles` = "11"),
-      name = NULL)
-  )
-  row_plot <- function(prob, first, last) {
-    d <- long[long$prob_response == prob, , drop = FALSE]
-    rng <- range(c(d$y, -1, 1), na.rm = TRUE)
-    breaks_err <- trans$breaks(trans$inverse(rng))
-    breaks_err <- breaks_err[breaks_err >= trans$inverse(rng[1]) - 1e-9 &
-      breaks_err <= trans$inverse(rng[2]) + 1e-9]
-    ggplot2::ggplot(d, ggplot2::aes(x = .data$n_cell, y = .data$y, colour = .data$method,
-      group = .data$series)) +
-      ggplot2::geom_hline(yintercept = 0, colour = "grey55", linewidth = 1.3) +
-      ggplot2::geom_blank(data = data.frame(y = c(-1, 1)), ggplot2::aes(y = .data$y),
-        inherit.aes = FALSE) +
-      ggplot2::geom_line(ggplot2::aes(linetype = .data$tier,
-        linewidth = .data$tier)) +
-      ggplot2::geom_point(data = d[d$stat == "Median", , drop = FALSE],
-        ggplot2::aes(shape = .data$method), size = 1.3) +
-      ggplot2::scale_linewidth_manual(values = c(Median = 0.6, `10th and 90th percentiles` = 0.45),
-        guide = "none") +
-      method_scales +
-      ggplot2::scale_x_log10(breaks = sort(unique(long$n_cell)),
-        limits = range(long$n_cell), labels = .analysis_label_cells) +
-      ggplot2::scale_y_continuous(breaks = trans$transform(breaks_err),
-        labels = .simCompareThesisPercent(prob * (1 + breaks_err))) +
-      ggplot2::facet_grid(prob_response ~ transformation,
-        labeller = ggplot2::labeller(prob_response = .simCompareThesisProbLab)) +
-      ggplot2::labs(x = if (last) "Number of cells" else NULL, y = NULL) +
-      .analysis_theme(grid = "y") + .analysis_thesis_theme() +
-      ggplot2::theme(
-        legend.position = "none",
-        strip.text.x = if (first) ggplot2::element_text(size = 7.5) else ggplot2::element_blank(),
-        axis.text.x = if (last) ggplot2::element_text(size = 7, angle = 45, hjust = 1) else ggplot2::element_blank(),
-        axis.ticks.x = if (last) ggplot2::element_line() else ggplot2::element_blank(),
-        plot.margin = ggplot2::margin(1, 2, 1, 2),
-        panel.spacing.x = ggplot2::unit(5, "mm")
-      )
+# Percentile figures: each method's median (points joined by lines) with the
+# 10th to 90th percentile range as error bars, over the samples of each
+# scenario, dodged by method so single points still show their range. Columns
+# are transformations. With rows = "prob", rows are response probabilities and
+# the x axis is the number of cells; with rows = "cells", rows are numbers of
+# cells and the x axis is the response probability.
+# - measure = "frequency": `tbl` holds percentiles of the relative error of the
+#   background-subtracted frequency (q10, median, q90). With rows = "prob" the
+#   y axis is the background-subtracted frequency in percent (truth: grey line,
+#   y range free per row); with rows = "cells" it is the estimated over the
+#   true frequency (1 = correct), since the response probabilities differ by
+#   orders of magnitude.
+# - measure = "f1": `tbl` holds f1_q10, f1_median and f1_q90; the y axis is F1
+#   on 0-1.
+.simCompareThesisPctPlot <- function(tbl, pos, measure = c("frequency", "f1"),
+                                     rows = c("prob", "cells")) {
+  measure <- match.arg(measure)
+  rows <- match.arg(rows)
+  tbl <- tbl[tbl$mean_pos_setting == pos & tbl$method %in% .simCompareThesisMethods, , drop = FALSE]
+  if (identical(measure, "f1")) {
+    tbl$q10 <- tbl$f1_q10; tbl$median <- tbl$f1_median; tbl$q90 <- tbl$f1_q90
   }
-  rows <- lapply(seq_along(probs), function(i) {
-    row_plot(probs[[i]], first = i == 1L, last = i == length(probs))
-  })
-  legend_plot <- row_plot(probs[[1]], TRUE, TRUE) +
-    ggplot2::theme(legend.position = "bottom", legend.box = "horizontal") +
-    ggplot2::guides(linetype = ggplot2::guide_legend(override.aes = list(colour = "grey20")))
-  legend <- cowplot::get_plot_component(legend_plot, "guide-box-bottom", return_all = TRUE)
-  if (is.list(legend) && !inherits(legend, "grob")) legend <- legend[[1]]
-  stack <- cowplot::plot_grid(plotlist = rows, ncol = 1, align = "v", axis = "lr",
-    rel_heights = c(1.12, rep(1, length(rows) - 2L), 1.25)[seq_along(rows)])
-  body <- cowplot::plot_grid(
-    cowplot::ggdraw() + cowplot::draw_label("Response frequency", angle = 90, size = 8.5),
-    stack, nrow = 1, rel_widths = c(0.04, 1)
+  conv <- if (identical(measure, "f1")) {
+    function(v, prob) v
+  } else if (identical(rows, "prob")) {
+    function(v, prob) 100 * prob * (1 + v)
+  } else {
+    function(v, prob) 1 + v
+  }
+  d <- data.frame(
+    method = factor(tbl$method, .simCompareThesisMethods),
+    transformation = .analysis_trans_factor(tbl$transformation),
+    prob_response = tbl$prob_response, n_cell = tbl$n_cell,
+    lo = conv(tbl$q10, tbl$prob_response), mid = conv(tbl$median, tbl$prob_response),
+    hi = conv(tbl$q90, tbl$prob_response)
   )
-  cowplot::plot_grid(body, legend, ncol = 1, rel_heights = c(1, 0.06)) +
-    ggplot2::theme(plot.background = ggplot2::element_rect(fill = "white", colour = NA))
+  probs <- sort(unique(d$prob_response), decreasing = TRUE)
+  cells <- sort(unique(d$n_cell))
+  if (identical(rows, "prob")) {
+    d$row <- factor(d$prob_response, probs, .simCompareThesisProbLab(probs))
+    d$x <- d$n_cell
+    x_scale <- ggplot2::scale_x_log10(breaks = cells, labels = .analysis_label_cells,
+      expand = ggplot2::expansion(mult = 0.08))
+    x_lab <- "Number of cells"
+  } else {
+    d$row <- factor(d$n_cell, cells, paste(.analysis_label_cells(cells), "cells"))
+    d$x <- d$prob_response
+    x_scale <- ggplot2::scale_x_log10(breaks = rev(probs), labels = .simCompareThesisPercent,
+      expand = ggplot2::expansion(mult = 0.08))
+    x_lab <- "Response probability"
+  }
+  truth <- if (identical(measure, "frequency")) {
+    t <- dplyr::distinct(d, .data$row, .data$prob_response, .data$transformation)
+    t$y <- if (identical(rows, "prob")) 100 * t$prob_response else 1
+    dplyr::distinct(t, .data$row, .data$transformation, .data$y)
+  }
+  y_lab <- switch(paste(measure, rows),
+    "frequency prob" = "Background-subtracted frequency (%)",
+    "frequency cells" = "Estimated / true background-subtracted frequency",
+    expression(F[1] ~ "score"))
+  dodge <- ggplot2::position_dodge(width = 0.18)
+  labs <- .simCompareThesisMethodLabels()
+  p <- ggplot2::ggplot(d, ggplot2::aes(x = .data$x, colour = .data$method, group = .data$method))
+  if (!is.null(truth)) {
+    p <- p + ggplot2::geom_hline(data = truth, ggplot2::aes(yintercept = .data$y),
+      colour = "grey55", linewidth = 1.1)
+  }
+  p +
+    ggplot2::geom_errorbar(ggplot2::aes(ymin = .data$lo, ymax = .data$hi), width = 0.12,
+      linewidth = 0.4, position = dodge) +
+    ggplot2::geom_line(ggplot2::aes(y = .data$mid), linewidth = 0.5, position = dodge) +
+    ggplot2::geom_point(ggplot2::aes(y = .data$mid, shape = .data$method), size = 1.4,
+      position = dodge) +
+    ggplot2::facet_grid(ggplot2::vars(.data$row), ggplot2::vars(.data$transformation),
+      scales = if (identical(measure, "f1")) "fixed" else "free_y") +
+    x_scale +
+    (if (identical(measure, "f1")) ggplot2::scale_y_continuous(limits = c(0, 1)) else
+      ggplot2::scale_y_continuous(labels = .analysis_label_number)) +
+    ggplot2::scale_colour_manual(values = .analysis_method_colours[.simCompareThesisMethods],
+      labels = scales::label_parse()(labs), name = "Method") +
+    ggplot2::scale_shape_manual(values = .analysis_method_shapes[.simCompareThesisMethods],
+      labels = scales::label_parse()(labs), name = "Method") +
+    ggplot2::labs(x = x_lab, y = y_lab) +
+    .analysis_theme(grid = "y") + .analysis_thesis_theme() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(size = 7, angle = 45, hjust = 1),
+      legend.position = "bottom", panel.spacing.x = ggplot2::unit(4, "mm")
+    )
+}
+
+# Estimated background-subtracted frequency, rows for response probability.
+.simCompareThesisFreqPlot <- function(pct, pos) {
+  .simCompareThesisPctPlot(pct, pos, measure = "frequency", rows = "prob")
 }
 
 # F1 heat maps (median, or 10th percentile with stat = "q10"): rows for method,
