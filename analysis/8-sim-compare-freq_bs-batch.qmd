@@ -1052,8 +1052,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
           paired_datasets = paste0(.data$n_pair, " / ", .data$n_dataset)
         ) |>
         dplyr::select(dplyr::all_of(c(
-          "scenario_desc", "mismatch_type", "mismatch_val",
-          "outcome", "method", "paired_datasets", "n_pair", "n_dataset", "mean_difference", "interval_95",
+          classification_cols,
+          "outcome", "paired_datasets", "n_pair", "n_dataset", "mean_difference", "interval_95",
           "tube_coverage_stimgate", "tube_coverage_competitor"
         )))
       .analysis_report_table(table,

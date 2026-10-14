@@ -3813,6 +3813,7 @@
 
 # Share of unstimulated cells above the gate against the mean shift.
 .simComparePlotPlacement <- function(data, mcse = FALSE) {
+  data$scenario <- .simCompareScenarioLabel(data)
   bars <- if (isTRUE(mcse) && "propUns_mean_lower" %in% names(data)) {
     .analysis_mcse_errorbar(data, "propUns_mean_lower", "propUns_mean_upper")
   }
@@ -3828,7 +3829,7 @@
     ggplot2::geom_point(size = 2, alpha = 0.75) +
     bars +
     ggplot2::facet_wrap(
-      ~scenario_desc, scales = "free_y", ncol = 2, labeller = .simCompareStripWrap()
+      ~scenario, scales = "free_y", ncol = 2, labeller = .simCompareStripWrap()
     ) +
     ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
     .analysis_y_floor() +
@@ -3845,6 +3846,7 @@
 
 # 90th percentile error for every mismatch mechanism.
 .simComparePlotUpperTail <- function(data, mcse = FALSE) {
+  data$scenario <- .simCompareScenarioLabel(data)
   data$mismatch_type <- factor(
     data$mismatch_type, levels = names(.simCompareMismatchLabels)
   )
@@ -3862,7 +3864,7 @@
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
     ggplot2::geom_point(size = 2, alpha = 0.75) +
     bars +
-    ggplot2::facet_wrap(~scenario_desc, scales = "free", ncol = 2,
+    ggplot2::facet_wrap(~scenario, scales = "free", ncol = 2,
       labeller = .simCompareStripWrap()) +
     ggplot2::scale_y_continuous(
       transform = scales::asinh_trans(), labels = .analysis_label_percent,
@@ -4060,7 +4062,7 @@
 .simCompareMismatchFacet <- function(by_prob, ncol = 3L) {
   ggplot2::facet_wrap(
     if (by_prob) {
-      ggplot2::vars(statistic, transformation, prob_response) } else
+      ggplot2::vars(statistic, prob_response, transformation) } else
       {
       ggplot2::vars(statistic, transformation)},
     ncol = ncol,
@@ -4097,14 +4099,13 @@
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
     .simBandwidthAbsErrorLayers(capped = capped) +
     .analysis_scale_method(c("colour", "shape", "linetype")) +
-    .simCompareMismatchFacet(by_prob, length(unique(tbl$transformation)) *
-      if (by_prob) length(unique(tbl$prob_response)) else 1L) +
+    .simCompareMismatchFacet(by_prob, length(unique(tbl$transformation))) +
     ggplot2::labs(x = x_label, colour = "Method") +
     .analysis_theme()
 }
 
-# Signed relative error against `x`: rows of panels are statistics, columns
-# are transformations (and response probabilities when `by_prob`);
+# Signed relative error against `x`: rows of panels are statistics and
+# response probabilities (when `by_prob`), columns are transformations;
 # over-estimates sit above zero and under-estimates below, and line weight is
 # the share of estimates in that direction.
 .simComparePlotSignedError <- function(
@@ -4148,8 +4149,7 @@
     (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl)) +
     x_scale +
     .analysis_scale_method(c("colour", "shape", "linetype")) +
-    .simCompareMismatchFacet(by_prob, length(unique(tbl$transformation)) *
-      if (by_prob) length(unique(tbl$prob_response)) else 1L) +
+    .simCompareMismatchFacet(by_prob, length(unique(tbl$transformation))) +
     ggplot2::labs(x = x_label, colour = "Method") +
     .analysis_theme()
 }

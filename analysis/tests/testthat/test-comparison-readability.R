@@ -59,17 +59,66 @@ test_that("classification tails name the displayed outcomes and use readable wra
 test_that("upper-tail percentages and placement methods retain the original values", {
   env <- .readability_env()
   tbl <- tidyr::expand_grid(scenario_desc = c("Clean", "Very clean"),
+    transformation = c("gaussian", "skew", "gamma"),
     method = c("stimgate", "tailgate", "fbeta"), mismatch_val = c(0, 0.1)) |>
-    dplyr::mutate(mismatch_type = "mean_shift_negative", q90_abs_rel_error = 25,
+    dplyr::mutate(
+      base_scenario_id = as.integer(interaction(.data$transformation, .data$scenario_desc)),
+      mismatch_type = "mean_shift_negative", q90_abs_rel_error = 25,
       propUns_mean = 0.001)
   p <- env$.simComparePlotUpperTail(tbl)
   expect_identical(p$data$q90_abs_rel_error, tbl$q90_abs_rel_error)
   expect_match(p$scales$get_scales("y")$labels(25), "%", fixed = TRUE)
   expect_equal(p$facet$params$ncol, 2)
-  expect_length(ggplot2::ggplot_build(p)$layout$panel_scales_y, 2L)
-  placement <- ggplot2::ggplot_build(env$.simComparePlotPlacement(tbl))
+  placement_plot <- env$.simComparePlotPlacement(tbl)
+  for (plot in list(p, placement_plot)) {
+    built <- ggplot2::ggplot_build(plot)
+    expect_length(built$layout$panel_scales_y, 6L)
+    panel_rows <- dplyr::left_join(plot$data,
+      built$layout$layout[c("scenario", "PANEL")], by = "scenario") |>
+      dplyr::group_by(.data$PANEL) |>
+      dplyr::summarise(n_transformation = dplyr::n_distinct(.data$transformation),
+        n_scenario = dplyr::n_distinct(.data$base_scenario_id), .groups = "drop")
+    expect_equal(nrow(panel_rows), 6L)
+    expect_true(all(panel_rows$n_transformation == 1L))
+    expect_true(all(panel_rows$n_scenario == 1L))
+    expect_null(plot$labels$title)
+    expect_null(plot$labels$subtitle)
+  }
+  placement <- ggplot2::ggplot_build(placement_plot)
   expect_length(unique(placement$data[[1]]$linetype), 3L)
   expect_length(unique(placement$data[[2]]$shape), 3L)
+})
+
+test_that("mismatch error layouts put probabilities in rows and transformations in columns", {
+  env <- .readability_env()
+  tbl <- tidyr::expand_grid(transformation = c("gaussian", "skew", "gamma"),
+    prob_response = c(0.0005, 0.002, 0.01, 0.2),
+    method = c("stimgate", "tailgate", "fbeta"), mismatch_val = c(0, 0.1)) |>
+    dplyr::mutate(median = 0.1, q95 = 0.2)
+  signed <- tidyr::expand_grid(tbl, direction = c("over", "under")) |>
+    dplyr::mutate(prop = 0.5,
+      median = ifelse(.data$direction == "under", -0.1, 0.1),
+      q95 = ifelse(.data$direction == "under", -0.2, 0.2))
+  plots <- list(
+    env$.simComparePlotMismatchError(tbl, by_prob = TRUE),
+    env$.simComparePlotSignedError(signed, x = "mismatch_val",
+      x_log = FALSE, by_prob = TRUE)
+  )
+  for (plot in plots) {
+    built <- ggplot2::ggplot_build(plot)
+    layout <- built$layout$layout
+    expect_equal(length(unique(layout$COL)), 3L)
+    expect_equal(length(unique(layout$ROW)), 8L)
+    expect_length(built$layout$panel_scales_y, 24L)
+    expect_true(all(vapply(split(layout$transformation, layout$COL),
+      function(x) length(unique(x)) == 1L, logical(1))))
+    expect_true(all(vapply(split(layout$prob_response, layout$ROW),
+      function(x) length(unique(x)) == 1L, logical(1))))
+    expect_true(all(vapply(split(layout$statistic, layout$ROW),
+      function(x) length(unique(x)) == 1L, logical(1))))
+    expect_null(plot$labels$title)
+    expect_null(plot$labels$subtitle)
+  }
 })
 
 test_that("floor tables count zero negative and small positive estimates separately", {
