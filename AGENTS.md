@@ -613,6 +613,12 @@ labelled as means of scenario medians/quantiles/maxima, with finite
 contributing-scenario counts. Display coverage and fallback provenance
 beside performance plots, keeping their sample denominators explicit.
 
+Thesis frequency-by-cell-count figures use comma-formatted cell counts,
+equally spaced numeric response-probability positions and a common
+linear 0–4x estimate/truth display. Keep the error-bar and pale-band
+companions on the same scale; use coordinate limits so off-display
+quantiles remain in data.
+
 ### Website Maintenance (`pkgdown`)
 
 Whenever functions are added, removed, or have their export status
