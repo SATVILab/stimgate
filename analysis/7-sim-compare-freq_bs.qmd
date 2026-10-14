@@ -1356,49 +1356,98 @@ if (isTRUE(run_plots)) {
 
 ### Thesis figures
 
-Four figures per separation (mean position) setting are saved for the thesis,
-drawn at the thesis text width, to the `results/` folder of the projr
-`output-thesis` folder (`_output/thesis`). They are not shown here. Each covers
-StimGate, $F_{\beta}$ and Tailgate (with its bias) without condition
-perturbation, with response probabilities from highest (top) to lowest:
+Thesis figures are drawn at the thesis text width and saved, not shown here, to
+`results/qmd7/` in the projr `output-thesis` folder (`_output/thesis`), in one
+subfolder per figure type. Each covers StimGate, $F_{\beta}$ and Tailgate (with
+its bias) without condition perturbation, per separation (mean position)
+setting, with response probabilities from highest (top) to lowest:
 
-- `sim-compare-f1-<separation>-separation`: median $F_1$ score of the gates
-  against the simulated labels, as heat maps of number of cells by response
-  probability, with rows for method and columns for transformation.
-- `sim-compare-f1-q10-<separation>-separation`: the same heat maps for the
-  10th percentile of $F_1$ over the samples of each scenario.
-- `sim-compare-frequency-<separation>-separation`: the estimated
-  background-subtracted response frequency, as each method's median (solid)
-  and 10th and 90th percentiles (dotted) over the samples of a scenario,
-  against the number of cells, with rows for response probability and columns
-  for transformation. The thick grey line is the true frequency. The y axis
-  uses the scale of the signed relative-error plots (linear from zero up to
-  the truth, doubling above it), labelled in each row's frequencies; every
-  row shows zero and twice the truth.
-- `sim-compare-thresholds-<separation>-separation`: outline histograms of
-  each method's thresholds over the stimulated tube's density (grey; a seeded
-  100,000-cell reference simulation, scaled to the tallest threshold bin),
-  with a rug of 100 cells drawn from the simulated responding component to
-  show where responders lie (their location, not their abundance).
+- `f1/heatmap/`: heat maps of the median $F_1$ score of the gates against the
+  simulated labels (`sim-compare-f1-<separation>-separation`) and of its 10th
+  percentile over the samples of each scenario
+  (`sim-compare-f1-q10-<separation>-separation`), as number of cells by
+  response probability, with rows for method and columns for transformation.
+- `f1/percentiles/`: each method's median $F_1$ (points joined by lines) with
+  its 10th to 90th percentiles over the samples of a scenario as error bars,
+  on 0 to 1, in two layouts: rows for response probability against the number
+  of cells (`sim-compare-f1-percentiles-<separation>-separation`), and rows for
+  number of cells against the response probability
+  (`sim-compare-f1-percentiles-by-cells-<separation>-separation`). Columns are
+  transformations.
+- `frequency/`: the estimated background-subtracted response frequency, drawn
+  the same way, in two layouts: rows for response probability against the
+  number of cells, with the frequency in percent, each row's y range set by
+  its own data and the true frequency as a thick grey line
+  (`sim-compare-frequency-<separation>-separation`); and rows for number of
+  cells against the response probability, as the estimated over the true
+  frequency, 1 (grey line) being correct
+  (`sim-compare-frequency-by-cells-<separation>-separation`), because the
+  response probabilities differ by orders of magnitude.
+- `thresholds/`: outline histograms of each method's thresholds over the
+  stimulated tube's density (grey; a seeded 100,000-cell reference simulation
+  of the biological setting, scaled to the tallest threshold bin), with a rug
+  of 100 cells drawn from the simulated responding component to show where
+  responders lie (their location, not their abundance). Rows are response
+  probabilities. Four versions:
+  - `pooled/` (`sim-compare-thresholds-<separation>-separation`): columns for
+    transformation, thresholds pooled over every number of cells the grid has
+    for that response probability (100k only at 0.01%; 20k and 100k at 0.05%;
+    5k to 100k at 0.2%; 1k to 100k at 1% and 20%).
+  - `by-cells/` (`sim-compare-thresholds-by-cells-<separation>-separation`):
+    the same panels, with one outline per method and number of cells (line
+    type).
+  - `per-transformation/` (`sim-compare-thresholds-<transformation>-<separation>-separation`):
+    one figure per transformation, with columns for the number of cells.
+  - `per-cell-count/` (`sim-compare-thresholds-<cells>-<separation>-separation`):
+    one figure per number of cells, laid out as `pooled/`.
 
 ```{r}
 #| label: thesis-figures
 #| include: false
 if (isTRUE(run_plots)) {
-  thesis_dir <- .analysis_project_dir("output-thesis", c("results", fig_key[-1L]), root_dir)
+  thesis_parts <- c("results", "qmd7", fig_key[-1L])
+  thesis_dir <- function(...) .analysis_project_dir("output-thesis", c(thesis_parts, ...), root_dir)
   thesis_pct <- compare_tbl |>
     dplyr::filter(condition_perturbation_sd == 0) |>
     .simCompareSignedPercentileSummary(scenarioCols = scenario_cols, mcse = FALSE)
   thesis_cls <- class_summary |> dplyr::filter(condition_perturbation_sd == 0)
   for (pos in intersect(c("low", "high"), unique(as.character(thesis_pct$mean_pos_setting)))) {
-    stem <- function(kind) file.path(thesis_dir, paste0("sim-compare-", kind, "-", pos, "-separation"))
-    .analysis_save_thesis_fig(.simCompareThesisF1Plot(thesis_cls, pos), stem("f1"), height = 165)
-    .analysis_save_thesis_fig(.simCompareThesisF1Plot(thesis_cls, pos, stat = "q10"), stem("f1-q10"), height = 165)
-    .analysis_save_thesis_fig(.simCompareThesisFreqPlot(thesis_pct, pos), stem("frequency"), height = 215)
-    .analysis_save_thesis_fig(
-      .simCompareThesisThresholdPlot(plot_tbl, threshold_reference_densities, pos),
-      stem("thresholds"), height = 215
-    )
+    stem <- function(dir, kind) file.path(dir, paste0("sim-compare-", kind, "-", pos, "-separation"))
+    .analysis_save_thesis_fig(.simCompareThesisF1Plot(thesis_cls, pos),
+      stem(thesis_dir("f1", "heatmap"), "f1"), height = 165)
+    .analysis_save_thesis_fig(.simCompareThesisF1Plot(thesis_cls, pos, stat = "q10"),
+      stem(thesis_dir("f1", "heatmap"), "f1-q10"), height = 165)
+    for (lay in c("prob", "cells")) {
+      suffix <- if (identical(lay, "cells")) "-by-cells" else ""
+      h <- if (identical(lay, "cells")) 190 else 215
+      .analysis_save_thesis_fig(.simCompareThesisPctPlot(thesis_cls, pos, "f1", lay),
+        stem(thesis_dir("f1", "percentiles"), paste0("f1-percentiles", suffix)), height = h)
+      .analysis_save_thesis_fig(.simCompareThesisPctPlot(thesis_pct, pos, "frequency", lay),
+        stem(thesis_dir("frequency"), paste0("frequency", suffix)), height = h)
+    }
+    thr <- function(data, ...) {
+      .simCompareThesisThresholdPlot(data, threshold_reference_densities, pos, ...)
+    }
+    n_rows <- function(data) {
+      length(unique(data$prob_response[data$mean_pos_setting == pos]))
+    }
+    .analysis_save_thesis_fig(thr(plot_tbl),
+      stem(thesis_dir("thresholds", "pooled"), "thresholds"), height = 215)
+    .analysis_save_thesis_fig(thr(plot_tbl, split_cells = TRUE),
+      stem(thesis_dir("thresholds", "by-cells"), "thresholds-by-cells"), height = 215)
+    for (tr in unique(plot_tbl$transformation)) {
+      d <- plot_tbl[plot_tbl$transformation == tr, , drop = FALSE]
+      .analysis_save_thesis_fig(thr(d, cols = "n_cell"),
+        stem(thesis_dir("thresholds", "per-transformation"), paste0("thresholds-", tr)),
+        height = .simCompareThesisThresholdHeight(n_rows(d)))
+    }
+    for (nc in sort(unique(plot_tbl$n_cell))) {
+      d <- plot_tbl[plot_tbl$n_cell == nc, , drop = FALSE]
+      .analysis_save_thesis_fig(thr(d),
+        stem(thesis_dir("thresholds", "per-cell-count"),
+          paste0("thresholds-", .analysis_label_cells(nc))),
+        height = .simCompareThesisThresholdHeight(n_rows(d)))
+    }
   }
 }
 ```

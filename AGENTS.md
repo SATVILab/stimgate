@@ -832,9 +832,12 @@ including real-data analyses, pass `sized = FALSE` to `.analysis_mode_key()`.
 The projr `output` label is `_output/general`; `output-thesis` (`_output/thesis`)
 holds files for the thesis and is uploaded to a GitHub release on projr builds
 (`build: github:` in `_projr.yml`). Save only the files the operator has asked
-for there, never every variant a QMD draws. Save thesis files in its `appendix/` (or
-other chapter) subfolder, with quick/dev renders one level deeper
-(`c("appendix", fig_key[-1L])`); do not add further output labels. Draw thesis
+for there, never every variant a QMD draws. Save thesis files in a
+`<chapter>/qmd<N>/` folder for the analysis (e.g. `results/qmd7/`,
+`appendix/qmd6/`), bucketed by figure type in subfolders where an analysis
+saves several kinds, with quick/dev renders one level deeper than the analysis
+folder (`c("appendix", "qmd6", fig_key[-1L])`); do not add further output
+labels. Draw thesis
 figures at their printed size: the thesis (Manuscript22RodoThesis,
 stanford-thesis Typst template) is A4 with a 146.5 x 246.2 mm text area and
 12 pt body text, and inserts PDF figures at full width
@@ -845,14 +848,21 @@ conventions such as the relative tolerance once, in the caption. Thesis tables
 follow "Thesis tables" below.
 
 Analysis 7's thesis figures (`sim-compare-thesis.R`, saved to
-`output-thesis/results/`, not shown in the HTML) are, per separation: median
+`output-thesis/results/qmd7/` in `f1/`, `frequency/` and `thresholds/`
+subfolders, not shown in the HTML) are, per separation: median
 and 10th-percentile $F_1$ heat maps (rows method, columns transformation;
-`.simCompareThesisF1Plot(stat = )`); estimated frequencies
-(median solid, 10th/90th dotted, truth as a thick grey line) on the signed
-relative-error scale labelled in each row's frequencies, rows stacked with
-cowplot so their tick labels can differ; and outline threshold histograms over
+`.simCompareThesisF1Plot(stat = )`); median $F_1$ and background-subtracted
+frequency with 10th-90th percentile error bars, dodged by method so single
+points show their range (`.simCompareThesisPctPlot(measure = , rows = )`), with
+rows for response probability against cells (frequency in percent, truth as a
+grey line, y free per row) or rows for cells against response probability
+(frequency as estimated over true, 1 = correct); and outline threshold histograms over
 the stimulated density with a rug of simulated positive cells
-(`.simBandwidthThresholdDensities(rug_n = )`). Response probabilities run from
+(`.simBandwidthThresholdDensities(rug_n = )`), in four versions: thresholds
+pooled over cell counts, one outline per method and cell count, one figure per
+transformation with cell counts as columns, and one figure per cell count
+(`.simCompareThesisThresholdPlot(cols = , split_cells = )`; empty panels stay
+blank so columns line up). Response probabilities run from
 highest (top) to lowest in all of them. The "Without Tailgate" method set is
 gone from Analyses 7 and 8.
 

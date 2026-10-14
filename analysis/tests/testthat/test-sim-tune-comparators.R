@@ -209,7 +209,7 @@ test_that("Analysis 6 saves only its ranking table and F1 figure for the thesis"
   text <- paste(qmd, collapse = "\n")
   expect_match(text, '"sim-tune-comparators-ranking.md"', fixed = TRUE)
   expect_match(text, '"sim-tune-comparators-compare-f1"', fixed = TRUE)
-  expect_match(text, 'thesis_parts <- c("appendix", fig_key[-1L])', fixed = TRUE)
+  expect_match(text, 'thesis_parts <- c("appendix", "qmd6", fig_key[-1L])', fixed = TRUE)
   expect_match(text, "code-copy: true", fixed = TRUE)
 })
 
