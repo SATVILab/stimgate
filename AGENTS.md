@@ -1084,14 +1084,26 @@ reruns.
   through `output-thesis` (normally `_output/thesis/<chapter folder>/`);
   and, where the rules need it, the Typst styling. Build them with
   `scripts/r/analysis-thesis-table.R` (`.analysis_md_table()`,
-  `.analysis_md_show()`), which wraps the pipe table in a locally scoped
-  `#[ #set table(stroke: ...) ... ]` Typst block.
+  `.analysis_md_show()`), which wraps the pipe table in Analysis 8 saves
+  the same thesis figures with the same helpers to
+  `output-thesis/results/qmd8/<shift type>/<level>/` (`mean-shift-all`,
+  `mean-shift-negative`, `sd-inflation-negative`; `shift-<size>` or
+  `sd-increase-<fraction>`), once per level of every shift type,
+  subsetting the summaries to that level. Its threshold reference
+  densities carry the level’s stimulated-tube shift
+  (`.simBandwidthThresholdDensities(mismatch = TRUE)`, through
+  `.simCompareSimCytExperiment()`); without `mismatch` they are
+  unchanged.
+
+  a locally scoped `#[ #set table(stroke: ...) ... ]` Typst block.
+
 - **Quarto/Typst:** Quarto-native pipe tables only, each with a caption
   and a stable identifier, so Quarto numbering, cross-references and the
   List of Tables work. Never replace them with raw Typst `#figure(...)`.
   Prefer the scoped styling block to template changes; rule positions
   come from the row and group counts. Typst blocks do not show in HTML,
   so the HTML look is not the PDF look.
+
 - **Design** (the Analysis 6 F-beta/Tailgate tuning table is the
   reference): no vertical rules, no rules between ordinary rows; one
   rule under the headings and one at the bottom; a thin pale-grey rule
@@ -1101,6 +1113,7 @@ reruns.
   for parameters, e.g. `$(10^{-2}, 0.15)$`, with the tuple defined in
   the caption. Mark selected settings by bolding the parameter cell, not
   the row and not with “(selected)”.
+
 - **Numbers:** format only when building cells (`.analysis_md_num()`):
   three decimals by default for F1, correlations and similar bounded
   statistics, the same decimals within a column, leading zeros,
@@ -1110,6 +1123,7 @@ reruns.
   `$10^{-2}$`, `$\times$`), ASCII source where practical. Keep
   probabilities and percentages, absolute and relative differences, and
   missing values and zeros distinct.
+
 - **Captions:** concise but self-contained. State the observational and
   aggregation units (e.g. computed across samples within each simulation
   scenario, then averaged across scenarios), distinguish means, medians,
@@ -1117,12 +1131,14 @@ reruns.
   selection rules (tolerances, preferences for published defaults),
   distinguish the highest-ranked settings from those selected, and
   define tuples and markers.
+
 - **Checks:** valid Markdown, consistent column counts, correct maths,
   and displayed values that agree with the results. Do not claim the
   thesis PDF looks right because the HTML does; check it in a thesis
   render (a copy of the thesis `_extensions/` with a stub
   `_raw/docs/img/UCT logo circular blue large.png` renders a one-table
   test document), or say that check is outstanding.
+
 - **Verified pattern** (2026-10-12, Quarto 1.9.38 / Typst 0.14.2, thesis
   commit 04e9060): the scoped stroke block gives the header, bottom and
   grey group rules; the table is numbered (Table 1.1), `@tbl-...`
