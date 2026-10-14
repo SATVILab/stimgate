@@ -21,8 +21,8 @@
 .simCompareThesisProbLab <- function(x) paste("Response", .simCompareThesisPercent(as.numeric(x)))
 
 # Percentile figures: each method's median (points joined by lines) with the
-# 10th to 90th percentile range as error bars, over the samples of each
-# scenario, dodged by method so single points still show their range. Columns
+# 10th to 90th percentile range as error bars or pale bands, over the samples of each
+# scenario. Error bars are dodged by method so single points show their range. Columns
 # are transformations. With rows = "prob", rows are response probabilities and
 # the x axis is the number of cells; with rows = "cells", rows are numbers of
 # cells and the x axis is the response probability.
@@ -30,14 +30,17 @@
 #   background-subtracted frequency (q10, median, q90). With rows = "prob" the
 #   y axis is the background-subtracted frequency in percent (truth: grey line,
 #   y range free per row); with rows = "cells" it is the estimated over the
-#   true frequency (1 = correct), since the response probabilities differ by
-#   orders of magnitude.
+#   true frequency (1 = correct), on a common linear 0-4x display. Probabilities
+#   occupy equally spaced numeric positions so lines still join the medians.
 # - measure = "f1": `tbl` holds f1_q10, f1_median and f1_q90; the y axis is F1
 #   on 0-1.
 .simCompareThesisPctPlot <- function(tbl, pos, measure = c("frequency", "f1"),
-                                     rows = c("prob", "cells")) {
+                                     rows = c("prob", "cells"),
+                                     intervals = c("bars", "bands")) {
   measure <- match.arg(measure)
   rows <- match.arg(rows)
+  intervals <- match.arg(intervals)
+  ratio <- identical(measure, "frequency") && identical(rows, "cells")
   tbl <- tbl[tbl$mean_pos_setting == pos & tbl$method %in% .simCompareThesisMethods, , drop = FALSE]
   if (identical(measure, "f1")) {
     tbl$q10 <- tbl$f1_q10; tbl$median <- tbl$f1_median; tbl$q90 <- tbl$f1_q90
@@ -65,9 +68,10 @@
       expand = ggplot2::expansion(mult = 0.08))
     x_lab <- "Number of cells"
   } else {
-    d$row <- factor(d$n_cell, cells, paste(.analysis_label_cells(cells), "cells"))
-    d$x <- d$prob_response
-    x_scale <- ggplot2::scale_x_log10(breaks = rev(probs), labels = .simCompareThesisPercent,
+    d$row <- factor(d$n_cell, cells, paste(scales::comma(cells, accuracy = 1), "cells"))
+    d$x <- match(d$prob_response, rev(probs))
+    x_scale <- ggplot2::scale_x_continuous(breaks = seq_along(probs),
+      labels = .simCompareThesisPercent(rev(probs)),
       expand = ggplot2::expansion(mult = 0.08))
     x_lab <- "Response probability"
   }
@@ -80,24 +84,37 @@
     "frequency prob" = "Background-subtracted frequency (%)",
     "frequency cells" = "Estimated / true background-subtracted frequency",
     expression(F[1] ~ "score"))
-  dodge <- ggplot2::position_dodge(width = 0.18)
+  dodge <- if (identical(intervals, "bars")) ggplot2::position_dodge(width = 0.18) else
+    ggplot2::position_identity()
   labs <- .simCompareThesisMethodLabels()
   p <- ggplot2::ggplot(d, ggplot2::aes(x = .data$x, colour = .data$method, group = .data$method))
   if (!is.null(truth)) {
     p <- p + ggplot2::geom_hline(data = truth, ggplot2::aes(yintercept = .data$y),
       colour = "grey55", linewidth = 1.1)
   }
+  if (identical(intervals, "bands")) {
+    p <- p +
+      ggplot2::geom_ribbon(ggplot2::aes(ymin = .data$lo, ymax = .data$hi, fill = .data$method),
+        alpha = 0.10, colour = NA, show.legend = FALSE) +
+      ggplot2::geom_line(ggplot2::aes(y = .data$lo), alpha = 0.35, linewidth = 0.35) +
+      ggplot2::geom_line(ggplot2::aes(y = .data$hi), alpha = 0.35, linewidth = 0.35) +
+      ggplot2::scale_fill_manual(values = .analysis_method_colours[.simCompareThesisMethods])
+  } else {
+    p <- p + ggplot2::geom_errorbar(ggplot2::aes(ymin = .data$lo, ymax = .data$hi),
+      width = 0.12, linewidth = 0.4, position = dodge)
+  }
   p +
-    ggplot2::geom_errorbar(ggplot2::aes(ymin = .data$lo, ymax = .data$hi), width = 0.12,
-      linewidth = 0.4, position = dodge) +
     ggplot2::geom_line(ggplot2::aes(y = .data$mid), linewidth = 0.5, position = dodge) +
     ggplot2::geom_point(ggplot2::aes(y = .data$mid, shape = .data$method), size = 1.4,
       position = dodge) +
     ggplot2::facet_grid(ggplot2::vars(.data$row), ggplot2::vars(.data$transformation),
-      scales = if (identical(measure, "f1")) "fixed" else "free_y") +
+      scales = if (identical(measure, "f1") || ratio) "fixed" else "free_y") +
     x_scale +
     (if (identical(measure, "f1")) ggplot2::scale_y_continuous(limits = c(0, 1)) else
+      if (ratio) ggplot2::scale_y_continuous(breaks = 0:4, labels = paste0(0:4, "x"),
+        expand = ggplot2::expansion(mult = 0)) else
       ggplot2::scale_y_continuous(labels = .analysis_label_number)) +
+    (if (ratio) ggplot2::coord_cartesian(ylim = c(0, 4))) +
     ggplot2::scale_colour_manual(values = .analysis_method_colours[.simCompareThesisMethods],
       labels = scales::label_parse()(labs), name = "Method") +
     ggplot2::scale_shape_manual(values = .analysis_method_shapes[.simCompareThesisMethods],
