@@ -2,7 +2,7 @@ test_that("full simulation grids seed biological scenarios rather than tuning ro
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   for (id in c("2a", "2b", "3", "4", "5", "6", "7", "8")) {
     env <- new.env(parent = getNamespace("stimgate"))
-    for (fn in c("analysis-runtime.R", "sim-misc.R", "sim-bandwidth.R",
+    for (fn in c("analysis-runtime.R", "analysis-plot-style.R", "sim-misc.R", "sim-bandwidth.R",
                  "sim-bandwidth-analysis-run.R", "sim-compare-freq_bs.R",
                  "sim-compare-qmd7-presentation.R")) {
       source(file.path(root, "scripts", "r", fn), local = env)

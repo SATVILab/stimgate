@@ -22,7 +22,8 @@ params:
 
 This analysis compares StimGate, F-beta and Tailgate when stimulated and
 unstimulated expression distributions are misaligned. Paired samples are
-simulated for selected baseline scenarios, then the stimulated expression is
+simulated for baseline scenarios that cross transformation, separation,
+number of cells and response probability, then the stimulated expression is
 shifted or its background spread is increased. The same simulated draws are
 used across mismatch settings within each baseline scenario.
 
@@ -82,7 +83,7 @@ simulation_seed <- as.integer(.get_qmd_param_env(
 if (is.na(simulation_seed)) {
   stop("simulation_seed must be coercible to an integer.")
 }
-comparison_semantics_version <- "batch-mismatch-comparison-v25"
+comparison_semantics_version <- "batch-mismatch-comparison-v26"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -177,6 +178,17 @@ the `nrd0` selector with the bandwidth-estimation sample capped at 10,000 cells.
 
 ### Simulation settings
 
+The baseline scenarios cross every transformation (Gaussian, skew, gamma),
+separation between positive and negative cells (high, low), number of
+stimulated cells (5,000 and 100,000) and response probability (0.05%, 0.2%, 1%
+and 20%, values used in Analysis 7), so every transformation and separation
+has the same cell counts and response probabilities. As in Analysis 7,
+settings with fewer than five expected responding cells are left out when the
+response probability is below 4%, which drops 0.05% at 5,000 cells. That
+leaves 42 baselines, named by their settings, e.g. "Gaussian: high
+separation, 5,000 cells, 1% response". Every mismatch setting is applied to
+every baseline.
+
 Each scenario simulates 20 datasets of 20 samples in final runs and 5 datasets
 of 20 samples in draft runs (`SIM_SIZE=draft`). The samples in a dataset are
 gated together, with shared settings and cluster gates, so the dataset is the
@@ -243,22 +255,32 @@ n_cell_uns_relative_to_stim <- 1
 
 mean_pos_settings_tbl <- .simMiscGetMeanPosTbl()
 
-# Targeted scenario panel representing qualitatively distinct baselines
-targeted_scenarios_tbl <- tibble::tribble(
-  ~transformation, ~mean_pos_setting, ~prob_response, ~n_cell, ~scenario_desc,
-  "gaussian", "high", 0.002, 20000, "Rare response, clean baseline",
-  "skew", "high", 0.2, 20000, "Clean skew baseline",
-  "gamma", "high", 0.2, 5000, "Very clean gamma baseline",
-  "gaussian", "low", 0.2, 1000, "Overlapping Gaussian (StimGate advantage over F-beta)",
-  "gamma", "low", 0.2, 1000, "Overlapping Gamma (StimGate advantage over F-beta)",
-  "skew", "high", 0.0005, 100000, "Rare skew (F-beta advantage)",
-  "gamma", "high", 0.0005, 20000, "Rare Gamma (F-beta gate-purity advantage)"
+# Baseline scenarios: every transformation, separation, number of cells and
+# response probability (the latter from Analysis 7's values), with the same
+# cell counts and response probabilities for every transformation. As in
+# Analysis 7, settings with fewer than five expected responding cells are
+# left out when the response probability is below 4%.
+n_cell_vec <- c(5e3, 1e5)
+prob_response_vec <- c(0.0005, 0.002, 0.01, 0.2)
+transformation_vec <- c("gaussian", "skew", "gamma")
+
+baseline_scenarios_tbl <- tidyr::expand_grid(
+  mean_pos_settings_tbl,
+  n_cell = n_cell_vec,
+  prob_response = prob_response_vec
 ) |>
-  dplyr::left_join(
-    mean_pos_settings_tbl,
-    by = c("transformation", "mean_pos_setting")
-  ) |>
+  dplyr::filter(!(n_cell * prob_response < 5 & prob_response < 0.04)) |>
   dplyr::mutate(
+    transformation = factor(transformation, levels = transformation_vec),
+    mean_pos_setting = factor(mean_pos_setting, levels = c("high", "low"))
+  ) |>
+  dplyr::arrange(transformation, mean_pos_setting, n_cell, prob_response) |>
+  dplyr::mutate(
+    transformation = as.character(transformation),
+    mean_pos_setting = as.character(mean_pos_setting),
+    scenario_desc = .simCompareScenarioDesc(
+      mean_pos_setting, n_cell, prob_response
+    ),
     base_scenario_id = dplyr::row_number(),
     bias_uns = NA_real_,
     bias_uns_factor = stimgate_bias_uns_factor,
@@ -291,9 +313,9 @@ mean_shift_gaussian_skew <- c(0, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35)
 mean_shift_gamma <- c(0, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2)
 
 grid_mean_shift_all <- purrr::map_df(
-  seq_len(nrow(targeted_scenarios_tbl)),
+  seq_len(nrow(baseline_scenarios_tbl)),
   function(i) {
-    row <- targeted_scenarios_tbl[i, , drop = FALSE]
+    row <- baseline_scenarios_tbl[i, , drop = FALSE]
     shifts <- if (row$transformation[[1]] == "gamma") {
       mean_shift_gamma
     } else {
@@ -315,9 +337,9 @@ grid_mean_shift_all <- purrr::map_df(
 
 # 2. Mean-shift grid (negative/background component only):
 grid_mean_shift_negative <- purrr::map_df(
-  seq_len(nrow(targeted_scenarios_tbl)),
+  seq_len(nrow(baseline_scenarios_tbl)),
   function(i) {
-    row <- targeted_scenarios_tbl[i, , drop = FALSE]
+    row <- baseline_scenarios_tbl[i, , drop = FALSE]
     shifts <- if (row$transformation[[1]] == "gamma") {
       mean_shift_gamma
     } else {
@@ -342,7 +364,7 @@ grid_mean_shift_negative <- purrr::map_df(
 sd_increase_vec <- c(0, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35)
 
 grid_sd_inflation <- tidyr::expand_grid(
-  targeted_scenarios_tbl,
+  baseline_scenarios_tbl,
   sd_increase = sd_increase_vec
 ) |>
   dplyr::mutate(
@@ -370,11 +392,16 @@ sim_grid <- dplyr::bind_rows(
 # Keep every seeded row available for an exact interactive rerun.
 sim_grid_full <- sim_grid
 
-# Gate diagnostic: examine the very clean gamma baseline across selected
-# mean shifts for both shift variants. The rows
-# come from the full grid, so they keep their production seeds.
+# Gate diagnostic: examine the gamma, high separation, 5,000 cells, 20%
+# response baseline across selected mean shifts for both shift variants. The
+# rows come from the full grid, so they keep their production seeds.
 gate_diagnostic_spec <- list(
-  base_scenario_id = 3L,
+  base_scenario_id = baseline_scenarios_tbl$base_scenario_id[
+    baseline_scenarios_tbl$transformation == "gamma" &
+      baseline_scenarios_tbl$mean_pos_setting == "high" &
+      baseline_scenarios_tbl$n_cell == 5e3 &
+      baseline_scenarios_tbl$prob_response == 0.2
+  ],
   mismatch_type = c("mean_shift_all", "mean_shift_negative"),
   mismatch_val = c(0, 0.05, 0.1)
 )
@@ -385,17 +412,23 @@ gate_diagnostic_grid <- sim_grid_full |>
     mismatch_val %in% gate_diagnostic_spec$mismatch_val
   )
 stopifnot(
+  length(gate_diagnostic_spec$base_scenario_id) == 1L,
   nrow(gate_diagnostic_grid) ==
     length(gate_diagnostic_spec$mismatch_type) *
       length(gate_diagnostic_spec$mismatch_val)
 )
 
-# Quick mode keeps baseline scenario, mismatch magnitude (including zero) and mechanism.
+# Quick mode keeps baseline scenario, mismatch magnitude (including zero) and
+# mechanism: low separation at 5,000 cells for Gaussian and gamma, with two
+# response probabilities so the heat maps have more than one row.
 # Smallest grid covering every figure; dev takes precedence.
 if (analysis_quick) {
   sim_grid <- sim_grid |>
     dplyr::filter(
-      base_scenario_id %in% c(4L, 5L),
+      transformation %in% c("gaussian", "gamma"),
+      mean_pos_setting == "low",
+      n_cell == 5e3,
+      prob_response %in% c(0.01, 0.2),
       mismatch_val %in% c(0, 0.05)
     )
 }
@@ -406,6 +439,7 @@ if (analysis_dev) {
       transformation == "gaussian",
       mean_pos_setting == "high",
       prob_response == 0.002,
+      n_cell == 5e3,
       mismatch_val %in% c(0, 0.05)
     )
 }
@@ -824,7 +858,8 @@ Every comparison figure is shown twice. "All methods" includes StimGate,
 F-beta and Tailgate (with its bias). "With Tailgate at default settings" adds
 Tailgate without the bias. The two versions are saved in the `all_methods` and
 `tailgate_default` subfolders of each figure folder. Within each version there
-is one figure per mean position setting and mismatch mechanism.
+is one figure per mean position setting and mismatch mechanism, and per number
+of cells where the figure shows baseline scenarios separately.
 
 Mean shifts are additive shifts on the transformed expression scale, the
 scale the methods gate on. SD inflation is the fractional increase in the
@@ -872,7 +907,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   }
   .compare_baseline_note <- function(d) {
     pos <- unique(d$mean_pos_setting)
-    baselines <- targeted_scenarios_tbl |>
+    baselines <- baseline_scenarios_tbl |>
       dplyr::filter(
         base_scenario_id %in% compare_raw$base_scenario_id,
         mean_pos_setting == pos, transformation %in% d$transformation
@@ -1017,8 +1052,8 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
           paired_datasets = paste0(.data$n_pair, " / ", .data$n_dataset)
         ) |>
         dplyr::select(dplyr::all_of(c(
-          "scenario_desc", "mismatch_type", "mismatch_val",
-          "outcome", "method", "paired_datasets", "n_pair", "n_dataset", "mean_difference", "interval_95",
+          classification_cols,
+          "outcome", "paired_datasets", "n_pair", "n_dataset", "mean_difference", "interval_95",
           "tube_coverage_stimgate", "tube_coverage_competitor"
         )))
       .analysis_report_table(table,
@@ -1042,7 +1077,8 @@ fixed 0-100% scales. Solid lines are tube-level medians; dashed lines
 are the worse tail, the 90th percentile of FDP and the 10th percentile of
 sensitivity and F1. Wrapped strips name each baseline scenario, each with its own horizontal
 range (on a square-root scale) because mismatch sizes differ between
-transformations. Each mismatch mechanism has its own figure. Error bars (with
+transformations. Each mismatch mechanism and number of cells has its own
+figure, with one row per transformation and response probability. Error bars (with
 `show_mcse` on) resample whole datasets and recalculate the pooled tube-level
 median or tail percentile, as described above. Undefined bootstrap draws and
 suppressed intervals are reported in the coverage table.
@@ -1061,9 +1097,39 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     dir = .compare_fresh_fig_dir("fdp_sensitivity"),
     file_fn = .compare_mismatch_file,
     extra_heading = .compare_mismatch_heading,
-    extra_col = "mismatch_type",
+    extra_col = c("mismatch_type", "n_cell"),
     height = 13,
     level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
+  )
+}
+```
+
+### F1 heat maps
+
+Each tile is the median tube-level F1 of one baseline scenario and mismatch
+size, pooled over the tubes of every dataset (the `f1_median` column of the
+classification CSV). Mismatch size runs across and the true response
+probability up; rows of panels are transformations and columns are methods,
+each panel with its own mismatch sizes. There is one figure per separation,
+mismatch mechanism and number of cells. At 5,000 cells there is no 0.05% row,
+because those settings were not simulated. Grey tiles have no defined F1.
+
+```{r}
+#| label: f1-heatmap
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  .simCompareFigureLoop(
+    class_scenario,
+    make_plot = function(d) .simCompareHeatmapPlot(
+      d, "f1", x_label = .compare_mismatch_x(d$mismatch_type[[1]])
+    ),
+    dir = .compare_fresh_fig_dir("f1_heatmap"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = c("mismatch_type", "n_cell"),
+    height = 12,
+    level = 4L, mcse_mode = NULL, fit_panels = TRUE
   )
 }
 ```
@@ -1103,7 +1169,8 @@ how common genuine positives are as well as on the gate: the same
 false-positive rate gives a much larger FDP when the response is rare, so
 differences in FDP between rare- and common-response scenarios are not all
 due to the methods. Each panel has an independent vertical range spanning at least 0–10%,
-expanding for larger rates or intervals, arranged in two columns.
+expanding for larger rates or intervals, arranged in two columns. Each
+mismatch mechanism and number of cells has its own figure.
 
 ```{r}
 #| label: false-positive-rate
@@ -1119,18 +1186,17 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     dir = .compare_fresh_fig_dir("false_positive_rate"),
     file_fn = .compare_mismatch_file,
     extra_heading = .compare_mismatch_heading,
-    extra_col = "mismatch_type",
+    extra_col = c("mismatch_type", "n_cell"),
     height = 9,
     level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
 }
 ```
 
-## Very clean gamma baseline: gate diagnostic
+## Gamma, high separation, 5,000 cells, 20% response: gate diagnostic
 
 This diagnostic shows all 20 samples of replicate dataset 1 (`iter == 1`)
-of base scenario 3, “Very clean gamma baseline”: gamma transformation, high
-separation, response probability 0.2 and 5000 stimulated cells per sample.
+of the baseline “gamma: high separation, 5,000 cells, 20% response”.
 It is a deliberate rerun of the main run's first replicate with production
 seeds, not a random selection of samples. The same simulated dataset is used
 for shifts 0, 0.05 and 0.1, applied either to all stimulated cells or only to
@@ -1306,6 +1372,44 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 }
 ```
 
+### Estimated frequency heat maps
+
+Each tile prints the median background-subtracted frequency estimate of one
+baseline scenario and mismatch size, over the valid tube-level estimates of
+every dataset, and is coloured by its ratio to the median true frequency on a
+log2 scale: teal tiles over-estimate, brown tiles under-estimate and white
+tiles are close to the truth. Ratios beyond four-fold, and estimates of zero
+or below, take the end colours; the printed value is always the median
+estimate itself. The layout matches the F1 heat maps. The CSV gives every
+tile's median estimate, median truth, ratio and number of valid estimates.
+
+```{r}
+#| label: frequency-heatmap
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  freq_heatmap <- .simCompareHeatmapFrequencySummary(
+    compare_raw, scenarioCols = classification_cols
+  )
+  .analysis_report_table(freq_heatmap,
+    c(fig_key, "frequency-heatmap.csv"),
+    "Median estimated and true frequency per scenario, mismatch and method.",
+    path_root = root_dir)
+  .simCompareFigureLoop(
+    freq_heatmap,
+    make_plot = function(d) .simCompareHeatmapPlot(
+      d, "frequency", x_label = .compare_mismatch_x(d$mismatch_type[[1]])
+    ),
+    dir = .compare_fresh_fig_dir("frequency_heatmap"),
+    file_fn = .compare_mismatch_file,
+    extra_heading = .compare_mismatch_heading,
+    extra_col = c("mismatch_type", "n_cell"),
+    height = 12,
+    level = 4L, mcse_mode = NULL, fit_panels = TRUE
+  )
+}
+```
+
 The figures below describe the accuracy of the background-subtracted
 frequency estimate, which answers a different question from the gate purity
 and detection above. A gate can be pure yet miss most responding cells (a
@@ -1320,11 +1424,12 @@ scenario and method, the median and existing tail percentiles pool all valid
 sample estimates across independent datasets. Samples with zero true frequency
 have no relative error. Main percentile figures omit maxima.
 
-The baseline-average views weight baseline scenario statistics equally.
-Each baseline has one cell count and response probability, but the high
-Gaussian and high gamma settings each contain two baselines. The per-cell
-views keep these baselines separate; each cell count identifies one response
-probability within its transformation and mean-position setting.
+The baseline-average views weight baseline scenario statistics equally over
+all seven baselines of a transformation and separation: three response
+probabilities (0.2%, 1%, 20%) at 5,000 cells and four (0.05%, 0.2%, 1%, 20%)
+at 100,000 cells. The per-scenario views keep every baseline separate: one
+figure per number of cells, with a row of panels per response probability
+and a column per transformation, so each panel is a single baseline.
 Averages stay within one transformation, mismatch mechanism and mismatch size;
 labels say **Mean of scenario medians** and **Mean of scenario 95th percentiles**.
 Counts beside figures report finite contributing scenarios. Whole-dataset
@@ -1376,20 +1481,15 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
   .analysis_report_table(.simComparePerformanceCoverage(percentile_averaged, group_all),
     c(fig_key, paste0("mcse_", mcse_mode), "mismatch-error-summaries", "percentile-averaged.csv"),
     "Unconditional scenario-percentile average bootstrap validity.", path_root = root_dir)
-  group_cell <- c(group_all, "n_cell")
-  percentile_by_cell <- .analysis_mcse_bootstrap_average(
-    percentile_scenario, group_cell, names(.simBandwidthSignedErrorProbs), mcse = TRUE)
-  .analysis_report_table(.simComparePerformanceCoverage(percentile_by_cell, group_cell),
-    c(fig_key, paste0("mcse_", mcse_mode), "mismatch-error-summaries", "percentile-by-cell.csv"),
-    "Unconditional per-cell-count percentile bootstrap validity.", path_root = root_dir)
   err_averaged <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_all, mcse = show_mcse)
-  err_by_cell <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_cell, mcse = show_mcse)
   signed_averaged <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_all, signed = TRUE, mcse = show_mcse)
-  signed_by_cell <- .simComparePerformanceAverage(compare_raw, scenario_error_cols, group_cell, signed = TRUE, mcse = show_mcse)
+  # Per-scenario views plot the scenario statistics themselves, one panel per
+  # transformation and response probability, so nothing is averaged.
+  signed_scenario_shown <- .simBandwidthSignedErrorClipSide(signed_scenario)
   coverage_summaries <- list(err_scenario, signed_scenario, err_averaged,
-    err_by_cell, signed_averaged, signed_by_cell)
+    signed_averaged)
   coverage_keys <- list(scenario_error_cols, scenario_error_cols, group_all,
-    group_cell, group_all, group_cell)
+    group_all)
   for (i in seq_along(coverage_summaries)) {
     .analysis_report_table(.simComparePerformanceCoverage(coverage_summaries[[i]], coverage_keys[[i]]),
       c(fig_key, paste0("mcse_", mcse_mode), "mismatch-error-summaries", paste0("coverage-", i, ".csv")),
@@ -1401,8 +1501,9 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 ### Relative error across baseline scenarios
 
 The size of the relative error is plotted against mismatch size, with scenario
-statistics averaged equally over baseline scenarios within each transformation
-and mean-position setting.
+statistics averaged equally over the seven baseline scenarios (both cell
+counts and every response probability) within each transformation and
+mean-position setting.
 
 ```{r}
 #| label: relative-error-averaged
@@ -1425,11 +1526,11 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 }
 ```
 
-### Relative error at each cell count
+### Relative error for each baseline scenario
 
-As above, but keeping each baseline separate by its cell count. Each plotted
-cell count has a single response probability within its transformation and
-mean-position setting.
+As above, but for each baseline scenario separately: one figure per number of
+cells, with a row of panels per response probability and a column per
+transformation.
 
 ```{r}
 #| label: relative-error-by-n-cell
@@ -1437,12 +1538,12 @@ mean-position setting.
 #| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
-    err_by_cell,
+    err_scenario,
     make_plot = .compare_mismatch_plot(
       .simComparePlotMismatchError,
-      mcse = show_mcse
+      by_prob = TRUE, mcse = show_mcse
     ),
-    dir = .compare_fresh_fig_dir("relative_error_by_n_cell"),
+    dir = .compare_fresh_fig_dir("relative_error_by_scenario"),
     file_fn = .compare_mismatch_file,
     extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"),
@@ -1457,7 +1558,7 @@ sibling `ratio*` folder. The curves and intervals are identical: 1x is exact,
 0x is an estimate of zero and 2x is twice the reference. Negative ratios remain
 visible; a capped upper tick reads “≥ 16x”.
 
-### Unconditional percentiles of signed relative error averaged over cell counts
+### Unconditional percentiles of signed relative error averaged over baseline scenarios
 
 These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
 
@@ -1487,15 +1588,15 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 }
 ```
 
-### Unconditional percentiles of signed relative error at each cell count
+### Unconditional percentiles of signed relative error for each baseline scenario
 
 These are the main signed-error performance plots. Every finite error contributes, including exact agreement at zero; failed or undefined estimates remain in the separate coverage summaries.
 
 The curves summarise the full signed relative error distribution, including zero errors, rather than conditioning on over- or under-estimation. Each method shows its median (solid) and its 10th and 90th percentiles (dotted); unavailable intervals are omitted without dropping points. Percentiles are calculated before applying the signed display scale.
 
-Each cell count identifies one baseline response probability within its transformation and mean-position setting; baselines are kept separate.
+Each figure is one number of cells, with a row of panels per response probability and a column per transformation, so each panel is a single baseline scenario; nothing is averaged.
 
-Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles. Scenario averages bootstrap the complete equal-weight average with shared draws across methods and deterministic mismatch settings; bootstrap validity is reported beside the figures.
+Intervals resample whole independent datasets (`iter`), recomputing pooled tube percentiles; bootstrap validity is reported in the percentile-scenario CSV.
 
 ```{r}
 #| label: signed-percentiles-by-n-cell
@@ -1503,18 +1604,18 @@ Intervals resample whole independent datasets (`iter`), recomputing pooled tube 
 #| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
-    percentile_by_cell,
+    percentile_scenario,
     make_plot = function(d) .simBandwidthSignedPercentilePlot(
       d, x = "mismatch_val", x_label = .compare_mismatch_x(d$mismatch_type[[1]]),
-      x_log = FALSE, mcse = show_mcse, percentiles = "tails") +
+      x_log = FALSE, by_prob = TRUE, mcse = show_mcse, percentiles = "tails") +
       ggplot2::aes(shape = method) +
       .analysis_scale_method(c("colour", "shape")),
-    dir = .compare_fresh_fig_dir("signed_percentiles_by_n_cell"),
+    dir = .compare_fresh_fig_dir("signed_percentiles_by_scenario"),
     file_fn = .compare_mismatch_file,
     extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"),
     height = 16,
-    level = 4L, mcse_mode = mcse_mode
+    level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
 }
 ```
@@ -1557,13 +1658,13 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 Signed- and absolute-error panels have independent ranges across transformations.
 Method colours, shapes and line types follow the shared comparison encoding.
 
-### Conditional over- and under-estimates at each cell count
+### Conditional over- and under-estimates for each baseline scenario
 
 These are conditional error-severity diagnostics: exact agreement (zero error) is excluded from both directions. The direction shares use all finite errors, including zeros, as their denominator; the remaining share is exact agreement. An all-exact group has no directional curve. Use the unconditional signed-error percentiles for overall performance, and the coverage summaries for failed or undefined estimates.
 
-As above, but keeping each baseline separate by its cell count. Each plotted
-cell count has a single response probability within its transformation and
-mean-position setting.
+As above, but for each baseline scenario separately: one figure per number of
+cells, with a row of panels per response probability and a column per
+transformation.
 
 ```{r}
 #| label: signed-error-by-n-cell
@@ -1571,12 +1672,12 @@ mean-position setting.
 #| results: asis
 if (isTRUE(run_plots) && isTRUE(results_available)) {
   .simCompareFigureLoop(
-    signed_by_cell,
+    signed_scenario_shown,
     make_plot = .compare_mismatch_plot(
       .simComparePlotSignedError,
-      x = "mismatch_val", x_log = FALSE, mcse = show_mcse
+      x = "mismatch_val", x_log = FALSE, by_prob = TRUE, mcse = show_mcse
     ),
-    dir = .compare_fresh_fig_dir("signed_error_by_n_cell"),
+    dir = .compare_fresh_fig_dir("signed_error_by_scenario"),
     file_fn = .compare_mismatch_file,
     extra_heading = .compare_mismatch_heading,
     extra_col = c("mismatch_type", "n_cell"),
@@ -1666,7 +1767,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 The mean share of unstimulated cells above the gate is plotted against
 the stimulated mean shift. Colour, point shape and line type identify the
 method, and panels separate baseline scenarios.
-Each mismatch mechanism has its own figure; scenarios wrap into two columns
+Each mismatch mechanism and number of cells has its own figure; scenarios wrap into two columns
 with independent vertical ranges. Higher values indicate that more unstimulated
 cells lie above the chosen gate.
 Error bars (with `show_mcse` on) are whole-dataset bootstrap intervals for
@@ -1689,7 +1790,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     },
     dir = .analysis_fig_dir(c(fig_key, "threshold_placement_unstim"), path_root = root_dir),
     file_fn = .compare_mismatch_file,
-    extra_col = "mismatch_type",
+    extra_col = c("mismatch_type", "n_cell"),
     extra_heading = .compare_mismatch_heading,
     height = 16,
     level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
@@ -1701,7 +1802,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
 
 The 90th percentile of absolute relative error is plotted against mismatch
 size on an inverse-hyperbolic-sine vertical scale, with colour identifying
-the method. Each mismatch mechanism has its own figure and heading, with baseline scenarios
+the method. Each mismatch mechanism and number of cells has its own figure and heading, with baseline scenarios
 wrapped into two columns and one mean position setting per plot. Panel ranges
 are independent. Compare curves
 within each panel, since mean shift and spread increase use different units.
@@ -1721,7 +1822,7 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     },
     dir = .analysis_fig_dir(c(fig_key, "upper_tail_and_fallbacks"), path_root = root_dir),
     file_fn = .compare_mismatch_file,
-    extra_col = "mismatch_type",
+    extra_col = c("mismatch_type", "n_cell"),
     extra_heading = .compare_mismatch_heading,
     height = 18,
     level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE

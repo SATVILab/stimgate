@@ -16,7 +16,7 @@ root_dir <- normalizePath(
 
 .compare_method_qmds <- c(
   "7-sim-compare-freq_bs.qmd" = "corrected-comparison-v25",
-  "8-sim-compare-freq_bs-batch.qmd" = "batch-mismatch-comparison-v25"
+  "8-sim-compare-freq_bs-batch.qmd" = "batch-mismatch-comparison-v26"
 )
 
 test_that("comparison QMDs set and record the threshold method", {

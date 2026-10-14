@@ -3813,6 +3813,7 @@
 
 # Share of unstimulated cells above the gate against the mean shift.
 .simComparePlotPlacement <- function(data, mcse = FALSE) {
+  data$scenario <- .simCompareScenarioLabel(data)
   bars <- if (isTRUE(mcse) && "propUns_mean_lower" %in% names(data)) {
     .analysis_mcse_errorbar(data, "propUns_mean_lower", "propUns_mean_upper")
   }
@@ -3828,7 +3829,7 @@
     ggplot2::geom_point(size = 2, alpha = 0.75) +
     bars +
     ggplot2::facet_wrap(
-      ~scenario_desc, scales = "free_y", ncol = 2, labeller = .simCompareStripWrap()
+      ~scenario, scales = "free_y", ncol = 2, labeller = .simCompareStripWrap()
     ) +
     ggplot2::scale_y_continuous(labels = .analysis_label_percent) +
     .analysis_y_floor() +
@@ -3845,6 +3846,7 @@
 
 # 90th percentile error for every mismatch mechanism.
 .simComparePlotUpperTail <- function(data, mcse = FALSE) {
+  data$scenario <- .simCompareScenarioLabel(data)
   data$mismatch_type <- factor(
     data$mismatch_type, levels = names(.simCompareMismatchLabels)
   )
@@ -3862,7 +3864,7 @@
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
     ggplot2::geom_point(size = 2, alpha = 0.75) +
     bars +
-    ggplot2::facet_wrap(~scenario_desc, scales = "free", ncol = 2,
+    ggplot2::facet_wrap(~scenario, scales = "free", ncol = 2,
       labeller = .simCompareStripWrap()) +
     ggplot2::scale_y_continuous(
       transform = scales::asinh_trans(), labels = .analysis_label_percent,
@@ -4060,7 +4062,7 @@
 .simCompareMismatchFacet <- function(by_prob, ncol = 3L) {
   ggplot2::facet_wrap(
     if (by_prob) {
-      ggplot2::vars(statistic, transformation, prob_response) } else
+      ggplot2::vars(statistic, prob_response, transformation) } else
       {
       ggplot2::vars(statistic, transformation)},
     ncol = ncol,
@@ -4097,14 +4099,13 @@
     ggplot2::scale_x_continuous(labels = .analysis_label_number) +
     .simBandwidthAbsErrorLayers(capped = capped) +
     .analysis_scale_method(c("colour", "shape", "linetype")) +
-    .simCompareMismatchFacet(by_prob, length(unique(tbl$transformation)) *
-      if (by_prob) length(unique(tbl$prob_response)) else 1L) +
+    .simCompareMismatchFacet(by_prob, length(unique(tbl$transformation))) +
     ggplot2::labs(x = x_label, colour = "Method") +
     .analysis_theme()
 }
 
-# Signed relative error against `x`: rows of panels are statistics, columns
-# are transformations (and response probabilities when `by_prob`);
+# Signed relative error against `x`: rows of panels are statistics and
+# response probabilities (when `by_prob`), columns are transformations;
 # over-estimates sit above zero and under-estimates below, and line weight is
 # the share of estimates in that direction.
 .simComparePlotSignedError <- function(
@@ -4148,8 +4149,7 @@
     (if (isTRUE(mcse)) .simBandwidthSignedErrorBars(tbl)) +
     x_scale +
     .analysis_scale_method(c("colour", "shape", "linetype")) +
-    .simCompareMismatchFacet(by_prob, length(unique(tbl$transformation)) *
-      if (by_prob) length(unique(tbl$prob_response)) else 1L) +
+    .simCompareMismatchFacet(by_prob, length(unique(tbl$transformation))) +
     ggplot2::labs(x = x_label, colour = "Method") +
     .analysis_theme()
 }
@@ -4351,6 +4351,16 @@
       },
       .groups = "drop"
     )
+}
+
+# Name of a baseline scenario from its settings, e.g.
+# "high separation, 5,000 cells, 1% response".
+.simCompareScenarioDesc <- function(mean_pos_setting, n_cell, prob_response) {
+  paste0(
+    as.character(mean_pos_setting), " separation, ",
+    .analysis_label_number(n_cell), " cells, ",
+    .analysis_label_percent(prob_response), " response"
+  )
 }
 
 # Facet label for each baseline scenario: transformation and description,
@@ -4648,4 +4658,95 @@
   .analysis_mcse_bootstrap_average(
     .simCompareSignedPercentileSummary(raw, scenarioCols, mcse = mcse),
     group_cols, names(.simBandwidthSignedErrorProbs), mcse = TRUE)
+}
+
+# ---------------------------------------------------------------------------
+# Heat maps over the crossed baseline grid (analysis 8): one tile per
+# response probability and mismatch size, one panel per transformation and
+# method.
+# ---------------------------------------------------------------------------
+
+# Median estimated background-subtracted frequency per scenario and method,
+# over valid tube-level estimates pooled across datasets, with its ratio to
+# the median true frequency. Rows with a run error have no estimate.
+.simCompareHeatmapFrequencySummary <- function(
+    .data, scenarioCols, keepMethods = .simCompareMethods) {
+  rows <- .simComparePrimaryMethodRows(.data)
+  rows <- rows[rows$method %in% keepMethods, , drop = FALSE]
+  if (!"error" %in% names(rows)) rows$error <- NA_character_
+  rows$est <- dplyr::if_else(
+    is.na(rows$error) | !nzchar(rows$error), rows$propRespEst, NA_real_
+  )
+  q <- .simCompareQuantileFinite
+  rows |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(scenarioCols))) |>
+    dplyr::summarise(
+      n = dplyr::n(),
+      n_est = sum(is.finite(.data$est)),
+      est_median = q(.data$est, 0.5),
+      truth_median = q(.data$propRespTruth, 0.5),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      ratio_median = dplyr::if_else(
+        is.finite(.data$truth_median) & .data$truth_median > 0,
+        .data$est_median / .data$truth_median, NA_real_
+      )
+    )
+}
+
+# Tiles: mismatch size across, true response probability up; panels in rows
+# by transformation and in columns by method, each with its own mismatch
+# sizes. `quantity = "f1"` fills by median F1 (`f1_median`) on 0-1;
+# `"frequency"` prints the median estimate and fills by its ratio to the
+# truth on a log2 scale (BrBG: teal over, brown under), with estimates of
+# zero or below and ratios beyond 4-fold drawn at the end colours.
+.simCompareHeatmapPlot <- function(
+    tbl, quantity = c("f1", "frequency"), x_label = "Mismatch size") {
+  quantity <- match.arg(quantity)
+  methods <- intersect(.simCompareMethods, unique(as.character(tbl$method)))
+  tbl$transformation <- .analysis_trans_factor(tbl$transformation)
+  tbl$method <- factor(as.character(tbl$method), methods,
+    unname(.analysis_method_labels[methods]))
+  tbl$x <- factor(.analysis_label_number(tbl$mismatch_val),
+    .analysis_label_number(sort(unique(tbl$mismatch_val))))
+  tbl$y <- factor(.analysis_label_percent(tbl$prob_response),
+    .analysis_label_percent(sort(unique(tbl$prob_response))))
+  if (quantity == "f1") {
+    tbl$fill <- tbl$f1_median
+    tbl$label <- ifelse(is.finite(tbl$fill), sprintf("%.2f", tbl$fill), "NA")
+    tbl$text_colour <- ifelse(is.finite(tbl$fill) & tbl$fill < 0.55, "white", "black")
+    fill_scale <- ggplot2::scale_fill_viridis_c(
+      limits = c(0, 1), name = expression("Median" ~ F[1]), na.value = "grey85"
+    )
+  } else {
+    ratio <- ifelse(is.finite(tbl$est_median) & tbl$est_median <= 0, 0, tbl$ratio_median)
+    tbl$fill <- ifelse(is.finite(ratio), log2(pmax(ratio, 2^-2)), NA_real_)
+    tbl$label <- ifelse(is.finite(tbl$est_median),
+      .analysis_label_percent(tbl$est_median, digits = 2), "NA")
+    tbl$text_colour <- ifelse(is.finite(tbl$fill) & abs(tbl$fill) > 1.3, "white", "black")
+    fill_scale <- ggplot2::scale_fill_distiller(
+      palette = "BrBG", direction = 1, limits = c(-2, 2), oob = scales::squish,
+      breaks = -2:2, labels = c("≤ 0.25x", "0.5x", "1x", "2x", "≥ 4x"),
+      name = "Median estimate / truth", na.value = "grey85"
+    )
+  }
+  ggplot2::ggplot(tbl, ggplot2::aes(x = .data$x, y = .data$y, fill = .data$fill)) +
+    ggplot2::geom_tile(colour = "white", linewidth = 0.4) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = .data$label, colour = .data$text_colour), size = 1.9
+    ) +
+    ggplot2::scale_colour_identity() +
+    fill_scale +
+    ggplot2::facet_wrap(
+      ggplot2::vars(transformation, method),
+      ncol = length(methods), scales = "free_x"
+    ) +
+    ggplot2::labs(x = x_label, y = "Response probability") +
+    .analysis_theme(grid = "none") +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1),
+      axis.line = ggplot2::element_blank(),
+      legend.key.width = ggplot2::unit(14, "mm")
+    )
 }

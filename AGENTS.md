@@ -427,7 +427,15 @@ results from another run; manual renders leave it unset. Plot jobs explicitly
 set all ACS stage controls to false. Promotion locks live next to `current/`,
 shared by every run of the analysis. Analysis 8 validates pairing and zero-shift
 agreement on the full collated table before promotion and uses one scientific
-settings list for manifest recording and canonical reads.
+settings list for manifest recording and canonical reads. Its baselines cross
+transformation, separation, cells (5,000, 100,000) and response probability
+(0.05%, 0.2%, 1%, 20%; Analysis 7's rule drops 0.05% at 5,000 cells), with
+the same settings for every transformation, and are named by their settings
+(`.simCompareScenarioDesc()`). Per-scenario figures facet response probability
+by transformation and never average over it; F1 and estimated-frequency heat
+maps (`.simCompareHeatmapPlot()`) show one tile per response probability and
+mismatch size. `dev.sh` gives Analysis 8 40 chunks unless `SIM_GRID_N_CHUNKS`
+is set (`n_chunks_for_script()`).
 Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`;
 validate all target arguments before submitting jobs. After the simulation jobs,
 `dev.sh` submits one `scripts/slurm/render-plots.sh` job per analysis (except

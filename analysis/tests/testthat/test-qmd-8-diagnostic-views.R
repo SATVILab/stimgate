@@ -22,25 +22,51 @@ root_dir <- normalizePath(
   regmatches(text, regexpr(pattern, text, perl = TRUE))
 }
 
-test_that("QMD 8 removes only views duplicated by its baseline grid", {
+# Baseline scenarios from QMD 8's settings chunk.
+.qmd8_view_baselines <- function(text, env) {
+  source(file.path(root_dir, "scripts", "r", "sim-misc.R"), local = env)
+  env$root_dir <- root_dir
+  env$analysis_quick <- FALSE
+  env$run_simulations <- FALSE
+  env$sim_size <- "final"
+  chunk <- .qmd8_view_extract(text, "(?s)#\\| label: actual-settings.*?```")
+  expect_true(nzchar(chunk))
+  eval(parse(text = sub("```$", "", chunk)), env)
+  env$baseline_scenarios_tbl
+}
+
+test_that("QMD 8 crosses every baseline setting for every transformation", {
   text <- .qmd8_view_text()
   env <- .qmd8_view_env()
-  grid_code <- .qmd8_view_extract(text,
-    "(?s)targeted_scenarios_tbl <- tibble::tribble\\(.*?\n\\)")
-  expect_true(nzchar(grid_code))
-  eval(parse(text = grid_code), env)
-  grid <- env$targeted_scenarios_tbl
-  counts <- grid |>
-    dplyr::count(transformation, mean_pos_setting, n_cell)
-  expect_true(all(counts$n == 1L))
-  # Averaging within high skew/gamma combines distinct baselines.
-  high <- grid[grid$mean_pos_setting == "high", ] |>
-    dplyr::count(transformation)
-  expect_equal(high$n[match(c("skew", "gamma"), high$transformation)], c(2L, 2L))
+  grid <- .qmd8_view_baselines(text, env)
+  expect_identical(grid$base_scenario_id, seq_len(nrow(grid)))
+  expect_equal(nrow(grid), 42L)
+  expect_setequal(unique(grid$transformation), c("gaussian", "skew", "gamma"))
+  expect_setequal(unique(grid$mean_pos_setting), c("high", "low"))
+  # Every transformation and separation has the same cells and responses.
+  settings <- split(
+    paste(grid$n_cell, grid$prob_response),
+    paste(grid$transformation, grid$mean_pos_setting)
+  )
+  expect_length(settings, 6L)
+  for (x in settings) expect_identical(x, settings[[1]])
+  expect_setequal(settings[[1]], c(
+    paste(5e3, c(0.002, 0.01, 0.2)), paste(1e5, c(0.0005, 0.002, 0.01, 0.2))
+  ))
+  expect_identical(
+    grid$scenario_desc[grid$transformation == "gaussian" &
+      grid$mean_pos_setting == "high" & grid$n_cell == 5e3 &
+      grid$prob_response == 0.01],
+    "high separation, 5,000 cells, 1% response"
+  )
+  # Per-scenario views keep response probabilities apart; heat maps exist.
   for (label in c("relative-error", "signed-error")) {
-    expect_false(grepl(paste0("label: ", label, "-by-n-cell-prob"), text, fixed = TRUE))
     expect_true(grepl(paste0("label: ", label, "-by-n-cell\n"), text, fixed = TRUE))
   }
+  for (label in c("f1-heatmap", "frequency-heatmap")) {
+    expect_true(grepl(paste0("label: ", label, "\n"), text, fixed = TRUE))
+  }
+  expect_false(grepl("group_cell", text, fixed = TRUE))
   expect_false(grepl(".compare_loop_subtitle", text, fixed = TRUE))
 })
 
@@ -80,14 +106,15 @@ test_that("figure loops put settings in headings and distinct save paths", {
 test_that("QMD 8 prose names the actual baseline cohort", {
   env <- .qmd8_view_env()
   text <- .qmd8_view_text()
-  eval(parse(text = .qmd8_view_extract(text,
-    "(?s)targeted_scenarios_tbl <- tibble::tribble\\(.*?\n\\)")), env)
-  env$targeted_scenarios_tbl$base_scenario_id <- seq_len(nrow(env$targeted_scenarios_tbl))
-  env$compare_raw <- data.frame(base_scenario_id = 1:7)
+  grid <- .qmd8_view_baselines(text, env)
+  env$compare_raw <- data.frame(base_scenario_id = grid$base_scenario_id)
   env$run_plots <- TRUE
   env$results_available <- TRUE
   chunk <- .qmd8_view_extract(text, "(?s)#\\| label: figure-helpers.*?```")
   eval(parse(text = sub("```$", "", chunk)), env)
+  gamma_high <- grid[grid$transformation == "gamma" & grid$mean_pos_setting == "high", ]
+  small <- gamma_high$base_scenario_id[gamma_high$n_cell == 5e3][[1]]
+  large <- gamma_high$base_scenario_id[gamma_high$n_cell == 1e5][[1]]
   data <- data.frame(transformation = "gamma", mean_pos_setting = "high",
     mismatch_type = "mean_shift_negative")
   note <- paste(utils::capture.output(env$.compare_baseline_note(data)), collapse = "\n")
@@ -98,17 +125,17 @@ test_that("QMD 8 prose names the actual baseline cohort", {
   expect_match(env$.compare_mismatch_heading(
     list(mismatch_type = "mean_shift_negative", n_cell = 5000)),
     "Shift stimulated negatives only", fixed = TRUE)
-  expect_match(note, "3 (gamma", fixed = TRUE)
-  expect_match(note, "7 (gamma", fixed = TRUE)
+  expect_match(note, paste0(small, " (gamma"), fixed = TRUE)
+  expect_match(note, paste0(large, " (gamma"), fixed = TRUE)
   data$n_cell <- 5000
   note <- paste(utils::capture.output(env$.compare_baseline_note(data)), collapse = "\n")
-  expect_match(note, "3 (gamma", fixed = TRUE)
-  expect_false(grepl("7 (gamma", note, fixed = TRUE))
+  expect_match(note, paste0(small, " (gamma"), fixed = TRUE)
+  expect_false(grepl(paste0(large, " (gamma"), note, fixed = TRUE))
   # A dev run can omit a baseline even when its averaged columns match.
-  env$compare_raw <- data.frame(base_scenario_id = 3L)
+  env$compare_raw <- data.frame(base_scenario_id = small)
   data$n_cell <- NULL
   note <- paste(utils::capture.output(env$.compare_baseline_note(data)), collapse = "\n")
-  expect_false(grepl("7 (gamma", note, fixed = TRUE))
+  expect_false(grepl(paste0(large, " (gamma"), note, fixed = TRUE))
 })
 
 test_that("gate diagnostic IDs stay character and sort in numeric order", {
@@ -172,4 +199,42 @@ test_that("SD inflation routing uses the grid name and respects explicit cluster
   row$stim_sd_multiplier_clusters <- NA_character_
   suppressWarnings(env$.simCompareRunScenario(row, nSample = 1, nIter = 1))
   expect_null(captured)
+})
+
+test_that("QMD 8 heat maps summarise each scenario and keep missing tiles grey", {
+  env <- .qmd8_view_env()
+  raw <- tidyr::expand_grid(
+    method = c("stimgate", "fbeta"), transformation = c("gaussian", "gamma"),
+    prob_response = c(0.01, 0.2), mismatch_val = c(0, 0.05), sample = 1:3
+  ) |>
+    dplyr::mutate(
+      mean_pos_setting = "high", n_cell = 5000, mismatch_type = "mean_shift_all",
+      propRespTruth = .data$prob_response,
+      propRespEst = .data$prob_response * c(0.5, 1, 1.5)[.data$sample],
+      error = NA_character_
+    )
+  # A run error has no estimate; a negative estimate stays in the median.
+  raw$error[raw$method == "fbeta" & raw$sample == 3L] <- "failed"
+  raw$propRespEst[raw$method == "fbeta" & raw$sample == 1L] <- -0.001
+  cols <- c("transformation", "mean_pos_setting", "prob_response", "n_cell",
+    "mismatch_type", "mismatch_val", "method")
+  freq <- env$.simCompareHeatmapFrequencySummary(raw, cols)
+  expect_equal(nrow(freq), 16L)
+  sg <- freq[freq$method == "stimgate", ]
+  expect_equal(sg$est_median, sg$prob_response)
+  expect_equal(sg$ratio_median, rep(1, nrow(sg)))
+  fb <- freq[freq$method == "fbeta", ]
+  expect_equal(fb$n_est, rep(2L, nrow(fb)))
+  expect_equal(fb$est_median, (-0.001 + fb$prob_response) / 2)
+  p <- env$.simCompareHeatmapPlot(freq, "frequency")
+  built <- ggplot2::ggplot_build(p)
+  expect_equal(nrow(built$layout$layout), 4L)
+  expect_null(p$labels$title)
+  expect_setequal(levels(p$data$y), c("1%", "20%"))
+  # The F1 map prints values and leaves undefined tiles grey.
+  f1 <- freq |> dplyr::mutate(f1_median = ifelse(.data$method == "fbeta", NA, 0.9))
+  p1 <- env$.simCompareHeatmapPlot(f1, "f1")
+  expect_true(all(p1$data$label[p1$data$method == "F-beta"] == "NA"))
+  expect_true(all(p1$data$label[p1$data$method == "StimGate"] == "0.90"))
+  expect_no_error(ggplot2::ggplot_build(p1))
 })

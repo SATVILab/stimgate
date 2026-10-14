@@ -113,10 +113,22 @@ test_that("both QMDs export classification and agreement tables only with plot r
       mean_pos_setting = "high", prob_response = 0.1, n_cell = 100L,
       mismatch_type = "mean_shift_all", mismatch_val = 0
     )
+    if (qmd == "8-sim-compare-freq_bs-batch.qmd") {
+      env$sim_grid <- tidyr::expand_grid(
+        transformation = c("gaussian", "skew", "gamma"),
+        mean_pos_setting = c("high", "low"), prob_response = c(0.01, 0.2),
+        n_cell = c(5000L, 100000L)
+      ) |>
+        dplyr::mutate(base_scenario_id = dplyr::row_number(),
+          scenario_desc = env$.simCompareScenarioDesc(
+            .data$mean_pos_setting, .data$n_cell, .data$prob_response)) |>
+        tidyr::expand_grid(mismatch_type = c("mean_shift_all", "sd_inflation"),
+          mismatch_val = c(0, 0.1))
+    }
     env$compare_tbl <- tidyr::expand_grid(
       env$sim_grid, approach = "a", method = c("stimgate", "fbeta", "tailgate"), iter = 1:3
     ) |>
-      dplyr::mutate(nTruePos = 8L, nFalsePos = 2L, nFalseNeg = 2L, nTrueNeg = 88L,
+      dplyr::mutate(sample = "1", nTruePos = 8L, nFalsePos = 2L, nFalseNeg = 2L, nTrueNeg = 88L,
         propRespEst = .data$iter / 10, propRespTruth = .data$iter / 10)
     env$compare_raw <- env$compare_tbl
     env$scenario_cols <- c(names(env$sim_grid), "approach", "method")
@@ -143,6 +155,20 @@ test_that("both QMDs export classification and agreement tables only with plot r
     expect_true(all(tables[[1]]$n_precision_defined == 3L))
     expect_true(all(tables[[3]]$n_pairs == 3L))
     expect_true(all(tables[[3]]$ccc == 1))
+
+    if (qmd == "8-sim-compare-freq_bs-batch.qmd") {
+      tables <- list()
+      invisible(utils::capture.output(eval(chunk("dataset-paired-differences"), env)))
+      expect_gt(length(tables), 0L)
+      settings <- c("method", "outcome", "mismatch_type", "mismatch_val")
+      biological_keys <- c("transformation", "mean_pos_setting", "n_cell", "prob_response")
+      for (exported in tables) {
+        expect_true(all(env$classification_cols %in% names(exported)))
+        expect_identical(anyDuplicated(exported[c("base_scenario_id", settings)]), 0L)
+        expect_identical(anyDuplicated(exported[c(biological_keys, settings)]), 0L)
+        expect_equal(nrow(exported), nrow(env$sim_grid) / 2L * 2L * 3L)
+      }
+    }
 
     tables <- list()
     env$run_plots <- FALSE
