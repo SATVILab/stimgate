@@ -205,7 +205,7 @@ test_that("Thesis heatmaps are drawn at the thesis text width", {
 test_that("Analysis 9a saves thesis outputs to output-thesis and selects by PCC", {
   qmd <- paste(readLines(qmd9a_path), collapse = "\n")
   expect_match(qmd, '"output-thesis"', fixed = TRUE)
-  expect_match(qmd, 'thesis_parts <- c("appendix", fig_key[-1L])', fixed = TRUE)
+  expect_match(qmd, 'thesis_parts <- c("appendix", "qmd9a", fig_key[-1L])', fixed = TRUE)
   expect_match(qmd, ".analysis_md_show(", fixed = TRUE)
   expect_match(qmd, "acs-tailgate-ranking.md", fixed = TRUE)
   expect_match(qmd, "code-copy: true", fixed = TRUE)

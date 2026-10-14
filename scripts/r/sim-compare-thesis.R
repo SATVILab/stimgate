@@ -147,70 +147,126 @@
 # the stimulated tube's density (grey, scaled so its peak matches the tallest
 # threshold bin), with a rug of cells drawn from the simulated positive
 # (responding) component, showing where responders lie. One panel per
-# response probability and transformation; y values are not shown.
-.simCompareThesisThresholdPlot <- function(data, densities, pos, bins = 30L) {
+# response probability (rows) and `cols` (columns: transformation, or parent
+# cell count when the caller has kept one transformation); y values are not
+# shown. Thresholds are pooled over whatever cell counts `data` holds; with
+# `split_cells`, each method gets one outline per cell count (line type).
+# Panels without data are left blank so columns line up.
+.simCompareThesisThresholdPlot <- function(
+  data, densities, pos, bins = 30L, cols = c("transformation", "n_cell"),
+  split_cells = FALSE
+) {
+  cols <- match.arg(cols)
   data <- data[data$mean_pos_setting == pos & data$approach %in% .simCompareThesisMethods &
     is.finite(data$threshold), , drop = FALSE]
-  keys <- c("transformation", "prob_response")
   data <- .analysis_method_data(data)
-  data$transformation <- .analysis_trans_factor(data$transformation)
+  data$transformation <- droplevels(.analysis_trans_factor(data$transformation))
+  densities$transformation <- .analysis_trans_factor(densities$transformation)
+  dens_keys <- c("transformation", "prob_response")
   densities <- dplyr::semi_join(densities,
-    dplyr::distinct(data, dplyr::across(dplyr::all_of(c(keys, "mean_pos")))),
-    by = c(keys, "mean_pos"))
+    dplyr::distinct(data, dplyr::across(dplyr::all_of(c(dens_keys, "mean_pos")))),
+    by = c(dens_keys, "mean_pos"))
   stim <- densities[densities$condition == "stimulated", , drop = FALSE]
   rug <- densities[densities$condition == "positive_rug", , drop = FALSE]
-  panels <- dplyr::distinct(data, dplyr::across(dplyr::all_of(keys)))
-  steps <- list(); dens <- list()
+  panel_keys <- unique(c(cols, "prob_response", "transformation"))
+  panels <- dplyr::distinct(data, dplyr::across(dplyr::all_of(panel_keys)))
+  cell_levels <- sort(unique(data$n_cell))
+  groups <- if (split_cells) {
+    expand.grid(approach = .simCompareThesisMethods, n_cell = cell_levels, stringsAsFactors = FALSE)
+  } else {
+    data.frame(approach = .simCompareThesisMethods, n_cell = NA_real_, stringsAsFactors = FALSE)
+  }
+  steps <- list(); dens <- list(); rugs <- list()
   for (i in seq_len(nrow(panels))) {
     key <- panels[i, ]
-    in_panel <- function(d) d$transformation == key$transformation & d$prob_response == key$prob_response
+    in_panel <- function(d) {
+      ok <- d$prob_response == key$prob_response &
+        as.character(d$transformation) == as.character(key$transformation)
+      if (identical(cols, "n_cell")) ok <- ok & d$n_cell == key$n_cell
+      ok
+    }
+    in_dens <- function(d) {
+      as.character(d$transformation) == as.character(key$transformation) &
+        d$prob_response == key$prob_response
+    }
     d <- data[in_panel(data), , drop = FALSE]
-    s <- stim[in_panel(stim), , drop = FALSE]
+    s <- stim[in_dens(stim), , drop = FALSE]
     breaks <- seq(min(d$threshold), max(d$threshold), length.out = bins + 1L)
     if (diff(range(breaks)) == 0) breaks <- breaks[[1]] + seq(-0.5, 0.5, length.out = bins + 1L)
     hist_max <- 0
-    for (m in .simCompareThesisMethods) {
-      x <- d$threshold[d$approach == m]
+    for (g in seq_len(nrow(groups))) {
+      sel <- d$approach == groups$approach[[g]]
+      if (split_cells) sel <- sel & d$n_cell == groups$n_cell[[g]]
+      x <- d$threshold[sel]
       if (!length(x)) next
       h <- graphics::hist(x, breaks = breaks, plot = FALSE)
       hist_max <- max(hist_max, h$density)
       steps[[length(steps) + 1L]] <- tibble::tibble(key[rep(1, length(breaks) + 1L), ],
-        approach = m, x = c(breaks, max(breaks)), y = c(0, h$density, 0))
+        approach = groups$approach[[g]], cells = groups$n_cell[[g]],
+        x = c(breaks, max(breaks)), y = c(0, h$density, 0))
     }
     if (nrow(s)) {
       s$y <- s$density / max(s$density, na.rm = TRUE) * hist_max
-      dens[[length(dens) + 1L]] <- s
+      dens[[length(dens) + 1L]] <- tibble::tibble(key, expression = s$expression, y = s$y)
     }
+    r <- rug[in_dens(rug), , drop = FALSE]
+    if (nrow(r)) rugs[[length(rugs) + 1L]] <- tibble::tibble(key, expression = r$expression)
   }
   steps <- dplyr::bind_rows(steps)
   steps$approach <- factor(steps$approach, .simCompareThesisMethods)
   dens <- dplyr::bind_rows(dens)
-  # Highest response probability first, as in the other thesis figures.
+  rug <- dplyr::bind_rows(rugs)
+  # Highest response probability first, as in the other thesis figures; keep
+  # every level so empty panels stay in place.
   prob_levels <- sort(unique(data$prob_response), decreasing = TRUE)
+  col_levels <- if (identical(cols, "n_cell")) cell_levels else levels(data$transformation)
   for (nm in c("steps", "dens", "rug")) {
     d <- get(nm)
     d$prob_response <- factor(d$prob_response, prob_levels)
+    d$column <- factor(as.character(d[[cols]]), as.character(col_levels))
     assign(nm, d)
   }
+  col_lab <- if (identical(cols, "n_cell")) {
+    function(x) paste(.analysis_label_cells(as.numeric(x)), "cells")
+  } else {
+    as.character
+  }
   labs <- .simCompareThesisMethodLabels()
+  line_aes <- if (split_cells) {
+    steps$cells <- factor(.analysis_label_cells(steps$cells), .analysis_label_cells(cell_levels))
+    ggplot2::aes(x = .data$x, y = .data$y, colour = .data$approach,
+      linetype = .data$cells, group = interaction(.data$approach, .data$cells))
+  } else {
+    ggplot2::aes(x = .data$x, y = .data$y, colour = .data$approach, linetype = .data$approach)
+  }
+  line_scale <- if (split_cells) {
+    ggplot2::scale_linetype_manual(
+      values = c("solid", "42", "22", "12", "11")[seq_along(cell_levels)],
+      name = "Number of cells")
+  } else {
+    ggplot2::scale_linetype_manual(values = .analysis_method_linetypes[.simCompareThesisMethods],
+      labels = scales::label_parse()(labs), name = "Method")
+  }
   ggplot2::ggplot() +
     ggplot2::geom_area(data = dens, ggplot2::aes(x = .data$expression, y = .data$y),
       fill = "grey88", colour = "grey60", linewidth = 0.3) +
-    ggplot2::geom_step(data = steps, ggplot2::aes(x = .data$x, y = .data$y,
-      colour = .data$approach, linetype = .data$approach), linewidth = 0.5, direction = "hv") +
+    ggplot2::geom_step(data = steps, line_aes, linewidth = 0.5, direction = "hv") +
     ggplot2::geom_rug(data = rug, ggplot2::aes(x = .data$expression), sides = "b",
       colour = "grey15", alpha = 0.6, length = ggplot2::unit(0.06, "npc"), linewidth = 0.25) +
-    ggplot2::facet_wrap(ggplot2::vars(.data$prob_response, .data$transformation), ncol = 3,
-      scales = "free", labeller = ggplot2::labeller(
+    ggplot2::facet_wrap(ggplot2::vars(.data$prob_response, .data$column), ncol = length(col_levels),
+      scales = "free", drop = FALSE, labeller = ggplot2::labeller(
         prob_response = function(x) .simCompareThesisProbLab(as.character(x)),
-        .multi_line = FALSE)) +
+        column = col_lab, .multi_line = FALSE)) +
     ggplot2::scale_colour_manual(values = .analysis_method_colours[.simCompareThesisMethods],
       labels = scales::label_parse()(labs), name = "Method") +
-    ggplot2::scale_linetype_manual(values = .analysis_method_linetypes[.simCompareThesisMethods],
-      labels = scales::label_parse()(labs), name = "Method") +
+    line_scale +
     ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.05))) +
     ggplot2::labs(x = "Threshold (marker expression)", y = "Threshold density") +
     .analysis_theme(grid = "none") + .analysis_thesis_theme() +
     ggplot2::theme(axis.text.y = ggplot2::element_blank(), axis.ticks.y = ggplot2::element_blank(),
-      axis.text.x = ggplot2::element_text(size = 7), legend.position = "bottom")
+      axis.text.x = ggplot2::element_text(size = 7), legend.position = "bottom",
+      legend.box = "vertical")
 }
+
+# Height (mm) for a threshold figure with `n_rows` rows of panels.
+.simCompareThesisThresholdHeight <- function(n_rows) min(215, 45 + 34 * n_rows)

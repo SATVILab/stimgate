@@ -101,7 +101,7 @@ path_selection <- .acsCytofTailgateSelectionDir(root_dir)
 # uploaded to a GitHub release on projr builds), in its appendix folder
 # (quick/dev renders in a subfolder). Thesis figures are saved there only
 # when requested for the thesis.
-thesis_parts <- c("appendix", fig_key[-1L])
+thesis_parts <- c("appendix", "qmd9a", fig_key[-1L])
 if (isTRUE(run_comparators) && !requireNamespace("cytoUtils", quietly = TRUE)) {
   stop("The Tailgate comparison requires the cytoUtils package.")
 }
@@ -299,7 +299,7 @@ reads the saved selection, including whether zeros are removed.
 The table is a Quarto table with a caption and label for the thesis. Its
 source, including the scoped Typst block that draws the thesis's table rules
 (not shown in this HTML), follows in a copyable block and is saved as
-`appendix/acs-tailgate-ranking.md` in the projr `output-thesis` folder
+`appendix/qmd9a/acs-tailgate-ranking.md` in the projr `output-thesis` folder
 (`_output/thesis`), ready to paste into the thesis and cite as
 `@tbl-stimgate-appendix-acs-tailgate`.
 
