@@ -125,7 +125,8 @@ for (fn in c(
   "sim-bandwidth-analysis-plot.R",
   "acs_cytof-plot_cyt.R",
   "sim-compare-freq_bs.R",
-  "sim-compare-performance-plot.R"
+  "sim-compare-performance-plot.R",
+  "sim-compare-thesis.R"
 )) {
   source(file.path(scripts_r_dir, fn))
 }
@@ -1827,6 +1828,118 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
     height = 18,
     level = 4L, mcse_mode = mcse_mode, fit_panels = TRUE
   )
+}
+```
+
+### Thesis figures
+
+Thesis figures are drawn at the thesis text width and saved, not shown here, to
+`results/qmd8/` in the projr `output-thesis` folder (`_output/thesis`). They
+are Analysis 7's thesis figures (see that report for what each shows), drawn
+once for every level of every type of shift: one folder per type
+(`mean-shift-all/`, `mean-shift-negative/`, `sd-inflation-negative/`), one
+subfolder per level (`shift-<size>/` or `sd-increase-<fraction>/`), and inside
+it Analysis 7's `f1/heatmap/`, `f1/percentiles/`, `frequency/` and
+`thresholds/` folders. File names end with the separation and the level, e.g.
+`sim-compare-batch-f1-low-separation-shift-0.05`. The grey reference density
+in the threshold figures is the stimulated tube with that level's shift.
+Gaussian and skew have mean shifts up to 0.35 and gamma up to 0.2 on its own
+scale, so some levels have only some transformations. A level of zero is the
+same simulated data for every type.
+
+```{r}
+#| label: thesis-figures
+#| include: false
+if (isTRUE(run_plots) && isTRUE(results_available)) {
+  thesis_parts <- c("results", "qmd8", fig_key[-1L])
+  thesis_dir <- function(...) .analysis_project_dir("output-thesis", c(thesis_parts, ...), root_dir)
+  thesis_types <- c(
+    mean_shift_all = "mean-shift-all", mean_shift_negative = "mean-shift-negative",
+    sd_inflation = "sd-inflation-negative"
+  )
+  thesis_mismatch_keys <- c(
+    "stim_mean_shift", "stim_mean_shift_clusters",
+    "stim_sd_multiplier", "stim_sd_multiplier_clusters"
+  )
+  thesis_pct <- .simCompareSignedPercentileSummary(
+    compare_raw, scenarioCols = scenario_cols, mcse = FALSE
+  )
+  thesis_thr <- compare_raw |>
+    dplyr::filter(is.finite(threshold)) |>
+    dplyr::select(dplyr::all_of(c(
+      "approach", "threshold", "mismatch_type", "mismatch_val",
+      "transformation", "prob_response", "n_cell", "mean_pos_setting", "mean_pos",
+      "sample_perturbation_sd", "condition_perturbation_sd",
+      "cluster_perturbation_sd", "background_relative_to_response",
+      thesis_mismatch_keys
+    )))
+  thesis_dens <- .simBandwidthThresholdDensities(
+    thesis_thr,
+    settings = list(probExact = TRUE, covEvMin = 1.5, covEvMax = 1.5),
+    seed = 271L, unstimulated_negative_only = FALSE, rug_n = 100L, mismatch = TRUE
+  )
+  thesis_height <- function(n_rows) .simCompareThesisThresholdHeight(n_rows)
+  for (type in intersect(names(thesis_types), unique(thesis_pct$mismatch_type))) {
+    for (val in sort(unique(thesis_pct$mismatch_val[thesis_pct$mismatch_type == type]))) {
+      lev <- paste0(if (identical(type, "sd_inflation")) "sd-increase-" else "shift-", format(val))
+      sel <- function(d) d[d$mismatch_type == type & d$mismatch_val == val, , drop = FALSE]
+      lev_pct <- sel(thesis_pct)
+      lev_cls <- sel(class_scenario)
+      lev_thr <- sel(thesis_thr)
+      # Reference densities label transformations by display name.
+      lev_dens <- dplyr::semi_join(thesis_dens,
+        dplyr::distinct(lev_thr, dplyr::across(dplyr::all_of(
+          c("transformation", "mean_pos", "prob_response", thesis_mismatch_keys)
+        ))) |>
+          dplyr::mutate(transformation = .analysis_trans_factor(transformation)),
+        by = c("transformation", "mean_pos", "prob_response", thesis_mismatch_keys)
+      )
+      lev_dir <- function(...) thesis_dir(thesis_types[[type]], lev, ...)
+      for (pos in intersect(c("low", "high"), unique(as.character(lev_pct$mean_pos_setting)))) {
+        stem <- function(dir, kind) {
+          file.path(dir, paste0("sim-compare-batch-", kind, "-", pos, "-separation-", lev))
+        }
+        n_prob <- length(unique(lev_pct$prob_response[lev_pct$mean_pos_setting == pos]))
+        n_cells <- length(unique(lev_pct$n_cell[lev_pct$mean_pos_setting == pos]))
+        .analysis_save_thesis_fig(.simCompareThesisF1Plot(lev_cls, pos),
+          stem(lev_dir("f1", "heatmap"), "f1"), height = 165)
+        .analysis_save_thesis_fig(.simCompareThesisF1Plot(lev_cls, pos, stat = "q10"),
+          stem(lev_dir("f1", "heatmap"), "f1-q10"), height = 165)
+        for (lay in c("prob", "cells")) {
+          suffix <- if (identical(lay, "cells")) "-by-cells" else ""
+          h <- thesis_height(if (identical(lay, "cells")) n_cells else n_prob)
+          .analysis_save_thesis_fig(.simCompareThesisPctPlot(lev_cls, pos, "f1", lay),
+            stem(lev_dir("f1", "percentiles"), paste0("f1-percentiles", suffix)), height = h)
+          .analysis_save_thesis_fig(.simCompareThesisPctPlot(lev_pct, pos, "frequency", lay),
+            stem(lev_dir("frequency"), paste0("frequency", suffix)), height = h)
+        }
+        thr_pos <- lev_thr[lev_thr$mean_pos_setting == pos, , drop = FALSE]
+        if (!nrow(thr_pos)) next
+        plot_thr <- function(data, ...) {
+          .simCompareThesisThresholdPlot(data, lev_dens, pos, ...)
+        }
+        n_rows <- function(data) length(unique(data$prob_response))
+        .analysis_save_thesis_fig(plot_thr(thr_pos),
+          stem(lev_dir("thresholds", "pooled"), "thresholds"), height = thesis_height(n_rows(thr_pos)))
+        .analysis_save_thesis_fig(plot_thr(thr_pos, split_cells = TRUE),
+          stem(lev_dir("thresholds", "by-cells"), "thresholds-by-cells"),
+          height = thesis_height(n_rows(thr_pos)))
+        for (tr in unique(thr_pos$transformation)) {
+          d <- thr_pos[thr_pos$transformation == tr, , drop = FALSE]
+          .analysis_save_thesis_fig(plot_thr(d, cols = "n_cell"),
+            stem(lev_dir("thresholds", "per-transformation"), paste0("thresholds-", tr)),
+            height = thesis_height(n_rows(d)))
+        }
+        for (nc in sort(unique(thr_pos$n_cell))) {
+          d <- thr_pos[thr_pos$n_cell == nc, , drop = FALSE]
+          .analysis_save_thesis_fig(plot_thr(d),
+            stem(lev_dir("thresholds", "per-cell-count"),
+              paste0("thresholds-", .analysis_label_cells(nc))),
+            height = thesis_height(n_rows(d)))
+        }
+      }
+    }
+  }
 }
 ```
 
