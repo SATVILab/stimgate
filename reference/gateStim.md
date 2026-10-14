@@ -205,7 +205,7 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp9HmXQG/custom_gating_1b0757f1ae26"
+#> [1] "/tmp/Rtmp2Opnqw/custom_gating_19d84f22cb78"
 
 # Gate in-memory matrices; column names act as channels and markers
 matrices <- lapply(seq_along(gs), function(i) {
@@ -228,5 +228,5 @@ gateStim(
 #> getting clustered and/or controlled gates
 #> getting cyt combn frequencies
 #> batch 2 of 2
-#> [1] "/tmp/Rtmp9HmXQG/matrix_gating_1b0728b8ba00"
+#> [1] "/tmp/Rtmp2Opnqw/matrix_gating_19d8d967d47"
 ```

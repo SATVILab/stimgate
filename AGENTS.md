@@ -506,40 +506,49 @@ jobs explicitly set all ACS stage controls to false. Promotion locks
 live next to `current/`, shared by every run of the analysis. Analysis 8
 validates pairing and zero-shift agreement on the full collated table
 before promotion and uses one scientific settings list for manifest
-recording and canonical reads. Select Slurm analyses with
-`bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`; validate all target
-arguments before submitting jobs. After the simulation jobs, `dev.sh`
-submits one `scripts/slurm/render-plots.sh` job per analysis (except the
-OMIP analyses 14, 14b, 15 and 15b, which are quick enough to draw their
-plots in the simulation render, `plots_in_sim_job()`, and wait
-`afterany` on Analysis 1’s projr build) that renders the real QMD once
-with `SHOW_MCSE=on`, with simulations off and plots on, to
-`<stem>-mcse_on.html` (render `off` manually when needed)
-(`plot_qmds_for_script()`; 9 also renders 10). It depends `afterok` on
-its own simulation jobs and `afterany` on the submission’s other
-simulation jobs, because projr builds clear projr’s output folder (where
-figures go) before building. Keep mocked submission and render checks in
-`analysis/tests/test-slurm-launchers.sh` and run them in analysis CI
-when launchers change. Relative-error plots averaged over cell counts
-and plots for each cell count belong in separate labelled QMD chunks;
-preserve the same scientific inclusion rules and avoid pooling different
-grid dimensions. For controlled negative-component mismatch analyses,
-report stimulated-negative mean shifts and SD inflation in separate
-figure sections and sibling folders, including the matching coverage
-summaries. Label which tube and component change. Ratio companions
-preserve signed-error geometry and intervals, relabelling ticks as
-`1 + relative error` (estimate/reference). Keep originals and save
-companions in sibling ratio folders without printing them into HTML.
-Absolute relative errors lose direction and cannot be relabelled as
-estimate/reference ratios. Unconditional signed-error percentile figures
-calculate quantiles on raw errors, including zeros. Analyses 2a, 2b and
-7 show all seven percentiles in each panel: single-method figures as
-nested one-hue bands (darker towards the median) with a median line,
-comparison figures as per-method lines. Choose the outer 2.5th/97.5th
-pair per complete figure; if either interval is unavailable at any
-finite plotted point, use 5th/95th throughout that figure and label the
-fallback. From Analysis 8 on, and in thesis figures, show only the
-median (solid) and the 10th and 90th percentiles (dotted)
+recording and canonical reads. Its baselines cross transformation,
+separation, cells (5,000, 100,000) and response probability (0.05%,
+0.2%, 1%, 20%; Analysis 7’s rule drops 0.05% at 5,000 cells), with the
+same settings for every transformation, and are named by their settings
+(`.simCompareScenarioDesc()`). Per-scenario figures facet response
+probability by transformation and never average over it; F1 and
+estimated-frequency heat maps (`.simCompareHeatmapPlot()`) show one tile
+per response probability and mismatch size. `dev.sh` gives Analysis 8 40
+chunks unless `SIM_GRID_N_CHUNKS` is set (`n_chunks_for_script()`).
+Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or
+`2a 2b`; validate all target arguments before submitting jobs. After the
+simulation jobs, `dev.sh` submits one `scripts/slurm/render-plots.sh`
+job per analysis (except the OMIP analyses 14, 14b, 15 and 15b, which
+are quick enough to draw their plots in the simulation render,
+`plots_in_sim_job()`, and wait `afterany` on Analysis 1’s projr build)
+that renders the real QMD once with `SHOW_MCSE=on`, with simulations off
+and plots on, to `<stem>-mcse_on.html` (render `off` manually when
+needed) (`plot_qmds_for_script()`; 9 also renders 10). It depends
+`afterok` on its own simulation jobs and `afterany` on the submission’s
+other simulation jobs, because projr builds clear projr’s output folder
+(where figures go) before building. Keep mocked submission and render
+checks in `analysis/tests/test-slurm-launchers.sh` and run them in
+analysis CI when launchers change. Relative-error plots averaged over
+cell counts and plots for each cell count belong in separate labelled
+QMD chunks; preserve the same scientific inclusion rules and avoid
+pooling different grid dimensions. For controlled negative-component
+mismatch analyses, report stimulated-negative mean shifts and SD
+inflation in separate figure sections and sibling folders, including the
+matching coverage summaries. Label which tube and component change.
+Ratio companions preserve signed-error geometry and intervals,
+relabelling ticks as `1 + relative error` (estimate/reference). Keep
+originals and save companions in sibling ratio folders without printing
+them into HTML. Absolute relative errors lose direction and cannot be
+relabelled as estimate/reference ratios. Unconditional signed-error
+percentile figures calculate quantiles on raw errors, including zeros.
+Analyses 2a, 2b and 7 show all seven percentiles in each panel:
+single-method figures as nested one-hue bands (darker towards the
+median) with a median line, comparison figures as per-method lines.
+Choose the outer 2.5th/97.5th pair per complete figure; if either
+interval is unavailable at any finite plotted point, use 5th/95th
+throughout that figure and label the fallback. From Analysis 8 on, and
+in thesis figures, show only the median (solid) and the 10th and 90th
+percentiles (dotted)
 (`.simBandwidthSignedPercentilePlot(percentiles = "tails")`), keeping
 method colours and shapes; do not also map line type to method. Keep
 uncertainty eligibility independent of interval display, and never clip
