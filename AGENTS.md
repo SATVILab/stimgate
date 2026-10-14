@@ -1040,15 +1040,15 @@ as the relative tolerance once, in the caption. Thesis tables follow
 
 Analysis 7’s thesis figures (`sim-compare-thesis.R`, saved to
 `output-thesis/results/`, not shown in the HTML) are, per separation:
-median $`F_1`$ heat maps (rows method, columns transformation);
-estimated frequencies (median solid, 10th/90th dotted, truth as a thick
-grey line) on the signed relative-error scale labelled in each row’s
-frequencies, rows stacked with cowplot so their tick labels can differ;
-and outline threshold histograms over the stimulated density with a rug
-of simulated positive cells
-(`.simBandwidthThresholdDensities(rug_n = )`). Response probabilities
-run from highest (top) to lowest in all three. The “Without Tailgate”
-method set is gone from Analyses 7 and 8.
+median and 10th-percentile $`F_1`$ heat maps (rows method, columns
+transformation; `.simCompareThesisF1Plot(stat = )`); estimated
+frequencies (median solid, 10th/90th dotted, truth as a thick grey line)
+on the signed relative-error scale labelled in each row’s frequencies,
+rows stacked with cowplot so their tick labels can differ; and outline
+threshold histograms over the stimulated density with a rug of simulated
+positive cells (`.simBandwidthThresholdDensities(rug_n = )`). Response
+probabilities run from highest (top) to lowest in all of them. The
+“Without Tailgate” method set is gone from Analyses 7 and 8.
 
 ### Thesis tables
 
