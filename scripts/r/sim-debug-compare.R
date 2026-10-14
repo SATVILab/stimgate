@@ -18,10 +18,11 @@
   tol = 1e-2, autoTol = TRUE
 )
 
-# Colours of the comparison gates where they are drawn on StimGate's plots.
+# Colours of the comparison gates where they are drawn on StimGate's plots:
+# the method colours of .analysis_method_colours (F-beta blue, Tailgate green).
 .simDebugCompareLineStyle <- tibble::tibble(
   line = c("F-beta gate", "Tailgate gate"),
-  colour = c("#7B3294", "#8C510A"),
+  colour = c("#0072B2", "#009E73"),
   linetype = c("solid", "solid"),
   linewidth = c(0.9, 0.9)
 )
@@ -306,7 +307,7 @@
   fb <- compare$fbeta
   if (is.null(fb$error)) {
     gate <- tibble::tibble(
-      line = "F-beta gate", x = fb$threshold, colour = "#7B3294",
+      line = "F-beta gate", x = fb$threshold, colour = "#0072B2",
       linetype = "solid", linewidth = 0.9
     ) |>
       dplyr::filter(is.finite(.data$x))
@@ -335,7 +336,7 @@
       ggplot(scoreTbl, aes(.data$x, .data$value, colour = .data$score)) +
         geom_line(linewidth = 0.7) +
         scale_colour_manual(values = c(
-          "F-score" = "#7B3294", precision = "#1B9E77", recall = "#E6AB02"
+          "F-score" = "#0072B2", precision = "#999933", recall = "#E6AB02"
         )) +
         expand_limits(y = c(0, 1)) +
         labs(x = chnl, y = "Score if gated here", colour = NULL),
@@ -347,7 +348,7 @@
     tgLines <- tibble::tibble(
       line = c("reference peak", "steepest right shoulder", "Tailgate gate"),
       x = c(tg$refPeak, tg$shoulder, tg$threshold),
-      colour = c("#8C8C8C", "#E69F00", "#8C510A"),
+      colour = c("#8C8C8C", "#999933", "#009E73"),
       linetype = c("dotted", "dashed", "solid"),
       linewidth = c(0.7, 0.8, 0.9)
     ) |>
@@ -372,7 +373,7 @@
         geom_line(linewidth = 0.7) +
         geom_hline(
           yintercept = tg$tolUsed / tg$derivMax,
-          colour = "#D95F02", linetype = "longdash", linewidth = 0.8
+          colour = "#882255", linetype = "longdash", linewidth = 0.8
         ) +
         scale_y_log10() +
         labs(x = chnl, y = "|slope| / largest |slope| (log scale)"),
@@ -381,7 +382,7 @@
   }
   attr(out, "fbetaLines") <- if (is.null(fb$error)) {
     tibble::tibble(
-      line = "F-beta gate", x = fb$threshold, colour = "#7B3294",
+      line = "F-beta gate", x = fb$threshold, colour = "#0072B2",
       linetype = "solid", linewidth = 0.9
     )
   }
@@ -392,7 +393,7 @@
         "tolerance"
       ),
       x = c(tg$refPeak, tg$shoulder, tg$threshold, tg$tolUsed / tg$derivMax),
-      colour = c("#8C8C8C", "#E69F00", "#8C510A", "#D95F02"),
+      colour = c("#8C8C8C", "#999933", "#009E73", "#882255"),
       linetype = c("dotted", "dashed", "solid", "longdash"),
       linewidth = c(0.7, 0.8, 0.9, 0.8)
     )

@@ -408,6 +408,7 @@ if (isTRUE(run_plots)) {
     geom_abline(slope = 1, intercept = 0, colour = "grey50", linetype = "dashed") +
     geom_point(size = 2.5) +
     facet_wrap(~stim, scales = "free") +
+    .analysis_scale_method(c("colour", "shape")) +
     .analysis_theme() +
     labs(x = "Manual background-subtracted frequency (%)",
          y = "Method background-subtracted frequency (%)",
@@ -490,6 +491,11 @@ if (isTRUE(run_plots)) {
       geom_density(aes(linetype = tube), adjust = 0.5) +
       geom_vline(data = g, aes(xintercept = gate, colour = method, group = method)) +
       facet_wrap(~cyt, scales = "free") +
+      # Method colours as in every analysis; manual gates purple as on the gate pages.
+      scale_colour_manual(
+        values = c(.analysis_method_colours, manual = "#7B3294"),
+        labels = c(.analysis_method_labels, manual = "Manual")
+      ) +
       scale_y_sqrt() +
       .analysis_theme() +
       labs(x = "asinh(x / 150), compensated", y = "Density (square-root scale)",

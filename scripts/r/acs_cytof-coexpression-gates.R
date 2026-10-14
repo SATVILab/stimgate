@@ -19,7 +19,10 @@
   ordinary = "Ordinary gates", screened = "Coexpression (screened)",
   unscreened = "Coexpression (unscreened)"
 )
-.acsCoexGatesRuleColours <- c(screened = "#0072B2", unscreened = "#CC79A7")
+# As Analysis 11's rule colours (`.simLowSepGateColours`): ordinary grey,
+# screened blue, unscreened light blue.
+.acsCoexGatesRuleColours <- c(screened = "#0072B2", unscreened = "#56B4E9")
+.acsCoexGatesOrdinaryColour <- "#7F7F7F"
 
 # Rule settings shared by every tube (passed to `.coexLowerGates()`); `screen`
 # is set by the rule.
@@ -516,7 +519,8 @@
   ggplot(d, aes(x = .data$cytokine, y = 100 * .data$diffBs, colour = .data$type)) +
     geom_hline(yintercept = 0, colour = "grey60") +
     geom_boxplot(outlier.size = 0.6, position = position_dodge(width = 0.8)) +
-    scale_colour_manual(values = c("#D55E00", "#0072B2"), name = NULL) +
+    # Not the rule colours: these are kinds of positivity.
+    scale_colour_manual(values = c("#882255", "#999933"), name = NULL) +
     facet_wrap(~ ruleLabel + stim, scales = "free_y", axes = "all",
       labeller = ggplot2::label_wrap_gen(width = 30, multi_line = FALSE)) +
     .analysis_theme() +
@@ -548,9 +552,10 @@
 }
 
 # Hexagon plots of the lowered pair adding the most stimulated cells in each
-# chosen tube: both tubes, the ordinary gates (orange) and the lowered gate
-# (blue) from the raised cut on the other cytokine.
-.acsCoexGatesTubeHexPlot <- function(tubes) {
+# chosen tube: both tubes, the ordinary gates (grey) and the lowered gate (in
+# the rule's colour) from the raised cut on the other cytokine.
+.acsCoexGatesTubeHexPlot <- function(tubes, rule = c("screened", "unscreened")) {
+  rule <- match.arg(rule)
   hex <- do.call(rbind, lapply(tubes, function(t) {
     rbind(
       data.frame(panel = paste0(t$label, "\nstimulated"), x = t$dat$stim[[t$a]], y = t$dat$stim[[t$b]]),
@@ -564,10 +569,12 @@
   ggplot(hex, aes(x = .data$x, y = .data$y)) +
     geom_hex(bins = 50) +
     scale_fill_viridis_c(trans = "log10", name = "Cells") +
-    geom_vline(data = lines, aes(xintercept = .data$gx), colour = "#D55E00", linewidth = 0.4) +
-    geom_hline(data = lines, aes(yintercept = .data$gy), colour = "#D55E00", linewidth = 0.4) +
+    geom_vline(data = lines, aes(xintercept = .data$gx), colour = .acsCoexGatesOrdinaryColour,
+      linewidth = 0.4) +
+    geom_hline(data = lines, aes(yintercept = .data$gy), colour = .acsCoexGatesOrdinaryColour,
+      linewidth = 0.4) +
     geom_segment(data = lines, aes(x = .data$condCut, xend = Inf, y = .data$cut, yend = .data$cut),
-      colour = "#0072B2", linewidth = 0.6, inherit.aes = FALSE) +
+      colour = .acsCoexGatesRuleColours[[rule]], linewidth = 0.6, inherit.aes = FALSE) +
     facet_wrap(~ panel, ncol = 4, axes = "all") +
     .analysis_theme() +
     labs(x = "Cytokine the cells are positive for (a)", y = "Cytokine whose gate is lowered (b)")

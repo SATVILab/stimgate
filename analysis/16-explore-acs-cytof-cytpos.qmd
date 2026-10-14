@@ -29,10 +29,10 @@ This document shows, for every ACS CyTOF donor with manual gating (12 donors),
 each population and each stimulation:
 
 1. hexagon plots of IFNγ against TNF in the stimulated and unstimulated tubes,
-   with StimGate's ordinary gates (orange lines);
+   with StimGate's ordinary gates (grey lines);
 2. TNF among IFNγ+ cells and IFNγ among TNF+ cells (the partner in the
    hexagon plots), and each among cells positive for any other cytokine
-   (what StimGate's cytokine-positive rule uses), in the stimulated (red)
+   (what StimGate's cytokine-positive rule uses), in the stimulated (red-orange)
    and unstimulated (blue) tubes. The conditional cells are drawn as
    histograms (bins 0.25 wide, scaled to density so tubes of different sizes
    compare), since tens of cells are too few for a reliable kernel density;

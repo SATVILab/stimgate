@@ -257,7 +257,8 @@
       num(row$manualMatchedX)
     ),
     colour = c(
-      "#D55E00", "#D55E00", .analysis_method_colours[["tailgate"]],
+      .analysis_method_colours[["stimgate"]], .analysis_method_colours[["stimgate"]],
+      .analysis_method_colours[["tailgate"]],
       .analysis_method_colours[["fbeta"]], "#7B3294"
     ),
     linetype = c("solid", "dashed", "solid", "solid", "longdash"),

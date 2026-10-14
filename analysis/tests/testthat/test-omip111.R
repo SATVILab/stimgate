@@ -3,7 +3,7 @@ local({
   env <- new.env(parent = globalenv())
   sys.source(file.path(root, "scripts", "r", "omip111.R"), env)
   sys.source(file.path(root, "scripts", "r", "omip111-debug.R"), env)
-  env$.analysis_method_colours <- c(fbeta = "blue", tailgate = "green")
+  env$.analysis_method_colours <- c(stimgate = "orange", fbeta = "blue", tailgate = "green")
 
   testthat::test_that("diagnostics overlay actual tube-specific author cutoffs and conditional gates", {
     rows <- data.frame(
