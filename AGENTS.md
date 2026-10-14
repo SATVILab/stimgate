@@ -615,6 +615,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
 - `scripts/`:
   - Shell scripts (`dev.sh`, `install.sh`, `patch.sh`, `minor.sh`, `major.sh`, `dev-*.sh`) for workflow, benchmarking, and version bumping.
   - `agents/`: Cloud coding-agent setup scripts.
+  - `dev/`: Exploratory method-development scripts kept so later work can resume them, each folder with a README naming its issue and how to rerun it (`upstream-region/` for #612, `plateau/` for #611/#613). Not part of any analysis; scripts only, never data.
   - `python/`: Python helper scripts used by analysis (not part of the R package).
     - `fbeta.py`: Richards F-beta thresholding implementation (comparison method).
   - `r/`: Developer-side R analysis/simulation helpers used for research, benchmarking, and fixture regeneration. These are not loaded by `devtools::load_all()` and are not part of the installed package.
