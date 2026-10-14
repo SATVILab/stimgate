@@ -122,6 +122,7 @@ for (fn in c(
   "sim-bandwidth-analysis-plot.R",
   "acs_cytof-plot_cyt.R",
   "sim-compare-freq_bs.R",
+  "sim-compare-detection.R",
   "sim-compare-performance-plot.R",
   "sim-compare-qmd7-presentation.R",
   "sim-compare-thesis.R"
@@ -672,7 +673,7 @@ simulated datasets. Tubes within a dataset share gating settings and are not
 independent replicates; uncertainty for method comparisons uses datasets.
 
 Every comparison figure is shown twice. "All methods" includes StimGate,
-Tailgate (with its bias) and F-beta. "With Tailgate at default settings" adds
+F-beta and Tailgate (with its bias). "With Tailgate at default settings" adds
 Tailgate without the bias. The two versions are saved in the `all_methods` and
 `tailgate_default` subfolders of each figure folder. Within each version there
 is one figure per mean position setting.
@@ -1437,4 +1438,32 @@ compare_one <- .simCompareRunScenario(
   tailgateX = tailgate_x,
   resume = FALSE
 )
+```
+
+## Sample-level detection evidence
+
+Detection sensitivity here is the proportion of valid genuine-response samples
+with a positive net estimate and a one-sided Fisher p-value at or below the
+cutoff. This is distinct from cell-level recall. Tests use saved final applied
+positive/total counts in both tubes, with unpaired cells and log upper tails.
+Adaptive gating can invalidate nominal p-value calibration. Analysis 7b compares
+these same evidence scores and cutoffs with empirical null false-positive rates,
+only for explicitly matched biological scenarios.
+
+```{r}
+#| label: response-detection
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  response_scores <- .simCompareFisherScores(compare_raw)
+  response_detection <- .simCompareDetectionSummary(
+    dplyr::filter(response_scores, propRespTruth > 0),
+    scenario_cols, mcse = show_mcse)
+  .analysis_report_table(response_scores, c(fig_key, "response-sample-evidence.csv"),
+    "Final gate counts and uncapped evidence per sample and method.", path_root = root_dir)
+  .analysis_report_table(response_detection,
+    c(fig_key, paste0("mcse_", mcse_mode), "response-detection.csv"),
+    "Sample-level detection sensitivity, valid/missing coverage and dataset bootstrap intervals.",
+    path_root = root_dir)
+}
 ```

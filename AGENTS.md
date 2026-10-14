@@ -794,7 +794,7 @@ Use `.analysis_is_dev()` and
 errors naming the analysis, render command, matching dev/quick profile and
 required completion of all chunks.
 
-Analysis figures carry no titles or subtitles. Facet strips are white with a black border (`.analysis_theme()`; add `.analysis_strip_theme()` to plots built on other themes such as `theme_bw()`). Identify their method set and
+Analysis figures carry no titles or subtitles. Facet strips are white with a soft grey border (`.analysis_theme()`; add `.analysis_strip_theme()` to plots built on other themes such as `theme_bw()`). Identify their method set and
 scenario settings in saved file paths and QMD headings, prose or captions. Before removing grid views as duplicates, check the summary
 grouping: one setting per baseline does not mean one baseline per plotted group.
 
@@ -1503,3 +1503,22 @@ gates and counts, without reruns. OMIP-111 rebuilds StimGate calls with the
 cytokine-positive rule (equal to `x > gate` with the refinement off) and must
 reproduce the saved marginal counts. ACS
 (9/10) has frequency-only manual references, so only correlations apply.
+
+Simulation parent-cell axes use actual observed counts and `.analysis_label_cells()`
+(1k, 5k, 20k, 100k on the common grid). Use `.analysis_cell_x()` and
+`.analysis_scale_cells()` for two-level categorical comparisons; keep numerical
+spacing for dose/size trends where it carries meaning. Method factors and
+scales use `.analysis_method_factor()` / `.analysis_scale_method()` in the order
+StimGate, F-beta, Tailgate, Tailgate (default settings), including after filtering.
+Keep the method palette unchanged when softening shared themes.
+
+Sample-level response detection (Analyses 7/7b) uses final applied positive/total
+counts in both tubes, a positive `propRespEst`, and one-sided Fisher log upper
+tails (`sim-compare-detection.R`). Missing/error gates are missing tests. Bootstrap
+whole datasets with shared indices across methods; null and response runs have
+independent streams. Match ROC scenarios on requested AND realised background,
+transformation, separation, cell count and perturbations, and validate common
+method/cache settings. Report supported cutoffs and attained FPR, never an
+unsupported interpolated 5% sensitivity. SBB transformations are exploratory
+bounds, not estimated Bayes factors, until post-gating calibration is established.
+Caps affect displays only; retain uncapped sample evidence and cap coverage.

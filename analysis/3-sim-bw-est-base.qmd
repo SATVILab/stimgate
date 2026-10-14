@@ -530,7 +530,7 @@ if (isTRUE(run_plots)) {
           labels = .simBwMtdLabVec
         ) +
         scale_x_log10(
-          breaks = c(1e3, 1e4, 1e5),
+          breaks = sort(unique(plot_tbl$n_cell)),
           labels = .analysis_label_number,
           guide = guide_axis(angle = 45)
         ) +

@@ -252,7 +252,7 @@
     ggplot2::geom_line() +
     ggplot2::geom_vline(data = gates,
       ggplot2::aes(xintercept = .data$threshold, linetype = .data$stage, group = .data$stage),
-      inherit.aes = FALSE, colour = "black", linewidth = 0.7) +
+      inherit.aes = FALSE, colour = "#333333", linewidth = 0.7) +
     ggplot2::facet_wrap(ggplot2::vars(sample), ncol = 2) +
     ggplot2::scale_colour_manual(values = c("Unstimulated" = "#0072B2",
       "Stimulated negatives" = "#999999", "Stimulated responders" = "#D55E00")) +

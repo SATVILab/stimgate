@@ -1168,6 +1168,8 @@ add_bw_labs <- function(.data) {
   }
   k <- length(labels)
   mid <- (k + 1L) / 2L
+  tbl <- .analysis_method_data(tbl)
+  if (x == "n_cell") tbl[[x]] <- .analysis_cell_x(tbl[[x]])
   long <- .simBandwidthSignedPercentileLong(tbl, x, stats, labels)
   multi <- "method" %in% names(long)
   line_cols <- intersect(c("method", "percentile", "transformation", "prob_response",
@@ -1200,7 +1202,9 @@ add_bw_labs <- function(.data) {
   y_scale <- ggplot2::scale_y_continuous(transform = .simBandwidthSignedErrorTrans(),
     labels = function(v) .simBandwidthSignedErrorLabel(v,
       cap = if (.simBandwidthSignedErrorIsCapped(long$value)) .simBandwidthSignedErrorCap else Inf))
-  x_scale <- if (x_log) {
+  x_scale <- if (x == "n_cell") {
+    .analysis_scale_cells(tbl[[x]], log = x_log)
+  } else if (x_log) {
     ggplot2::scale_x_log10(breaks = sort(unique(tbl[[x]])), labels = .analysis_label_number)
   } else if (is.numeric(long[[x]])) ggplot2::scale_x_continuous(labels = .analysis_label_number)
   finish <- function(p) {
@@ -1255,12 +1259,12 @@ add_bw_labs <- function(.data) {
     alpha = .data$percentile, linewidth = .data$percentile,
     linetype = .data$percentile)) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey40", linetype = "dashed") +
-    bars + ggplot2::geom_line() + ggplot2::geom_point(size = 1) +
+    bars + ggplot2::geom_line() + ggplot2::geom_point(ggplot2::aes(shape = .data$method), size = 1) +
     ggplot2::scale_alpha_manual(values = stats::setNames(unname(alphas[tiers]), labels),
       name = "Percentile", drop = FALSE) +
     ggplot2::scale_linewidth_manual(values = stats::setNames(unname(linewidths[tiers]), labels),
       name = "Percentile", drop = FALSE) +
     ggplot2::scale_linetype_manual(values = linetypes, name = "Percentile", drop = FALSE) +
-    .analysis_scale_method()
+    .analysis_scale_method(c("colour", "shape"))
   finish(p)
 }

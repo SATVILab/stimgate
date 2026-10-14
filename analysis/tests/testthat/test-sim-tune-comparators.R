@@ -164,11 +164,11 @@ test_that("the thesis ranking table follows the thesis table pattern", {
   expect_true(any(grepl("<caption", html, fixed = TRUE)))
 })
 
-test_that("figures and the thesis theme draw white facet strips with a black border", {
+test_that("figures and the thesis theme draw white facet strips with a soft grey border", {
   env <- .tuneEnv()
   strip <- ggplot2::theme_bw() + env$.analysis_thesis_theme()
   expect_identical(strip$strip.background$fill, "white")
-  expect_identical(strip$strip.background$colour, "black")
+  expect_identical(strip$strip.background$colour, "grey65")
   code <- readLines(file.path(root_dir, "scripts", "r", "sim-compare-tune.R"))
   bw <- grep("theme_bw()", code, fixed = TRUE, value = TRUE)
   expect_true(length(bw) > 0L)

@@ -47,6 +47,26 @@
   out
 }
 
+# Actual parent-cell counts, compact labels; never alter the simulation grid.
+.analysis_label_cells <- function(x) {
+  x <- as.numeric(as.character(x))
+  ifelse(x >= 1000, paste0(.analysis_label_number(x / 1000), "k"),
+    .analysis_label_number(x)
+  )
+}
+
+.analysis_cell_x <- function(x, discrete = length(unique(x[!is.na(x)])) == 2L) {
+  if (discrete) factor(x, levels = sort(unique(x))) else x
+}
+
+.analysis_scale_cells <- function(x, discrete = is.factor(x), log = TRUE) {
+  if (discrete) {
+    return(ggplot2::scale_x_discrete(labels = .analysis_label_cells))
+  }
+  if (log) ggplot2::scale_x_log10(breaks = sort(unique(x)), labels = .analysis_label_cells) else
+    ggplot2::scale_x_continuous(breaks = sort(unique(x)), labels = .analysis_label_cells)
+}
+
 # Facet labeller for response probabilities and other proportions.
 .analysis_labeller_percent <- function(prefix = "") {
   function(x) paste0(prefix, .analysis_label_percent(as.numeric(x)))
@@ -58,7 +78,7 @@
 .analysis_fig_width <- 16
 .analysis_fig_max_height <- 22
 
-# Shared theme: white background, light grid, facet strips with a black
+# Shared theme: white background, light grid, facet strips with a soft grey
 # border and no fill, legend underneath.
 # Thesis figures (Manuscript22RodoThesis, stanford-thesis Typst template: A4,
 # 1.5 in left and 1 in other margins, so a 146.5 x 246.2 mm text area and
@@ -66,10 +86,13 @@
 # Save one to the projr `output-thesis` folder only when the thesis uses it.
 .analysis_thesis_width <- 146.5
 
-# Facet strips: white background with a black border.
+# Facet strips: white background with a soft grey border.
 .analysis_strip_theme <- function() {
   ggplot2::theme(
-    strip.background = ggplot2::element_rect(fill = "white", colour = "black")
+    strip.background = ggplot2::element_rect(fill = "white", colour = "grey65"),
+    text = ggplot2::element_text(colour = "#333333"),
+    axis.text = ggplot2::element_text(colour = "#333333"),
+    axis.ticks = ggplot2::element_line(colour = "#333333")
   )
 }
 
@@ -77,7 +100,7 @@
 # facet strips.
 .analysis_thesis_theme <- function() {
   .analysis_strip_theme() + ggplot2::theme(
-    text = ggplot2::element_text(size = 8),
+    text = ggplot2::element_text(size = 8, colour = "#333333"),
     axis.text = ggplot2::element_text(size = 7.5),
     axis.title = ggplot2::element_text(size = 8.5),
     strip.text = ggplot2::element_text(size = 7.5),
@@ -108,7 +131,11 @@
     ggplot2::theme(
       plot.background = ggplot2::element_rect(fill = "white", colour = NA),
       panel.background = ggplot2::element_rect(fill = "white", colour = NA),
-      strip.background = ggplot2::element_rect(fill = NA, colour = "black"),
+      strip.background = ggplot2::element_rect(fill = NA, colour = "grey65"),
+      text = ggplot2::element_text(colour = "#333333"),
+      axis.text = ggplot2::element_text(colour = "#333333"),
+      axis.line = ggplot2::element_line(colour = "#333333"),
+      axis.ticks = ggplot2::element_line(colour = "#333333"),
       legend.position = "bottom",
       legend.box = "vertical",
       legend.justification = "center"
@@ -134,14 +161,18 @@
 # Construct variants from one completed plot. Removing marked MC layers leaves
 # all points, axes, non-MC intervals and ratio coordinates unchanged.
 .analysis_mcse_plot_variants <- function(plot, mcse_mode = NULL) {
-  if (is.null(mcse_mode)) return(list(original = plot))
+  if (is.null(mcse_mode)) {
+    return(list(original = plot))
+  }
   mode <- .analysis_mcse_mode(mcse_mode)
   variants <- mode
   stats::setNames(lapply(variants, function(version) {
     out <- plot
     if (version == "off") {
       out$layers <- lapply(plot$layers, function(layer) {
-        if (!isTRUE(attr(layer, "analysis_mcse"))) return(layer)
+        if (!isTRUE(attr(layer, "analysis_mcse"))) {
+          return(layer)
+        }
         # Keep interval scale training (including facet ranges and bar widths),
         # but draw nothing. Copy the layer instead of mutating the original.
         blank <- ggplot2::ggproto(NULL, ggplot2::GeomBlank,
@@ -222,9 +253,12 @@
 # Print before opening a save device so asis headings keep their own figure.
 .analysis_print_save_fig <- function(plot, path, ..., mcse_mode = NULL,
                                      fit_panels = FALSE) {
-  sizes <- if (isTRUE(fit_panels)) list(
+  sizes <- if (isTRUE(fit_panels)) {
+    list(
     width = .analysis_fig_width, height = .analysis_facet_height(plot), allow_tall = TRUE
-  ) else list()
+  ) } else {
+    list()
+  }
   if (isTRUE(fit_panels)) {
     .analysis_print_fig(plot, mcse_mode = mcse_mode,
       width = sizes$width, height = sizes$height)
@@ -246,32 +280,54 @@
 # - error statistic (median, upper percentile, maximum): blues and lavender;
 # - bandwidth: a sequential purple ramp (`make_bw_colour_values()`).
 .analysis_method_colours <- c(
-  stimgate = "#E69F00", tailgate = "#009E73", fbeta = "#0072B2",
+  stimgate = "#E69F00", fbeta = "#0072B2", tailgate = "#009E73",
   tailgate_default = "#CC79A7"
 )
 .analysis_method_labels <- c(
-  stimgate = "StimGate", tailgate = "Tailgate", fbeta = "F-beta",
+  stimgate = "StimGate", fbeta = "F-beta", tailgate = "Tailgate",
   tailgate_default = "Tailgate (default settings)"
 )
-.analysis_method_shapes <- c(stimgate = 16, tailgate = 17, fbeta = 15, tailgate_default = 2)
+.analysis_method_shapes <- c(stimgate = 16, fbeta = 15, tailgate = 17, tailgate_default = 2)
 .analysis_method_linetypes <- c(
-  stimgate = "solid", tailgate = "22", fbeta = "42", tailgate_default = "13"
+  stimgate = "solid", fbeta = "42", tailgate = "22", tailgate_default = "13"
 )
 .analysis_stat_colours <- c(median = "#0072B2", upper = "#56B4E9", max = "#8C8DBA")
+
+.analysis_method_order <- names(.analysis_method_labels)
+.analysis_method_factor <- function(x) {
+  x <- as.character(x)
+  factor(x, levels = c(.analysis_method_order, setdiff(unique(x), .analysis_method_order)))
+}
+
+.analysis_method_data <- function(data) {
+  if ("method" %in% names(data)) data$method <- .analysis_method_factor(data$method)
+  data
+}
+
+# Scale limits reorder only the observed methods, including after filtering.
+.analysis_method_limits <- function(x) {
+  c(intersect(.analysis_method_order, x), setdiff(x, .analysis_method_order))
+}
 
 # Shared method encodings; matching names and labels merge their legends.
 .analysis_scale_method <- function(aesthetics = "colour", ...) {
   colour_aesthetics <- intersect(aesthetics, c("colour", "color", "fill"))
   scales <- list()
-  if (length(colour_aesthetics)) scales <- c(scales, list(ggplot2::scale_colour_manual(
+  if (length(colour_aesthetics)) {
+    scales <- c(scales, list(ggplot2::scale_colour_manual(
     values = .analysis_method_colours, labels = .analysis_method_labels,
-    name = "Method", aesthetics = colour_aesthetics, ...
+    name = "Method", aesthetics = colour_aesthetics, limits = .analysis_method_limits, ...
   )))
-  if ("shape" %in% aesthetics) scales <- c(scales, list(ggplot2::scale_shape_manual(
-    values = .analysis_method_shapes, labels = .analysis_method_labels, name = "Method", ...
+  }
+  if ("shape" %in% aesthetics) {
+    scales <- c(scales, list(ggplot2::scale_shape_manual(
+    values = .analysis_method_shapes, labels = .analysis_method_labels, name = "Method", limits = .analysis_method_limits, ...
   )))
-  if ("linetype" %in% aesthetics) scales <- c(scales, list(ggplot2::scale_linetype_manual(
-    values = .analysis_method_linetypes, labels = .analysis_method_labels, name = "Method", ...
+  }
+  if ("linetype" %in% aesthetics) {
+    scales <- c(scales, list(ggplot2::scale_linetype_manual(
+    values = .analysis_method_linetypes, labels = .analysis_method_labels, name = "Method", limits = .analysis_method_limits, ...
   )))
+  }
   if (length(scales) == 1L) scales[[1]] else scales
 }

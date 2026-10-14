@@ -203,3 +203,4 @@ _tmp/log/sbatch/dev-9a-real-tune-acs-cytof-tailgate
 _tmp/log/sbatch/dev-9b-real-compare-acs-cytof
 _tmp/log/sbatch/plots/9a-real-tune-acs-cytof-tailgate
 _tmp/log/sbatch/plots/9b-real-compare-acs-cytof
+_tmp/log/sbatch/render-plots

@@ -44,11 +44,11 @@ test_that("figures save at the standard width with page-capped height", {
   expect_equal(dims[[1]] / dims[[2]], 22 / 16, tolerance = 0.01)
 })
 
-test_that("strips have a black border and no fill", {
+test_that("strips have a soft grey border and no fill", {
   env <- .plot_style_env()
   strip <- env$.analysis_theme()$strip.background
   expect_true(is.na(strip$fill))
-  expect_identical(strip$colour, "black")
+  expect_identical(strip$colour, "grey65")
 })
 
 test_that("loop headings are markdown headings at the given level", {
@@ -59,10 +59,10 @@ test_that("loop headings are markdown headings at the given level", {
 test_that("method colours cover every method with readable labels", {
   env <- .plot_style_env()
   expect_identical(env$.analysis_method_colours,
-    c(stimgate = "#E69F00", tailgate = "#009E73", fbeta = "#0072B2",
+    c(stimgate = "#E69F00", fbeta = "#0072B2", tailgate = "#009E73",
       tailgate_default = "#CC79A7"))
   expect_identical(unname(env$.analysis_method_labels),
-    c("StimGate", "Tailgate", "F-beta", "Tailgate (default settings)"))
+    c("StimGate", "F-beta", "Tailgate", "Tailgate (default settings)"))
   for (encoding in list(env$.analysis_method_labels, env$.analysis_method_shapes,
     env$.analysis_method_linetypes)) {
     expect_setequal(names(encoding), names(env$.analysis_method_colours))

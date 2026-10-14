@@ -821,7 +821,7 @@ if (!isTRUE(run_plots)) {
 ## Results
 
 Every comparison figure is shown twice. "All methods" includes StimGate,
-Tailgate (with its bias) and F-beta. "With Tailgate at default settings" adds
+F-beta and Tailgate (with its bias). "With Tailgate at default settings" adds
 Tailgate without the bias. The two versions are saved in the `all_methods` and
 `tailgate_default` subfolders of each figure folder. Within each version there
 is one figure per mean position setting and mismatch mechanism.

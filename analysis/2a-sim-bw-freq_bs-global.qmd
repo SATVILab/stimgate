@@ -749,7 +749,7 @@ if (isTRUE(run_plots)) {
         geom_hline(
           mapping = aes(yintercept = propRespTruth_median),
           linetype = "dashed",
-          color = "black"
+          color = "#333333"
         ) +
         geom_point(alpha = 0.75) +
         scale_x_log10(
@@ -865,7 +865,7 @@ if (isTRUE(run_plots)) {
           fun.min = function(z) stats::quantile(z, 0.25, na.rm = TRUE),
           fun.max = function(z) stats::quantile(z, 0.75, na.rm = TRUE),
           geom = "pointrange",
-          colour = "black",
+          colour = "#333333",
           size = 0.1,
           linewidth = 0.4
         ) +
@@ -873,7 +873,7 @@ if (isTRUE(run_plots)) {
           data = truth_tbl,
           mapping = aes(yintercept = propRespTruth),
           linetype = "dashed",
-          color = "black"
+          color = "#333333"
         ) +
         scale_x_continuous(
           breaks = seq_along(n_cell_levels),

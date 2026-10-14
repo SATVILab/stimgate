@@ -1343,7 +1343,7 @@ if (isTRUE(run_plots)) {
             geom_hline(
               aes(yintercept = propRespTruth),
               linetype = "dashed",
-              colour = "black"
+              colour = "#333333"
             ) +
             (if (isTRUE(show_mcse)) {
               .analysis_mcse_errorbar(
