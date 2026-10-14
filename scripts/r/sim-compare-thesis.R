@@ -106,9 +106,13 @@
     ggplot2::theme(plot.background = ggplot2::element_rect(fill = "white", colour = NA))
 }
 
-# Median F1 heat maps: rows for method, columns for transformation; number of
-# cells across and response probability up each panel, on one 0-1 scale.
-.simCompareThesisF1Plot <- function(cls, pos) {
+# F1 heat maps (median, or 10th percentile with stat = "q10"): rows for method,
+# columns for transformation; number of cells across and response probability
+# up each panel, on one 0-1 scale.
+.simCompareThesisF1Plot <- function(cls, pos, stat = c("median", "q10")) {
+  stat <- match.arg(stat)
+  col <- paste0("f1_", stat)
+  fill_name <- if (stat == "median") expression("Median" ~ F[1]) else expression("10th percentile" ~ F[1])
   tbl <- cls[cls$mean_pos_setting == pos & cls$method %in% .simCompareThesisMethods, , drop = FALSE]
   tbl <- .analysis_method_data(tbl)
   tbl$transformation <- .analysis_trans_factor(tbl$transformation)
@@ -117,13 +121,14 @@
     .analysis_label_cells(sort(unique(tbl$n_cell))))
   tbl$prob <- factor(.simCompareThesisPercent(tbl$prob_response),
     .simCompareThesisPercent(sort(unique(tbl$prob_response))))
-  tbl$label <- ifelse(is.finite(tbl$f1_median), sprintf("%.2f", tbl$f1_median), "NA")
-  tbl$text_colour <- ifelse(is.finite(tbl$f1_median) & tbl$f1_median < 0.55, "white", "#333333")
-  ggplot2::ggplot(tbl, ggplot2::aes(x = .data$cells, y = .data$prob, fill = .data$f1_median)) +
+  tbl$value <- tbl[[col]]
+  tbl$label <- ifelse(is.finite(tbl$value), sprintf("%.2f", tbl$value), "NA")
+  tbl$text_colour <- ifelse(is.finite(tbl$value) & tbl$value < 0.55, "white", "#333333")
+  ggplot2::ggplot(tbl, ggplot2::aes(x = .data$cells, y = .data$prob, fill = .data$value)) +
     ggplot2::geom_tile(colour = "white", linewidth = 0.4) +
     ggplot2::geom_text(ggplot2::aes(label = .data$label, colour = .data$text_colour), size = 2.2) +
     ggplot2::scale_colour_identity() +
-    ggplot2::scale_fill_viridis_c(limits = c(0, 1), name = expression("Median" ~ F[1]),
+    ggplot2::scale_fill_viridis_c(limits = c(0, 1), name = fill_name,
       na.value = "grey85") +
     ggplot2::facet_grid(method ~ transformation, labeller = ggplot2::labeller(method = ggplot2::label_parsed)) +
     ggplot2::labs(x = "Number of cells", y = "Response probability") +

@@ -1356,7 +1356,7 @@ if (isTRUE(run_plots)) {
 
 ### Thesis figures
 
-Three figures per separation (mean position) setting are saved for the thesis,
+Four figures per separation (mean position) setting are saved for the thesis,
 drawn at the thesis text width, to the `results/` folder of the projr
 `output-thesis` folder (`_output/thesis`). They are not shown here. Each covers
 StimGate, $F_{\beta}$ and Tailgate (with its bias) without condition
@@ -1365,6 +1365,8 @@ perturbation, with response probabilities from highest (top) to lowest:
 - `sim-compare-f1-<separation>-separation`: median $F_1$ score of the gates
   against the simulated labels, as heat maps of number of cells by response
   probability, with rows for method and columns for transformation.
+- `sim-compare-f1-q10-<separation>-separation`: the same heat maps for the
+  10th percentile of $F_1$ over the samples of each scenario.
 - `sim-compare-frequency-<separation>-separation`: the estimated
   background-subtracted response frequency, as each method's median (solid)
   and 10th and 90th percentiles (dotted) over the samples of a scenario,
@@ -1391,6 +1393,7 @@ if (isTRUE(run_plots)) {
   for (pos in intersect(c("low", "high"), unique(as.character(thesis_pct$mean_pos_setting)))) {
     stem <- function(kind) file.path(thesis_dir, paste0("sim-compare-", kind, "-", pos, "-separation"))
     .analysis_save_thesis_fig(.simCompareThesisF1Plot(thesis_cls, pos), stem("f1"), height = 165)
+    .analysis_save_thesis_fig(.simCompareThesisF1Plot(thesis_cls, pos, stat = "q10"), stem("f1-q10"), height = 165)
     .analysis_save_thesis_fig(.simCompareThesisFreqPlot(thesis_pct, pos), stem("frequency"), height = 215)
     .analysis_save_thesis_fig(
       .simCompareThesisThresholdPlot(plot_tbl, threshold_reference_densities, pos),
