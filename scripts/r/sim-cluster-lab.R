@@ -115,7 +115,7 @@
 
 # `loc_threshold_method` is passed to stimControl(locThresholdMethod = ).
 .simClusterLabRun <- function(seed = 558L, n_sample_lab = 6L,
-    n_cell = 2000L, lab_shift = 4, loc_threshold_method = "region") {
+    n_cell = 2000L, lab_shift = 4, loc_threshold_method = "region", locPlateauStep = FALSE) {
   if (!is.character(loc_threshold_method) ||
       length(loc_threshold_method) != 1L) {
     stop("loc_threshold_method must be one character value.")
@@ -137,15 +137,16 @@
       control = stimgate::stimControl(
         clusterGates = TRUE, bwCluster = 0.3,
         bwMin = "none", bwMax = "none",
-        locThresholdMethod = loc_threshold_method
+        locThresholdMethod = loc_threshold_method,
+        locPlateauStep = locPlateauStep
       )
     )
     method <- .simClusterThresholdMethod(path_project, loc_threshold_method)
     details <- stimgate::getStimGatesDetailed(path_project, chnl = "Marker")
     allocations <- .simClusterLabAllocations(data$samples, details) |>
-      dplyr::mutate(locThresholdMethod = .env$method)
+      dplyr::mutate(locThresholdMethod = .env$method, locPlateauStep = .env$locPlateauStep)
     final_gates <- stimgate::getStimGates(path_project, chnl = "Marker") |>
-      dplyr::mutate(locThresholdMethod = .env$method)
+      dplyr::mutate(locThresholdMethod = .env$method, locPlateauStep = .env$locPlateauStep)
     list(expression = data$expression, allocations = allocations,
       summary = .simClusterLabSummary(allocations), details = details,
       final_gates = final_gates)

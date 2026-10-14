@@ -102,6 +102,11 @@
       if (!identical(frame$stage, "init")) {
         return(invisible())
       }
+      # The plateau step's first gating pass only records tail alignment;
+      # the tube's gate comes from the second pass.
+      if (!is.null(frame$chnlSettings$locPlateauRecord)) {
+        return(invisible())
+      }
       indCurr <- attr(frame$exTblStimNoMin, "ind")
       chnlCurr <- attr(frame$exTblStimNoMin, "chnlCut") %||%
         frame$chnlSettings$chnlCut
@@ -707,7 +712,7 @@
   gatingNames <- c(
     "bwScope", "bwMtd", "excMin", "cpMin", "minCell", "gateCombn",
     "clusterGates", "calcCytPosGates", "locProbCol", "locMinPeakProb",
-    "locEnforceShapeThreshold", "locThresholdMethod"
+    "locEnforceShapeThreshold", "locPlateauStep", "locThresholdMethod"
   )
   gating <- tibble::tibble(
     name = c(

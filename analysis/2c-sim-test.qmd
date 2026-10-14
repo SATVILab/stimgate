@@ -139,6 +139,7 @@ test_grid <- tidyr::expand_grid(
 # bwMtd) to change it for all rows. 2a uses nSample = 200; the data depend on
 # nSample. With `bw = NA`, `bwMin`/`bwMax` limit the chosen bandwidth;
 # gateStim() defaults them to "auto".
+loc_plateau_step <- TRUE
 test_settings <- list(
   nSample = 10L,
   nMarker = 1,
@@ -152,6 +153,7 @@ test_settings <- list(
   covEvMax = 1.5,
   clusterGates = TRUE,
   locEnforceShapeThreshold = FALSE,
+  locPlateauStep = loc_plateau_step,
   calcCytPosGates = FALSE,
   locThresholdMethod = "region"
 )

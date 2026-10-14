@@ -541,6 +541,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   env$run_stimgate <- FALSE
   env$run_comparators <- FALSE
   env$stimgate_loc_threshold_method <- "region"
+  env$loc_plateau_step <- TRUE
   env$tailgate_selection <- list(status = "selected", method = "tailgate_simulation_rmzero")
   env$comp_against_manual_cyt <- function(...) stop("Raw-data rebuild was called")
   env$.acsCytofManualSave <- function(...) stop("Cache write was called")
@@ -552,17 +553,17 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   attr(cached, "manifest") <- list(
     methods = list(cd4 = list(stimgate = list(
       context = list(gitSha = "abc"),
-      settings = list(locThresholdMethod = "region"),
-      channelSettings = list(IFNg = list(locThresholdMethod = "region"))
+      settings = list(locThresholdMethod = "region", locPlateauStep = TRUE),
+      channelSettings = list(IFNg = list(locThresholdMethod = "region", locPlateauStep = TRUE))
     ))),
-    comparisonSettings = list(methods = "stimgate", locThresholdMethod = "region"),
+    comparisonSettings = list(methods = "stimgate", locThresholdMethod = "region", locPlateauStep = TRUE),
     manualInputHash = "abc"
   )
   path <- file.path(env$path_manual_output, "manual-comparison.rds")
   saveRDS(cached, path)
   path_run_manifest <- file.path(env$path_manual_output, "manifest.rds")
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v10",
-    stimgate_loc_threshold_method = "region",
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v11",
+    stimgate_loc_threshold_method = "region", loc_plateau_step = TRUE,
     tailgate_config = "tailgate_simulation_rmzero"), path_run_manifest)
   withr::local_envvar(ANALYSIS_EXPECTED_RUN_ID = NA_character_)
   for (expr in as.list(code)[-1L]) eval(expr, env)
@@ -573,7 +574,7 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
   for (old in list(
     list(analysis_semantics_version = "acs-cytof-v3",
       stimgate_loc_threshold_method = "region"),
-    list(analysis_semantics_version = "acs-cytof-v10",
+    list(analysis_semantics_version = "acs-cytof-v11",
       tailgate_config = "tailgate_simulation_rmzero")
   )) {
     saveRDS(old, path_run_manifest)
@@ -583,12 +584,12 @@ test_that("analysis 9 reads the canonical comparison without rebuilding raw inpu
     )
   }
   # A comparison made with another Tailgate configuration is rejected.
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v10",
-    stimgate_loc_threshold_method = "region",
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v11",
+    stimgate_loc_threshold_method = "region", loc_plateau_step = TRUE,
     tailgate_config = "tailgate_acs_rmzero"), path_run_manifest)
   expect_error(for (expr in as.list(code)[-1L]) eval(expr, env), "Analysis 9a selects")
-  saveRDS(list(analysis_semantics_version = "acs-cytof-v10",
-    stimgate_loc_threshold_method = "region",
+  saveRDS(list(analysis_semantics_version = "acs-cytof-v11",
+    stimgate_loc_threshold_method = "region", loc_plateau_step = TRUE,
     tailgate_config = "tailgate_simulation_rmzero"), path_run_manifest)
 
   unlink(path)

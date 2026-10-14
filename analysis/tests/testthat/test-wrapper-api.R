@@ -27,6 +27,9 @@ test_that("analysis wrapper functions do not expose removed calcSinglePosGates a
   expect_false("calcSinglePosGates" %in% names(formals(env$.simBandwidthBsFreq)))
   expect_false("calcSinglePosGates" %in% names(formals(env$.simCompareStimgateRows)))
   expect_false("calcSinglePosGates" %in% names(formals(env$.simCompareFreqBs)))
+  expect_identical(formals(env$.simBandwidthBsFreq)$locPlateauStep, FALSE)
+  expect_identical(formals(env$.simCompareStimgateRows)$locPlateauStep, FALSE)
+  expect_identical(formals(env$.simCompareFreqBs)$locPlateauStep, FALSE)
 })
 
 test_that(".simBandwidthBsFreq exposes adaptive bandwidth settings directly", {
@@ -292,7 +295,7 @@ test_that("every analysis stimControl() call forwards locThresholdMethod", {
       if (target %in% c("stimControl", "stimgate::stimControl")) {
         n_calls <<- n_calls + 1L
         expect_true(
-          "locThresholdMethod" %in% names(as.list(node)[-1L]),
+          all(c("locThresholdMethod", "locPlateauStep") %in% names(as.list(node)[-1L])),
           info = paste(deparse(node), collapse = "\n")
         )
       }
@@ -312,4 +315,26 @@ test_that("every analysis stimControl() call forwards locThresholdMethod", {
   )
   for (script in scripts) check_method(parse(script))
   expect_gt(n_calls, 0L)
+})
+
+test_that("gating analyses explicitly enable the plateau step", {
+  qmds <- c(
+    "2a-sim-bw-freq_bs-global.qmd", "2b-sim-bias_uns-freq_bs.qmd", "2c-sim-test.qmd",
+    "7-sim-compare-freq_bs.qmd", "7b-sim-compare-null.qmd", "8-sim-compare-freq_bs-batch.qmd",
+    "9b-real-compare-acs-cytof.qmd", "11a-sim-low-separation-cyt-pos.qmd",
+    "11b-sim-low-separation-batch.qmd", "12-sim-cluster-gates.qmd",
+    "13-real-debug-acs-cytof.qmd", "14-real-compare-omip111.qmd",
+    "14b-real-compare-omip111-shifted-peak.qmd", "15-real-compare-omip016.qmd",
+    "15b-real-compare-omip016-shifted-peak.qmd"
+  )
+  for (qmd in qmds) {
+    code <- paste(readLines(file.path(root_dir, "analysis", qmd)), collapse = "\n")
+    expect_match(code, "loc_plateau_step <- TRUE", fixed = TRUE, info = qmd)
+    if (!startsWith(qmd, "13-")) {
+      expect_match(code, "locPlateauStep = loc_plateau_step", fixed = TRUE, info = qmd)
+    } else {
+      expect_match(code, "identical(settings$locPlateauStep, loc_plateau_step)",
+        fixed = TRUE, info = qmd)
+    }
+  }
 })

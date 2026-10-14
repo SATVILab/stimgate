@@ -1,0 +1,20 @@
+suppressMessages(library(dplyr)); options(width = 230, dplyr.summarise.inform = FALSE)
+S <- "/scratch/01463748/projects/2024/stimgate/stimgate-store"; B <- file.path(S, "_backup/2026-10-13-pre-plateau-step")
+f1 <- function(d) with(d, 2 * nTruePos / (2 * nTruePos + nFalsePos + nFalseNeg))
+# 7b: no response
+new <- readRDS(file.path(S, "_tmp/sim/compare/null/current/collated/compare_raw.rds")) |> filter(method == "stimgate")
+old <- readRDS(file.path(B, "sim/compare/null/current/collated/compare_raw.rds")) |> filter(method == "stimgate")
+s <- function(d) d |> group_by(transformation, mean_pos_setting, prob_background, n_cell) |> summarise(posShare = mean(propRespEst > 0, na.rm = TRUE), q90 = 100 * quantile(propRespEst, .9, na.rm = TRUE), q99 = 100 * quantile(propRespEst, .99, na.rm = TRUE))
+j <- inner_join(s(old), s(new), by = c("transformation", "mean_pos_setting", "prob_background", "n_cell"), suffix = c("Old", "New")) |> ungroup()
+cat("7b (no response): share of positive estimates and 90th/99th percentile estimate (percentage points), old vs new\n")
+print(as.data.frame(j |> mutate(across(where(is.numeric) & !n_cell & !prob_background, ~ round(.x, 4)))))
+cat("\n7b overall: max change in q90:", round(max(j$q90New - j$q90Old), 4), " scenarios where q90 rose:", sum(j$q90New > j$q90Old + 1e-9), "of", nrow(j), "\n\n")
+# 8: batch mismatch
+new <- readRDS(file.path(S, "_tmp/sim/compare/freq_bs_batch/current/collated/compare_raw.rds")) |> filter(method == "stimgate")
+old <- readRDS(file.path(B, "sim/compare/freq_bs_batch/current/collated/compare_raw.rds")) |> filter(method == "stimgate")
+s8 <- function(d) d |> mutate(F1 = f1(pick(everything())), ratio = propRespEst / propRespTruth) |> group_by(mismatch_type, transformation, mean_pos_setting, prob_response, n_cell, mismatch_val) |>
+  summarise(F1 = median(F1, na.rm = TRUE), over2 = mean(ratio > 2, na.rm = TRUE), q90 = quantile(ratio, .9, na.rm = TRUE))
+j8 <- inner_join(s8(old), s8(new), by = c("mismatch_type", "transformation", "mean_pos_setting", "prob_response", "n_cell", "mismatch_val"), suffix = c("Old", "New")) |> ungroup()
+cat("8: scenarios", nrow(j8), "; F1 median change: worse by >0.02 in", sum(j8$F1New < j8$F1Old - 0.02), ", better by >0.02 in", sum(j8$F1New > j8$F1Old + 0.02), "\n")
+cat("8: over-call (>2x) share rose by >0.05 in", sum(j8$over2New > j8$over2Old + 0.05), "scenarios, fell by >0.05 in", sum(j8$over2New < j8$over2Old - 0.05), "\n")
+print(as.data.frame(j8 |> filter(abs(F1New - F1Old) > 0.02 | abs(over2New - over2Old) > 0.05 | abs(q90New - q90Old) > 0.2) |> mutate(across(where(is.double), ~ signif(.x, 3)))))

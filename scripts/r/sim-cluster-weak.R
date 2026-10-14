@@ -104,7 +104,7 @@
 # Cached-result semantics. v2: `settings$loc_threshold_method` is passed to
 # stimControl(locThresholdMethod = ) and recorded in the gate rows; v1 caches
 # used probability-sum matching without recording it.
-.simClusterWeakSemantics <- "cluster-weak-v6"
+.simClusterWeakSemantics <- "cluster-weak-v7"
 
 # The local-FDR threshold method StimGate resolved and saved for every channel.
 .simClusterWeakThresholdMethod <- function(path_project, requested) {
@@ -145,7 +145,8 @@
       control = stimgate::stimControl(
         clusterGates = TRUE,
         bwCluster = settings$bw, locEnforceShapeThreshold = FALSE,
-        locThresholdMethod = loc_threshold_method
+        locThresholdMethod = loc_threshold_method,
+        locPlateauStep = isTRUE(settings$locPlateauStep)
       )
     )
     method <- .simClusterWeakThresholdMethod(path, loc_threshold_method)
@@ -180,7 +181,7 @@
       allocations |> dplyr::transmute(ind = as.character(.data$ind), stage = "Before", threshold = .data$cpOrigQuantMin),
       allocations |> dplyr::transmute(ind = as.character(.data$ind), stage = "After", threshold = .data$cpJoinTgOrig)
     ) |> dplyr::left_join(data$settings_table, by = "ind") |>
-      dplyr::mutate(locThresholdMethod = .env$method)
+      dplyr::mutate(locThresholdMethod = .env$method, locPlateauStep = isTRUE(settings$locPlateauStep))
     scores <- .simClusterWeakScore(data$cells, gates)
     # Both gate versions are applied by the package and appear in its statistics.
     stats <- stimgate::getStimStats(path) |>
@@ -207,6 +208,10 @@
   if (!"locThresholdMethod" %in% names(result$scores) ||
       !identical(unique(result$scores$locThresholdMethod), settings$loc_threshold_method)) {
     stop("Weak-response cache does not record the requested locThresholdMethod.")
+  }
+  if (!is.null(settings$locPlateauStep) &&
+      !identical(unique(result$scores$locPlateauStep), settings$locPlateauStep)) {
+    stop("Weak-response cache does not record the requested locPlateauStep.")
   }
   expected <- 2L * (settings$n_strong + settings$n_weak)
   if (nrow(result$scores) != expected || anyDuplicated(result$scores[, c("ind", "stage")]) ||

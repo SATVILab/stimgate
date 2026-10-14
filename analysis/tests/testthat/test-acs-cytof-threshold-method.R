@@ -24,14 +24,14 @@ qmd10_path <- file.path(
 .acs_stimgate_manifest <- function(method = "region", resolved = method) {
   list(
     context = list(gitSha = "abc", preprocessing = list(hash = "files")),
-    settings = list(clusterGates = TRUE, locThresholdMethod = method),
-    channelSettings = list(IFNg = list(locThresholdMethod = resolved))
+    settings = list(clusterGates = TRUE, locThresholdMethod = method, locPlateauStep = FALSE),
+    channelSettings = list(IFNg = list(locThresholdMethod = resolved, locPlateauStep = FALSE))
   )
 }
 
 # Run the ACS population runner with gating mocked, returning the control
 # passed to gateStim() and the population paths.
-.run_acs_runner_mocked <- function(env, pathScratch, requested, resolved) {
+.run_acs_runner_mocked <- function(env, pathScratch, requested, resolved, locPlateauStep = FALSE) {
   pathGs <- file.path(pathScratch, "gs")
   dir.create(file.path(pathGs, "cd4"), recursive = TRUE)
   env$.acsCytofEnsureCurrentCheckout <- function(...) invisible(TRUE)
@@ -53,14 +53,14 @@ qmd10_path <- file.path(
       invisible(pathProject)
     },
     stimgateMetaReadSettingsChnls = function(...) {
-      list(IFNg = list(locThresholdMethod = resolved))
+      list(IFNg = list(locThresholdMethod = resolved, locPlateauStep = locPlateauStep))
     },
     .package = "stimgate"
   )
   args <- list(
     pop = "cd4", pathFcsBase = "raw", pathGsBase = pathGs,
     pathScratchBase = pathScratch, runPreprocessing = FALSE,
-    runMethods = TRUE, runPlots = FALSE
+    runMethods = TRUE, runPlots = FALSE, locPlateauStep = locPlateauStep
   )
   if (!is.null(requested)) args$locThresholdMethod <- requested
   out <- do.call(env$.acsCytofRunPopulation, args)
@@ -186,7 +186,7 @@ test_that("the analysis 9 run manifest must record the threshold method", {
     list(stimgate_loc_threshold_method = "region"), "region", qmd
   ))
   expect_error(
-    check(list(analysis_semantics_version = "acs-cytof-v10"), "region", qmd),
+    check(list(analysis_semantics_version = "acs-cytof-v11"), "region", qmd),
     "stimgate_loc_threshold_method"
   )
   expect_error(
@@ -239,7 +239,32 @@ test_that("analyses 9 and 10 set and record the threshold method", {
   for (qmd in list(qmd9, qmd10)) {
     expect_true(grepl(".acsCytofCheckRunManifestMethod(", qmd, fixed = TRUE))
     expect_true(grepl(forwarded, qmd, fixed = TRUE))
-    expect_true(grepl('"acs-cytof-v10"', qmd, fixed = TRUE))
+    expect_true(grepl("loc_plateau_step <- TRUE", qmd, fixed = TRUE))
+    expect_true(grepl("locPlateauStep = loc_plateau_step", qmd, fixed = TRUE))
+    expect_true(grepl('"acs-cytof-v11"', qmd, fixed = TRUE))
     expect_false(grepl('"acs-cytof-v3"', qmd, fixed = TRUE))
   }
+})
+
+test_that("the ACS plateau step is forwarded, recorded and validated", {
+  env <- .load_acs_threshold_env()
+  expect_identical(formals(env$.acsCytofGateStim)$locPlateauStep, FALSE)
+  for (step in c(FALSE, TRUE)) {
+    path <- withr::local_tempdir()
+    run <- .run_acs_runner_mocked(env, path, "region", "region", step)
+    expect_identical(run$control$locPlateauStep, step)
+    manifest <- readRDS(file.path(run$paths$stimgate, "acs-manifest.rds"))
+    expect_identical(manifest$settings$locPlateauStep, step)
+    expect_no_error(env$.acsCytofValidateStimGateMethod(manifest, "region", step))
+    expect_error(env$.acsCytofValidateStimGateMethod(manifest, "region", !step),
+      "locPlateauStep")
+    manifest$settings$locPlateauStep <- NULL
+    expect_error(env$.acsCytofValidateStimGateMethod(manifest, "region", step),
+      "locPlateauStep")
+  }
+  check <- env$.acsCytofCheckRunManifestMethod
+  manifest <- list(stimgate_loc_threshold_method = "region", loc_plateau_step = TRUE)
+  expect_no_error(check(manifest, "region", qmd9_path, TRUE))
+  manifest$loc_plateau_step <- NULL
+  expect_error(check(manifest, "region", qmd9_path, TRUE), "loc_plateau_step")
 })

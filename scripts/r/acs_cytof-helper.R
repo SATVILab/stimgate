@@ -141,7 +141,19 @@
 # A saved StimGate result must record the requested local-FDR threshold
 # method, and every channel's saved settings must have resolved to it.
 # Results made before the method was recorded (matched gates) are rejected.
-.acsCytofValidateStimGateMethod <- function(manifest, locThresholdMethod) {
+.acsCytofValidateStimGateMethod <- function(
+  manifest, locThresholdMethod, locPlateauStep = NULL
+) {
+  if (!is.null(locPlateauStep)) {
+    resolvedPlateau <- lapply(manifest$channelSettings, function(x) {
+      if (is.list(x)) x$locPlateauStep else NULL
+    })
+    if (!identical(manifest$settings$locPlateauStep, locPlateauStep) ||
+        !length(resolvedPlateau) ||
+        !all(vapply(resolvedPlateau, identical, logical(1), locPlateauStep))) {
+      stop("ACS StimGate locPlateauStep settings differ or are missing; re-run all methods.")
+    }
+  }
   recorded <- manifest$settings$locThresholdMethod
   resolved <- vapply(
     manifest$channelSettings,
@@ -165,7 +177,12 @@
 # The analysis 9b run manifest records the StimGate threshold method used for
 # the saved comparison; a manifest without it (or with another) is rejected.
 .acsCytofCheckRunManifestMethod <- function(
-    manifest, locThresholdMethod, qmdPath) {
+    manifest, locThresholdMethod, qmdPath, locPlateauStep = NULL) {
+  if (!is.null(locPlateauStep) &&
+      !identical(manifest$loc_plateau_step, locPlateauStep)) {
+    .analysis_cache_error("acs_cytof",
+      "Cached loc_plateau_step differs or is missing.", qmdPath)
+  }
   if (!identical(
     manifest$stimgate_loc_threshold_method, locThresholdMethod
   )) {
@@ -200,7 +217,9 @@
 
 # Read a saved StimGate project's ACS manifest, checking that it matches the
 # project's saved channel settings and the requested threshold method.
-.acsCytofReadStimGateManifest <- function(path, locThresholdMethod) {
+.acsCytofReadStimGateManifest <- function(
+  path, locThresholdMethod, locPlateauStep = NULL
+) {
   pathManifest <- file.path(path, "acs-manifest.rds")
   if (!file.exists(pathManifest)) {
     stop("ACS StimGate manifest missing; re-run all methods.")
@@ -211,13 +230,17 @@
   )) {
     stop("Mismatched ACS StimGate settings manifest; re-run all methods.")
   }
-  .acsCytofValidateStimGateMethod(manifest, locThresholdMethod)
+  .acsCytofValidateStimGateMethod(manifest, locThresholdMethod, locPlateauStep)
   manifest
 }
 
 .acsCytofValidateComparisonManifest <- function(
-    table, locThresholdMethod = "region") {
+    table, locThresholdMethod = "region", locPlateauStep = NULL) {
   manifest <- attr(table, "manifest")
+  if (!is.null(locPlateauStep) &&
+      !identical(manifest$comparisonSettings$locPlateauStep, locPlateauStep)) {
+    stop("ACS comparison locPlateauStep differs or is missing; re-run analysis 9b.")
+  }
   if (is.null(manifest$methods) || !length(manifest$methods) ||
       is.null(manifest$comparisonSettings) || is.null(manifest$manualInputHash) ||
       !"thresholdFailed" %in% names(table)) {
@@ -235,7 +258,7 @@
   for (population in manifest$methods) {
     .acsCytofValidateManifests(population)
     if (!is.null(population$stimgate)) {
-      .acsCytofValidateStimGateMethod(population$stimgate, locThresholdMethod)
+      .acsCytofValidateStimGateMethod(population$stimgate, locThresholdMethod, locPlateauStep)
     }
   }
   isStimGate <- as.character(table$method) %in% "stimgate"

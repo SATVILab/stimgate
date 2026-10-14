@@ -31,6 +31,11 @@ stimControl(
   locEnforceShapeThreshold = FALSE,
   locShiftedPeakRef = FALSE,
   locShiftedPeakBwMult = 2,
+  locPlateauStep = FALSE,
+  locPlateauMinCells = 2,
+  locPlateauGapBw = 1,
+  locPlateauAlignMax = 1.1,
+  locPlateauAlignUpper = 1.25,
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1/6,
   locAntimodeLowRel = 0.25,
@@ -216,6 +221,40 @@ in the \code{locShiftedPeakRef} column of \code{\link[=getStimGates]{getStimGate
 \item{locShiftedPeakBwMult}{numeric Number of bandwidths by which the
 stimulated main peak must exceed the unstimulated main peak for
 \code{locShiftedPeakRef} to apply. Must be positive. Default: 2.}
+
+\item{locPlateauStep}{logical After each tube's gate is chosen, step it
+lower in steps of one local-FDR bandwidth, towards the left edge of the
+flat stretch of the stimulated taut-string density that holds the gate.
+A step is kept while the cells it adds are pure enough: their stimulated
+excess over unstimulated cells (shifted by \code{biasUns}), as a share of
+stimulated cells, must be at least \code{locMarginalPurityRel} times that above
+the gate. The scan stops after two failed steps in a row. The step is used
+only where stimulated and unstimulated negative tails agree: a first
+gating pass measures each stimulated tube's ratio of stimulated to
+unstimulated cells (without \code{biasUns}) 4 to 8 bandwidths below the left edge of that flat
+stretch, and the step is switched off for the marker unless the pooled
+ratio is at
+most \code{locPlateauAlignMax} and its upper bound for a single tube, allowing
+for spread between tubes, is at most \code{locPlateauAlignUpper}; tubes whose
+own ratio is clearly above \code{locPlateauAlignMax} are skipped. Lowered gates
+are flagged in the \code{locPlateauStep} column of \code{\link[=getStimGates]{getStimGates()}}. Gating
+takes about twice as long when this is TRUE. Default: FALSE.}
+
+\item{locPlateauMinCells}{numeric Fewest stimulated cells a plateau step
+must add before its purity is judged, so that single stray cells cannot
+move the gate. Default: 2.}
+
+\item{locPlateauGapBw}{numeric Stop the plateau step after crossing this
+many bandwidths without any stimulated cells. Use Inf to switch this off.
+Default: 1.}
+
+\item{locPlateauAlignMax}{numeric Largest pooled ratio of stimulated to
+unstimulated negative-tail cells for which the plateau step is used.
+Default: 1.1.}
+
+\item{locPlateauAlignUpper}{numeric Largest upper bound for a single tube's
+ratio, allowing for spread between tubes, for which the plateau step is
+used. Default: 1.25.}
 
 \item{locDipAlpha}{numeric Dip-test p-value cutoff for inspecting density
 antimodes before thresholding. Default: 0.2.}

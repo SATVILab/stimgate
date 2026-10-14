@@ -171,6 +171,7 @@ stimgate_bw_mtd <- "nrd0"
 stimgate_bw_scope <- "cytokine"
 # Gate at the lower boundary of the filtered local-FDR region.
 stimgate_loc_threshold_method <- "cap"
+loc_plateau_step <- TRUE
 # NA: StimGate's unstimulated-sample bias equals its shared bandwidth.
 bias_uns <- NA_real_
 bias_uns_vec_by_pop <- .by_pop(bias_uns)
@@ -260,6 +261,7 @@ tcrgd_tester <- .acsCytofRunPopulation(
   biasUns = bias_uns_vec_by_pop[["tcrgd"]],
   bwMtd = stimgate_bw_mtd,
   bwScope = stimgate_bw_scope,
+  locPlateauStep = loc_plateau_step,
   locThresholdMethod = stimgate_loc_threshold_method,
   outputGroup = "tester"
 )
@@ -303,6 +305,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate)) {
         runPreprocessingPlots = run_preprocessing_plots_vec_by_pop[[pop]],
         bwMtd = stimgate_bw_mtd,
         bwScope = stimgate_bw_scope,
+        locPlateauStep = loc_plateau_step,
         locThresholdMethod = stimgate_loc_threshold_method,
         biasUns = bias_uns_vec_by_pop[[pop]]
       )
@@ -384,6 +387,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
     path_dir_save = NULL,
     save_plots = FALSE,
     sample_map = fn_to_sampleid_map,
+    loc_plateau_step = loc_plateau_step,
     loc_threshold_method = stimgate_loc_threshold_method,
     tailgate_selection = tailgate_selection
   )
@@ -397,7 +401,8 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .write_rds_atomic(
     list(
-      analysis_semantics_version = "acs-cytof-v10",
+      analysis_semantics_version = "acs-cytof-v11",
+      loc_plateau_step = loc_plateau_step,
       stimgate_loc_threshold_method = stimgate_loc_threshold_method,
       tailgate_config = tailgate_selection$method,
       run_id = .sanitize_run_id(Sys.getenv("ANALYSIS_RUN_ID", unset = ""))
@@ -410,10 +415,10 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
   )
   .analysis_check_expected_run(
     manual_run_manifest,
-    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v10"
+    "acs_cytof", analysis_qmd, semantics_version = "acs-cytof-v11"
   )
   .acsCytofCheckRunManifestMethod(
-    manual_run_manifest, stimgate_loc_threshold_method, analysis_qmd
+    manual_run_manifest, stimgate_loc_threshold_method, analysis_qmd, loc_plateau_step
   )
   .acsCytofCheckRunManifestTailgate(manual_run_manifest, tailgate_selection, analysis_qmd)
   manual_comparison_tbl <- .analysis_read_rds(
@@ -422,6 +427,7 @@ if (isTRUE(run_preprocessing) || isTRUE(run_stimgate) || isTRUE(run_comparators)
 }
 .acsCytofValidateComparisonManifest(
   manual_comparison_tbl,
+  locPlateauStep = loc_plateau_step,
   locThresholdMethod = stimgate_loc_threshold_method
 )
 # The saved table also holds F-beta at its published defaults, which
@@ -782,7 +788,7 @@ if (isTRUE(run_plots)) {
     .analysis_heading(paste0("Population: ", pop), 4)
     # Refuse to plot gates saved with another (or no recorded) method.
     .acsCytofReadStimGateManifest(
-      paths$stimgate, stimgate_loc_threshold_method
+      paths$stimgate, stimgate_loc_threshold_method, loc_plateau_step
     )
     gs <- flowWorkspace::load_gs(paths$gs)
     p <- .acsCytofPlotGateCheck(gs, paths$stimgate)

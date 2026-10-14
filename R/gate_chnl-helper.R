@@ -97,7 +97,7 @@
                 batch,
                 ind, # nolint
                 # tube's own initial fit; present only when requested
-                dplyr::any_of("locShiftedPeakRef")
+                dplyr::any_of(c("locShiftedPeakRef", "locPlateauStep"))
               ),
             by = c("ind")
           ) |>

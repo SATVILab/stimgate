@@ -38,6 +38,7 @@ test_that("Analysis 2a executes its original bandwidth and fixed-bias design", {
   expect_equal(env$scenario_settings$nSample, 200)
   expect_false(env$scenario_settings$clusterGates)
   expect_false(env$scenario_settings$locEnforceShapeThreshold)
+  expect_true(env$scenario_settings$locPlateauStep)
   expect_false(env$scenario_settings$calcCytPosGates)
   expect_equal(sort(unique(env$sim_grid_all$n_cell)), c(1e3, 5e3, 2e4, 1e5))
   expected_pairs <- tidyr::expand_grid(

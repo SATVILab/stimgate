@@ -199,6 +199,14 @@
     row$locShiftedPeakBw <- as.numeric(shiftedPeakInfo$bw)[1L]
     row$locShiftedPeakBwSource <- as.character(shiftedPeakInfo$bwSource)[1L]
   }
+  plateauInfo <- attr(cpObj, "locPlateauStepInfo")
+  if (!is.null(plateauInfo)) {
+    row$locPlateauStep <- isTRUE(plateauInfo$applied)
+    row$locPlateauAllowed <- as.logical(plateauInfo$allowed %||% NA)[1L]
+    row$locPlateauFrom <- as.numeric(plateauInfo$from %||% NA_real_)[1L]
+    row$locPlateauEdge <- as.numeric(plateauInfo$edge %||% NA_real_)[1L]
+    row$locPlateauReason <- as.character(plateauInfo$reason %||% NA_character_)[1L]
+  }
   row
 }
 
@@ -429,6 +437,13 @@
     meta$locShiftedPeakRef <- purrr::map_lgl(
       cpUnsLocObjList,
       ~ isTRUE(.x[["locShiftedPeakRef"]])
+    )
+  }
+  # Present only when the plateau step was requested.
+  if (any(purrr::map_lgl(cpUnsLocObjList, ~ !is.null(.x[["locPlateauStep"]])))) {
+    meta$locPlateauStep <- purrr::map_lgl(
+      cpUnsLocObjList,
+      ~ isTRUE(.x[["locPlateauStep"]])
     )
   }
   .intSaveNm(

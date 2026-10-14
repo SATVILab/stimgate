@@ -47,6 +47,7 @@ test_that("Analysis 2b executes the agreed grid with shared biological seeds", {
   expect_false(full$scenario_settings$clusterGates)
   expect_false(full$scenario_settings$calcCytPosGates)
   expect_false(full$scenario_settings$locEnforceShapeThreshold)
+  expect_true(full$scenario_settings$locPlateauStep)
   expect_identical(full$analysis_required_params$simulation_seed, 12345L)
   expect_identical(
     full$analysis_required_params$sim_grid_spec,

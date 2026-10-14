@@ -1,0 +1,20 @@
+suppressMessages(library(dplyr)); options(width = 230, dplyr.summarise.inform = FALSE)
+S <- "/scratch/01463748/projects/2024/stimgate/stimgate-store"
+rd <- function(p) readRDS(p)
+new <- rd(file.path(S, "_tmp/sim/compare/freq_bs/current/collated/compare_raw.rds"))
+old <- rd(file.path(S, "_backup/2026-10-13-pre-plateau-step/sim/compare/freq_bs/current/collated/compare_raw.rds"))
+cat("semantics new:", readRDS(file.path(S, "_tmp/sim/compare/freq_bs/current/manifest.rds"))$settings$comparison_semantics_version %||% "?", "\n")
+key <- c("transformation", "mean_pos_setting", "prob_response", "n_cell", "iter", "sample")
+f1 <- function(d) with(d, 2 * nTruePos / (2 * nTruePos + nFalsePos + nFalseNeg))
+prep <- function(d, lab) d |> filter(method == "stimgate") |> mutate(F1 = f1(pick(everything())), err = propRespEst / propRespTruth - 1) |>
+  select(all_of(key), gate = threshold, F1, err, nCellStim) |> rename_with(~ paste0(.x, "_", lab), c(gate, F1, err))
+m <- inner_join(prep(old, "old"), prep(new, "new"), by = c(key, "nCellStim"))
+cat("paired tubes:", nrow(m), " of old", sum(old$method == "stimgate"), "\n")
+cmp <- old |> filter(method %in% c("fbeta", "tailgate")) |> mutate(F1 = f1(pick(everything()))) |> group_by(transformation, mean_pos_setting, prob_response, n_cell, method) |> summarise(F1 = median(F1, na.rm = TRUE)) |> tidyr::pivot_wider(names_from = method, values_from = F1, names_prefix = "F1_")
+q <- function(v) sprintf("%+.0f [%+.0f,%+.0f]", 100 * median(v, na.rm = TRUE), 100 * quantile(v, .1, na.rm = TRUE), 100 * quantile(v, .9, na.rm = TRUE))
+s <- m |> group_by(transformation, mean_pos_setting, prob_response, n_cell) |> summarise(n = n(), lowered = mean(gate_new < gate_old - 1e-9, na.rm = TRUE), raised = mean(gate_new > gate_old + 1e-9, na.rm = TRUE),
+  F1old = median(F1_old, na.rm = TRUE), F1new = median(F1_new, na.rm = TRUE), errOld = q(err_old), errNew = q(err_new)) |> left_join(cmp, by = c("transformation", "mean_pos_setting", "prob_response", "n_cell")) |> ungroup()
+saveRDS(list(m = m, s = s), "${P}/res7.rds")
+print(as.data.frame(s |> filter(prob_response <= 0.01) |> mutate(across(c(lowered, raised), ~ round(.x, 2)))), digits = 3)
+cat("\nOverall: median F1 change by transformation x separation (prob <= 1%)\n")
+print(as.data.frame(m |> filter(prob_response <= 0.01) |> group_by(transformation, mean_pos_setting) |> summarise(tubes = n(), lowered = round(mean(gate_new < gate_old - 1e-9, na.rm = TRUE), 2), raised = round(mean(gate_new > gate_old + 1e-9, na.rm = TRUE), 2), dF1med = median(F1_new - F1_old, na.rm = TRUE), worseBy0.05 = round(mean(F1_new < F1_old - 0.05, na.rm = TRUE), 3), betterBy0.05 = round(mean(F1_new > F1_old + 0.05, na.rm = TRUE), 3))), digits = 3)

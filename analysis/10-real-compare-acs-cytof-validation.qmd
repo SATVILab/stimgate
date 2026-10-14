@@ -75,6 +75,7 @@ path_comparison <- file.path(
 )
 # Must match the StimGate threshold method set in Analysis 9b.
 stimgate_loc_threshold_method <- "cap"
+loc_plateau_step <- TRUE
 qmd_9b <- "analysis/9b-real-compare-acs-cytof.qmd"
 manual_run_manifest <- .analysis_read_rds(
   file.path(path_manual_output, "manifest.rds"), "acs_cytof", qmd_9b
@@ -82,10 +83,10 @@ manual_run_manifest <- .analysis_read_rds(
 .analysis_check_expected_run(
   manual_run_manifest,
   "acs_cytof", qmd_9b,
-  semantics_version = "acs-cytof-v10"
+  semantics_version = "acs-cytof-v11"
 )
 .acsCytofCheckRunManifestMethod(
-  manual_run_manifest, stimgate_loc_threshold_method, qmd_9b
+  manual_run_manifest, stimgate_loc_threshold_method, qmd_9b, loc_plateau_step
 )
 # Tailgate's results must come from the configuration 9a currently selects.
 tailgate_selection <- .acsCytofReadTailgateSelection(
@@ -95,6 +96,7 @@ tailgate_selection <- .acsCytofReadTailgateSelection(
 manual_comparison_tbl <- .analysis_read_rds(path_comparison, "acs_cytof", qmd_9b)
 .acsCytofValidateComparisonManifest(
   manual_comparison_tbl,
+  locPlateauStep = loc_plateau_step,
   locThresholdMethod = stimgate_loc_threshold_method
 )
 validation_methods <- .acsCytofValidationMethods()

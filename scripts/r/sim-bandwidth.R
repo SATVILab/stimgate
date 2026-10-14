@@ -406,6 +406,7 @@
   locProbCol = "pred",
   locMinPeakProb = 0.25,
   locEnforceShapeThreshold = FALSE,
+  locPlateauStep = FALSE,
   locThresholdMethod = "region",
   locDipAlpha = 0.2,
   locAntimodeHeightFrac = 1 / 6,
@@ -590,6 +591,7 @@
         locProbCol = locProbCol,
         locMinPeakProb = locMinPeakProb,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
+        locPlateauStep = locPlateauStep,
         locThresholdMethod = locThresholdMethod,
         locDipAlpha = locDipAlpha,
         locAntimodeHeightFrac = locAntimodeHeightFrac,
@@ -788,6 +790,7 @@
         bwCluster = if (is.null(bwCluster)) NA_real_ else bwCluster,
         clusterGates = clusterGates,
         locEnforceShapeThreshold = locEnforceShapeThreshold,
+        locPlateauStep = locPlateauStep,
         # The diagnostic rows carry this column too; take the argument.
         locThresholdMethod = .env$locThresholdMethod,
         calcCytPosGates = calcCytPosGates,
