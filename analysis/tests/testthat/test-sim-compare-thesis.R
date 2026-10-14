@@ -127,3 +127,28 @@ test_that("percentile figures show background-subtracted frequency and F1 with e
   expect_no_error(ggplot2::ggplot_build(f1))
   expect_false("tailgate_default" %in% as.character(f1$data$method))
 })
+
+
+test_that("frequency by cells has even probability spacing and a shared linear ratio scale", {
+  env <- .thesisCompareEnv()
+  g <- .thesisGrid()
+  g <- rbind(g, transform(g[g$prob_response == 0.2, ], prob_response = 0.01))
+  g$q10 <- -2; g$q90 <- 5
+  p <- env$.simCompareThesisPctPlot(g, "low", "frequency", "cells")
+  expect_identical(levels(p$data$row), c("1,000 cells", "100,000 cells"))
+  expect_equal(sort(unique(p$data$x)), 1:3)
+  expect_equal(p$data$x, match(p$data$prob_response, c(0.002, 0.01, 0.2)))
+  b <- ggplot2::ggplot_build(p)
+  for (panel in b$layout$panel_params) {
+    expect_equal(panel$y.range, c(0, 4))
+    expect_equal(panel$y$get_breaks(), 0:4)
+    expect_equal(panel$y$get_labels(), paste0(0:4, "x"))
+  }
+  expect_equal(unique(p$data$lo), -1)
+  expect_equal(unique(p$data$hi), 6)
+  bands <- env$.simCompareThesisPctPlot(g, "low", "frequency", "cells", intervals = "bands")
+  expect_equal(bands$data, p$data)
+  expect_true(any(vapply(bands$layers, function(l) inherits(l$geom, "GeomRibbon"), logical(1))))
+  expect_false(any(vapply(bands$layers, function(l) inherits(l$geom, "GeomErrorbar"), logical(1))))
+  expect_no_error(ggplot2::ggplot_build(bands))
+})
