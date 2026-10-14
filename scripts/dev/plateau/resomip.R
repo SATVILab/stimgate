@@ -1,0 +1,10 @@
+suppressMessages(library(dplyr)); options(width = 220, dplyr.summarise.inform = FALSE)
+S <- "/scratch/01463748/projects/2024/stimgate/stimgate-store"; B <- file.path(S, "_backup/2026-10-13-pre-plateau-step")
+o <- read.csv(file.path(B, "omip111/current/comparison.csv")) |> filter(method == "StimGate"); n <- read.csv(file.path(S, "_tmp/omip111/current/comparison.csv")) |> filter(method == "StimGate")
+k <- c("strain", "mouse", "population", "marker")
+j <- inner_join(o |> select(all_of(k), thrOld = threshold, bsOld = propBs, man = manualBs), n |> select(all_of(k), thrNew = threshold, bsNew = propBs), by = k)
+cat("OMIP-111 StimGate tubes:", nrow(j), " lowered:", sum(j$thrNew < j$thrOld - 1e-9, na.rm = TRUE), " raised:", sum(j$thrNew > j$thrOld + 1e-9, na.rm = TRUE), "\n")
+print(as.data.frame(j |> group_by(population, marker) |> summarise(n = n(), lowered = sum(thrNew < thrOld - 1e-9, na.rm = TRUE),
+  medAbsErrOld = median(abs(bsOld - man), na.rm = TRUE), medAbsErrNew = median(abs(bsNew - man), na.rm = TRUE), medBsOld = median(bsOld), medBsNew = median(bsNew), medMan = median(man)) |> mutate(across(where(is.double), ~ signif(.x, 3)))))
+cat("Overall PCC old/new:", round(cor(j$bsOld, j$man, use = "complete"), 4), round(cor(j$bsNew, j$man, use = "complete"), 4), "\n")
+f <- list.files(file.path(S, "_tmp/omip016"), pattern = "comparison|result", recursive = TRUE, full.names = TRUE); print(head(f, 10))
