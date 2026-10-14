@@ -887,6 +887,14 @@ change the generating R functions, so formatting survives reruns.
   `_output/thesis/<chapter folder>/`); and, where the rules need it, the Typst
   styling. Build them with `scripts/r/analysis-thesis-table.R`
   (`.analysis_md_table()`, `.analysis_md_show()`), which wraps the pipe table in
+Analysis 8 saves the same thesis figures with the same helpers to
+`output-thesis/results/qmd8/<shift type>/<level>/` (`mean-shift-all`,
+`mean-shift-negative`, `sd-inflation-negative`; `shift-<size>` or
+`sd-increase-<fraction>`), once per level of every shift type, subsetting the
+summaries to that level. Its threshold reference densities carry the level's
+stimulated-tube shift (`.simBandwidthThresholdDensities(mismatch = TRUE)`,
+through `.simCompareSimCytExperiment()`); without `mismatch` they are unchanged.
+
   a locally scoped `#[ #set table(stroke: ...) ... ]` Typst block.
 - **Quarto/Typst:** Quarto-native pipe tables only, each with a caption and a
   stable identifier, so Quarto numbering, cross-references and the List of

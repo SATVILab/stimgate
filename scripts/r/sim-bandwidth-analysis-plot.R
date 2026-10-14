@@ -813,22 +813,41 @@ add_bw_labs <- function(.data) {
 # By default the unstimulated reference is its negative component (bandwidth
 # analyses); use FALSE for whole-tube comparison references such as QMD 7.
 # `positive_mean` is the mean of the stimulated tube's positive-component cells.
+# With `mismatch = TRUE` (Analysis 8), the stimulated tube also carries each
+# panel's mean shift / SD inflation (`stim_mean_shift`, `stim_sd_multiplier`
+# and their `_clusters` columns, NA meaning every component), applied through
+# .simCompareSimCytExperiment() as in the comparison runs.
 .simBandwidthThresholdDensities <- function(
     panels, settings, n_cell = 1e5, seed = 271L, density_n = 2048L,
-    unstimulated_negative_only = TRUE, rug_n = 0L) {
+    unstimulated_negative_only = TRUE, rug_n = 0L, mismatch = FALSE) {
   keys <- c(
     "transformation", "mean_pos", "prob_response",
     "sample_perturbation_sd", "condition_perturbation_sd",
     "cluster_perturbation_sd", "background_relative_to_response"
   )
+  mismatch_keys <- c(
+    "stim_mean_shift", "stim_mean_shift_clusters",
+    "stim_sd_multiplier", "stim_sd_multiplier_clusters"
+  )
+  if (isTRUE(mismatch)) keys <- c(keys, mismatch_keys)
   panels <- panels |>
     dplyr::select(dplyr::all_of(keys)) |>
     dplyr::distinct()
+  sim_fun <- function(row, ...) {
+    if (!isTRUE(mismatch)) return(simcyto::simCytExperiment(...))
+    clusters <- function(x) if (is.na(x)) NULL else as.character(x)
+    .simCompareSimCytExperiment(...,
+      stimMeanShift = row$stim_mean_shift,
+      stimSdMultiplier = row$stim_sd_multiplier,
+      stimMeanShiftClusters = clusters(row$stim_mean_shift_clusters),
+      stimSdMultiplierClusters = clusters(row$stim_sd_multiplier_clusters)
+    )
+  }
   purrr::map_dfr(seq_len(nrow(panels)), function(i) {
     row <- panels[i, ]
     out <- .analysis_with_seed(seed, {
       prob_uns <- row$prob_response * row$background_relative_to_response
-      simcyto::simCytExperiment(
+      sim_fun(row,
         nSample = 1L, nMarker = 1L, nCondition = 2L, nCluster = 2L,
         nCellByCondition = c(n_cell, n_cell),
         transformationFunc = .simMiscGetTrans(as.character(row$transformation)),
@@ -870,7 +889,7 @@ add_bw_labs <- function(.data) {
     # a seeded tube in which half the stimulated cells respond, so every
     # response probability has responders to show; locations, not abundance.
     pos_cells <- .analysis_with_seed(seed + 1L, {
-      sim <- simcyto::simCytExperiment(
+      sim <- sim_fun(row,
         nSample = 1L, nMarker = 1L, nCondition = 2L, nCluster = 2L,
         nCellByCondition = c(2L * rug_n, 2L * rug_n),
         transformationFunc = .simMiscGetTrans(as.character(row$transformation)),
