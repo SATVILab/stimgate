@@ -566,6 +566,10 @@
                                    quiet = FALSE) {
   path <- .analysis_project_dir("output", c("table", path_parts), path_root,
     dir = FALSE)
+  if ("method" %in% names(tbl) && exists(".analysis_method_factor", mode = "function")) {
+    tbl$method <- .analysis_method_factor(tbl$method)
+    tbl <- dplyr::arrange(tbl, .data$method)
+  }
   csv_tbl <- tbl
   # Bootstrap summaries can retain vectors of draws in list columns. Preserve
   # these in one CSV cell rather than letting write_csv silently omit them.

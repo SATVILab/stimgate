@@ -72,7 +72,7 @@
         guide = "none") +
       method_scales +
       ggplot2::scale_x_log10(breaks = sort(unique(long$n_cell)),
-        limits = range(long$n_cell), labels = scales::label_comma()) +
+        limits = range(long$n_cell), labels = .analysis_label_cells) +
       ggplot2::scale_y_continuous(breaks = trans$transform(breaks_err),
         labels = .simCompareThesisPercent(prob * (1 + breaks_err))) +
       ggplot2::facet_grid(prob_response ~ transformation,
@@ -110,14 +110,15 @@
 # cells across and response probability up each panel, on one 0-1 scale.
 .simCompareThesisF1Plot <- function(cls, pos) {
   tbl <- cls[cls$mean_pos_setting == pos & cls$method %in% .simCompareThesisMethods, , drop = FALSE]
+  tbl <- .analysis_method_data(tbl)
   tbl$transformation <- .analysis_trans_factor(tbl$transformation)
   tbl$method <- factor(tbl$method, .simCompareThesisMethods, .simCompareThesisMethodLabels())
-  tbl$cells <- factor(scales::label_comma()(tbl$n_cell),
-    scales::label_comma()(sort(unique(tbl$n_cell))))
+  tbl$cells <- factor(.analysis_label_cells(tbl$n_cell),
+    .analysis_label_cells(sort(unique(tbl$n_cell))))
   tbl$prob <- factor(.simCompareThesisPercent(tbl$prob_response),
     .simCompareThesisPercent(sort(unique(tbl$prob_response))))
   tbl$label <- ifelse(is.finite(tbl$f1_median), sprintf("%.2f", tbl$f1_median), "NA")
-  tbl$text_colour <- ifelse(is.finite(tbl$f1_median) & tbl$f1_median < 0.55, "white", "black")
+  tbl$text_colour <- ifelse(is.finite(tbl$f1_median) & tbl$f1_median < 0.55, "white", "#333333")
   ggplot2::ggplot(tbl, ggplot2::aes(x = .data$cells, y = .data$prob, fill = .data$f1_median)) +
     ggplot2::geom_tile(colour = "white", linewidth = 0.4) +
     ggplot2::geom_text(ggplot2::aes(label = .data$label, colour = .data$text_colour), size = 2.2) +
@@ -146,6 +147,7 @@
   data <- data[data$mean_pos_setting == pos & data$approach %in% .simCompareThesisMethods &
     is.finite(data$threshold), , drop = FALSE]
   keys <- c("transformation", "prob_response")
+  data <- .analysis_method_data(data)
   data$transformation <- .analysis_trans_factor(data$transformation)
   densities <- dplyr::semi_join(densities,
     dplyr::distinct(data, dplyr::across(dplyr::all_of(c(keys, "mean_pos")))),

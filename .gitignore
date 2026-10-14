@@ -194,3 +194,13 @@ _tmp/log/sbatch/11b-sim-low-separation-batch/chunk-2
 _tmp/log/sbatch/11b-sim-low-separation-batch/chunk-3
 _tmp/log/sbatch/11b-sim-low-separation-batch/chunk-4
 _tmp/log/sbatch/dev-18-explore-acs-cytof-coexpression-gates
+_tmp/log/sbatch/7b-sim-compare-null/chunk-1
+_tmp/log/sbatch/7b-sim-compare-null/chunk-2
+_tmp/log/sbatch/7b-sim-compare-null/chunk-3
+_tmp/log/sbatch/7b-sim-compare-null/chunk-4
+_tmp/log/sbatch/plots/7b-sim-compare-null
+_tmp/log/sbatch/dev-9a-real-tune-acs-cytof-tailgate
+_tmp/log/sbatch/dev-9b-real-compare-acs-cytof
+_tmp/log/sbatch/plots/9a-real-tune-acs-cytof-tailgate
+_tmp/log/sbatch/plots/9b-real-compare-acs-cytof
+_tmp/log/sbatch/render-plots

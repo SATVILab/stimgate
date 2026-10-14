@@ -22,6 +22,7 @@
     x_label = "Number of stimulated cells", x_log = TRUE,
     by_prob = TRUE, mcse = FALSE) {
   quantity <- match.arg(quantity)
+  tbl<- .analysis_method_data(tbl)
   tbl$transformation <- .analysis_trans_factor(tbl$transformation)
   sign <- if (quantity == "severity") ifelse(tbl$direction == "over", 1, -1) else rep(1, nrow(tbl))
   tbl$value <- sign * tbl[[quantity]]
@@ -32,23 +33,25 @@
   capped <- quantity == "severity" && .simBandwidthSignedErrorIsCapped(tbl$value)
   tbl$value_shown <- if (quantity == "severity") .simBandwidthSignedErrorSquish(tbl$value) else tbl$value
   tbl$direction <- factor(tbl$direction, c("over", "under"), c("Over-estimates", "Under-estimates"))
+  if (x == "n_cell") tbl[[x]] <- .analysis_cell_x(tbl[[x]])
   p <- ggplot2::ggplot(tbl, ggplot2::aes(
     x = .data[[x]], y = value_shown, colour = method, shape = method, linetype = method, group = method
   )) +
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.75) +
     ggplot2::geom_point(size = 1.5, alpha = 0.75) +
     ggplot2::facet_wrap(
-      if (by_prob) ggplot2::vars(direction, transformation, prob_response) else
-        ggplot2::vars(direction, transformation),
+      if (by_prob) {
+        ggplot2::vars(direction, transformation, prob_response) } else
+        {
+        ggplot2::vars(direction, transformation)},
       ncol = min(3L, length(unique(tbl$transformation)) *
         if (by_prob) length(unique(tbl$prob_response)) else 1L),
       scales = if (quantity == "occurrence") "fixed" else "free_y",
       labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent("Response probability: "))
     ) +
-    (if (x_log) ggplot2::scale_x_log10(
-      breaks = sort(unique(tbl[[x]])), labels = .analysis_label_number,
-      guide = ggplot2::guide_axis(angle = 45)
-    ) else ggplot2::scale_x_continuous(labels = .analysis_label_number)) +
+    (if (x == "n_cell") .analysis_scale_cells(tbl[[x]], log = x_log) else if (x_log) {
+      ggplot2::scale_x_log10(breaks = sort(unique(tbl[[x]])), labels = .analysis_label_number)
+    } else ggplot2::scale_x_continuous(labels = .analysis_label_number)) +
     .analysis_scale_method(c("colour", "shape", "linetype")) + .analysis_theme() +
     ggplot2::labs(x = x_label, colour = "Method")
   if (quantity == "occurrence") {
@@ -66,7 +69,10 @@
   p + ggplot2::labs(caption = paste0(
     "Dataset counts per setting/method: eligible ", span("n_eligible"),
     "; incomplete ", span("n_incomplete"), "; affected ", span("n_affected"), ".\n",
-    if (quantity == "occurrence") "Occurrence intervals require ≥5 eligible datasets and ≥95% finite bootstrap draws."
-    else "Conditional intervals require ≥5 eligible and ≥5 affected datasets and ≥95% finite bootstrap draws."
+    if (quantity == "occurrence") {
+      "Occurrence intervals require ≥5 eligible datasets and ≥95% finite bootstrap draws."
+    } else {
+      "Conditional intervals require ≥5 eligible and ≥5 affected datasets and ≥95% finite bootstrap draws."
+  }
   ))
 }

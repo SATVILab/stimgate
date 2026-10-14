@@ -694,7 +694,9 @@
 # Runtime failures belong to the primary method's failure cohort. Keep their
 # error/provenance fields while recognizing the historical diagnostic label.
 .simComparePrimaryMethodRows <- function(.data) {
-  if (!"method" %in% names(.data)) return(.data)
+  if (!"method" %in% names(.data)) {
+    return(.data)
+  }
   .data$method <- as.character(.data$method)
   .data$method[.data$method %in% "stimgate_error"] <- "stimgate"
   .data
@@ -1949,7 +1951,9 @@
 .simCompareRecordedComparatorErrors <- function(data) {
   required <- c("method", "error", "threshold", "thresholdOrigin", "gateReturnPoint",
     "thresholdFallbackUsed", "propRespEst", "nPosStim", .simCompareCountCols)
-  if (!is.data.frame(data) || !all(required %in% names(data))) return(rep(FALSE, nrow(data)))
+  if (!is.data.frame(data) || !all(required %in% names(data))) {
+    return(rep(FALSE, nrow(data)))
+  }
   missing_cols <- intersect(c("threshold", "thresholdMetric", "propRespEst", "propStim", "propUns",
     "nPosStim", "nPosUns", .simCompareCountCols), names(data))
   missing_outputs <- rowSums(!is.na(as.matrix(data[, missing_cols, drop = FALSE]))) == 0L
@@ -1973,18 +1977,26 @@
   }
   recorded <- .simCompareRecordedComparatorErrors(data)
   error <- if ("error" %in% names(data)) !is.na(data$error) & nzchar(as.character(data$error)) else rep(FALSE, nrow(data))
-  if (any(error & !recorded)) return(invalid("unrecognised, malformed or whole-scenario runtime error"))
+  if (any(error & !recorded)) {
+    return(invalid("unrecognised, malformed or whole-scenario runtime error"))
+  }
   primary <- data[data$method %in% methods, , drop = FALSE]
   expected <- as.integer(nSample) * as.integer(nIter)
-  if (nrow(primary) != expected * length(methods)) return(invalid("missing or extra primary method/sample rows"))
+  if (nrow(primary) != expected * length(methods)) {
+    return(invalid("missing or extra primary method/sample rows"))
+  }
   if (anyNA(primary$iter) || anyNA(primary$sample) ||
       !all(as.character(primary$iter) %in% as.character(seq_len(nIter))) ||
       !all(as.character(primary$sample) %in% as.character(seq_len(nSample)))) {
     return(invalid("sample or iteration IDs differ from the intended grid"))
   }
-  if (anyDuplicated(primary[c("iter", "sample", "method")])) return(invalid("duplicate primary method/sample rows"))
+  if (anyDuplicated(primary[c("iter", "sample", "method")])) {
+    return(invalid("duplicate primary method/sample rows"))
+  }
   method_counts <- table(factor(primary$method, levels = methods))
-  if (any(method_counts != expected)) return(invalid("incomplete primary method coverage"))
+  if (any(method_counts != expected)) {
+    return(invalid("incomplete primary method coverage"))
+  }
   if (!all(is.finite(primary$propRespTruth)) || !all(is.finite(primary$unsExprSum)) ||
       !all(is.finite(primary$nCellStim) & primary$nCellStim > 0)) {
     return(invalid("missing simulated truth, cell counts or pairing fingerprint"))
@@ -2072,7 +2084,10 @@
   if (has_error && any(
     !is.na(cached$error) & nzchar(as.character(cached$error)) &
       !.simCompareRecordedComparatorErrors(cached)
-  )) return(FALSE)
+  )) {
+    return(FALSE)
+
+  }
 
   # Ensure selective SD cluster settings are matched even if cached is missing the column
   if ("stim_sd_multiplier_clusters" %in% names(row)) {
@@ -3073,7 +3088,9 @@
     ids <- ids[!is.na(ids)]
     if (is.numeric(ids) && length(ids) && all(ids == as.integer(ids) & ids > 0)) {
       seq_len(max(ids))
-    } else sort(unique(ids))
+    } else {
+      sort(unique(ids))
+  }
   })
   data$.bootstrap_family <- family
   data$.bootstrap_units <- unname(units[family])
@@ -3342,7 +3359,8 @@
         value = {
           x <- .data[[outcome]]
           x <- x[is.finite(x)]
-          if (!length(x)) NA_real_ else if (outcome %in% c("abs_error", "abs_rel_error")) {
+          if (!length(x)) {
+            NA_real_ } else if (outcome %in% c("abs_error", "abs_rel_error")) {
             mean(x)
           } else {
             stats::median(x)
@@ -3368,10 +3386,12 @@
         n_pair = sum(is.finite(.data$difference)),
         tube_coverage_stimgate = if (sum(.data$n_tube_stim, na.rm = TRUE) > 0) {
           sum(.data$n_finite_stim, na.rm = TRUE) / sum(.data$n_tube_stim, na.rm = TRUE)
-        } else NA_real_,
+        } else {
+          NA_real_},
         tube_coverage_competitor = if (sum(.data$n_tube_other, na.rm = TRUE) > 0) {
           sum(.data$n_finite_other, na.rm = TRUE) / sum(.data$n_tube_other, na.rm = TRUE)
-        } else NA_real_,
+        } else {
+          NA_real_},
         mean_difference = {
           x <- .data$difference[is.finite(.data$difference)]
           if (length(x)) mean(x) else NA_real_
@@ -3477,11 +3497,11 @@
   list(
     all_methods = list(
       heading = "All methods",
-      methods = c("stimgate", "tailgate", "fbeta")
+      methods = .analysis_method_order[1:3]
     ),
     tailgate_default = list(
       heading = "With Tailgate at default settings",
-      methods = c("stimgate", "tailgate", "tailgate_default", "fbeta")
+      methods = .analysis_method_order
     )
   )
 }
@@ -3598,6 +3618,8 @@
 .simComparePlotByCell <- function(
     data, y, y_label, zero_line = FALSE, free_y = FALSE, percent_y = FALSE,
     mcse = FALSE) {
+  data<- .analysis_method_data(data)
+  if ("n_cell" %in% names(data)) data$n_cell <- .analysis_cell_x(data$n_cell)
   data$transformation <- .analysis_trans_factor(data$transformation)
   p <- ggplot2::ggplot(
     data,
@@ -3615,10 +3637,7 @@
     (if (isTRUE(mcse) && all(bounds %in% names(data))) {
       .analysis_mcse_errorbar(data, bounds[[1]], bounds[[2]])
     }) +
-    ggplot2::scale_x_log10(
-      breaks = sort(unique(data$n_cell)),
-      labels = .analysis_label_number,
-      guide = ggplot2::guide_axis(angle = 45)
+    .analysis_scale_cells(data$n_cell
     ) +
     ggplot2::scale_y_continuous(
       labels = if (percent_y) .analysis_label_percent else .analysis_label_number
@@ -3642,6 +3661,7 @@
 # NULL, each method's cloud is 0.2 wide, narrowed to fit when four or more
 # methods share a response level.
 .simComparePlotEstVsTruth <- function(data, maxwidth = NULL, lower_limit = NULL) {
+  data <- .analysis_method_data(data)
   data$transformation <- .analysis_trans_factor(data$transformation)
   response_levels <- sort(unique(data$prob_response))
   # The default-settings set lists every method, in display order.
@@ -3675,7 +3695,7 @@
     ggplot2::geom_segment(data = truth,
       ggplot2::aes(x = response_position - 0.4, xend = response_position + 0.4,
         y = prob_response, yend = prob_response), inherit.aes = FALSE,
-      colour = "black", linetype = "dashed", linewidth = 0.6) +
+      colour = "#333333", linetype = "dashed", linewidth = 0.6) +
     ggplot2::scale_x_continuous(breaks = seq_along(response_levels),
       labels = .analysis_label_percent(response_levels)) +
     ggplot2::scale_y_log10(labels = function(x) {
@@ -3713,6 +3733,7 @@
 # density values. A dotted line marks the stimulated positive-component mean,
 # which is often too rare to see in the density.
 .simComparePlotThresholdDensity <- function(data, densities = NULL) {
+  data<- .analysis_method_data(data)
   data$transformation <- .analysis_trans_factor(data$transformation)
   facet_vars <- c("prob_response", "transformation")
   build_plot <- function(densities) {
@@ -3724,8 +3745,10 @@
         ggplot2::aes(x = expression, y = reference_y,
           linetype = condition, group = condition), inherit.aes = FALSE,
         colour = "gray25", linewidth = 0.5) +
-        ggplot2::scale_linetype_manual(values = c(unstimulated = "dashed", stimulated = "solid"),
-          labels = c(unstimulated = "Unstimulated (all cells)", stimulated = "Stimulated (all cells)"))
+        ggplot2::scale_linetype_manual(values = c(.analysis_method_linetypes, unstimulated = "dashed", stimulated = "solid"),
+          labels = c(.analysis_method_labels, unstimulated = "Unstimulated (all cells)", stimulated = "Stimulated (all cells)"),
+          limits = function(x) c(intersect(.analysis_method_order, x),
+            intersect(c("unstimulated", "stimulated"), x)))
       if ("positive_mean" %in% names(densities)) {
         positive_means <- dplyr::distinct(densities,
           dplyr::across(dplyr::all_of(facet_vars)), .data$positive_mean)
@@ -3736,14 +3759,16 @@
             "tube's positive-component (responding) cells."))
       }
     }
-    p + ggplot2::geom_histogram(alpha = 0.2, position = "identity", bins = 30) +
+    p + ggplot2::geom_histogram(ggplot2::aes(linetype = approach),
+      alpha = 0.2, position = "identity", bins = 30) +
+      (if (is.null(densities)) .analysis_scale_method("linetype")) +
       ggplot2::facet_wrap(~ prob_response + transformation, scales = "free", ncol = 3,
         labeller = ggplot2::labeller(prob_response = .analysis_labeller_percent())) +
       ggplot2::scale_x_continuous(labels = .analysis_label_number) +
       ggplot2::scale_y_continuous(labels = .analysis_label_number) +
       .analysis_scale_method(aesthetics = c("colour", "fill")) +
       ggplot2::labs(x = "Threshold / marker expression", y = "Threshold density",
-        colour = "Method", fill = "Method", linetype = "Reference tube (density shape, peak matched)") +
+        colour = "Method", fill = "Method", linetype = "Method / reference tube") +
       .analysis_theme()
   }
   if (is.null(densities)) {
@@ -3908,8 +3933,11 @@
 # Bootstrap the complete plotted scenario average, retaining CRN covariance.
 .simComparePerformanceAverage <- function(
     raw, scenarioCols, group_cols, signed = FALSE, mcse = FALSE) {
-  summary <- if (isTRUE(signed)) .simCompareSignedErrorSummary(raw, scenarioCols, mcse = mcse) else
+  summary <- if (isTRUE(signed)) {
+    .simCompareSignedErrorSummary(raw, scenarioCols, mcse = mcse) } else
+    {
     .simCompareUnsignedErrorSummary(raw, scenarioCols, mcse = mcse)
+  }
   stats <- if (isTRUE(signed)) c("prop", "median", "q90", "q95") else c("median", "q95")
   groups <- c(group_cols, if (isTRUE(signed)) "direction")
   out <- .analysis_mcse_bootstrap_average(summary, groups, stats, mcse)
@@ -4031,8 +4059,10 @@
 # transformation and (when `by_prob`) response probability.
 .simCompareMismatchFacet <- function(by_prob, ncol = 3L) {
   ggplot2::facet_wrap(
-    if (by_prob) ggplot2::vars(statistic, transformation, prob_response) else
-      ggplot2::vars(statistic, transformation),
+    if (by_prob) {
+      ggplot2::vars(statistic, transformation, prob_response) } else
+      {
+      ggplot2::vars(statistic, transformation)},
     ncol = ncol,
     scales = "free",
     labeller = ggplot2::labeller(
@@ -4049,6 +4079,7 @@
     by_prob = FALSE,
     stat_cols = c(median = "Median", q95 = "95th percentile"),
     mcse = FALSE) {
+  tbl <- .analysis_method_data(tbl)
   tbl$transformation <- .analysis_trans_factor(tbl$transformation)
   tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
   # Errors above 1500% (16 times the truth) are drawn at the cap.
@@ -4084,14 +4115,14 @@
     by_prob = FALSE,
     stat_cols = c(median = "Median", q95 = "95th percentile"),
     mcse = FALSE) {
+  tbl<- .analysis_method_data(tbl)
   tbl$transformation <- .analysis_trans_factor(tbl$transformation)
   tbl <- .simBandwidthErrorStatLong(tbl, stat_cols)
-  x_scale <- if (x_log) {
-    ggplot2::scale_x_log10(
-      breaks = sort(unique(tbl[[x]])),
-      labels = .analysis_label_number,
-      guide = ggplot2::guide_axis(angle = 45)
-    )
+  if (x == "n_cell") tbl[[x]] <- .analysis_cell_x(tbl[[x]])
+  x_scale <- if (x == "n_cell") {
+    .analysis_scale_cells(tbl[[x]], log = x_log)
+  } else if (x_log) {
+    ggplot2::scale_x_log10(breaks = sort(unique(tbl[[x]])), labels = .analysis_label_number)
   } else {
     ggplot2::scale_x_continuous(labels = .analysis_label_number)
   }
@@ -4553,7 +4584,7 @@
     ggplot2::geom_freqpoly(
       data = uns,
       ggplot2::aes(x = expr, alpha = "Unstimulated tube"),
-      binwidth = binwidth, boundary = boundary, colour = "black",
+      binwidth = binwidth, boundary = boundary, colour = "#333333",
       linewidth = 0.4, linetype = "dotted"
     ) +
     ggplot2::geom_vline(

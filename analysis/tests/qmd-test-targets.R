@@ -34,9 +34,11 @@
       "test-analysis-mcse-modes.R", "test-sim-performance-failures.R",
       "test-sim-compare-recorded-errors.R",
       "test-analysis-sim-size.R", "test-qmd7-presentation.R", "test-sim-compare-thesis.R"
+    ,
+      "test-sim-compare-detection.R"
     ),
     "7b-sim-compare-null.qmd" = c(
-      "test-sim-compare-null.R", "test-sim-compare-freq_bs-simcyto.R",
+      "test-sim-compare-null.R", "test-sim-compare-detection.R", "test-sim-compare-freq_bs-simcyto.R",
       "test-analysis-mcse.R", "test-sim-compare-recorded-errors.R"
     ),
     "8-sim-compare-freq_bs-batch.qmd" = c(

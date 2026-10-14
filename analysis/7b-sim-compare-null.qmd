@@ -122,6 +122,7 @@ for (fn in c(
   "sim-bandwidth-analysis-plot.R",
   "acs_cytof-plot_cyt.R",
   "sim-compare-freq_bs.R",
+  "sim-compare-detection.R",
   "sim-compare-null.R"
 )) {
   source(file.path(scripts_r_dir, fn))
@@ -568,10 +569,15 @@ compare_raw <- .analysis_read_rds(path_rds, analysis_key, analysis_qmd)
 if (any(compare_raw$propRespTruth[compare_raw$method %in% .simCompareMethods] != 0)) {
   stop("Every simulated net frequency must be exactly zero in this analysis.")
 }
-null_errors <- .simCompareNullErrors(compare_raw)
+null_scores <- .simCompareFisherScores(compare_raw)
+null_errors <- .simCompareNullErrors(null_scores)
 scenario_cols <- c("transformation", "mean_pos_setting", "mean_pos",
   "prob_background", "n_cell", "method")
 null_summary <- .simCompareNullSummary(null_errors, scenario_cols,
+  mcse = show_mcse && isTRUE(run_plots))
+null_detection <- .simCompareDetectionSummary(null_scores, scenario_cols,
+  mcse = show_mcse && isTRUE(run_plots))
+null_evidence <- .simCompareEvidenceSummary(null_scores, scenario_cols,
   mcse = show_mcse && isTRUE(run_plots))
 null_provenance <- .simCompareNullProvenance(null_errors,
   setdiff(scenario_cols, "method"))
@@ -593,8 +599,10 @@ plot_dir <- .analysis_fig_dir(fig_key, path_root = root_dir)
 ## Results
 
 The error is the estimated background-subtracted frequency minus the true
-one, which is zero, in percentage points (pp): an error of 0.01 pp is one
-extra positive cell per 10,000 in the stimulated tube. Statistics pool every
+one, which is zero. Signed estimates are displayed as percentages: 0.01% is
+one extra positive cell per 10,000 in the stimulated tube. Absolute errors
+are in percentage points. `error_pp` already includes the factor of 100;
+figures do not rescale it again. Negative net estimates remain negative. Statistics pool every
 sample of every dataset in a scenario (tube-level distributions). With Monte
 Carlo intervals on (`show_mcse`), error bars are 95% bootstrap intervals that
 resample whole datasets, so they reflect the datasets, not the tubes, as the
@@ -602,7 +610,7 @@ independent unit; at least five datasets and 95% finite bootstrap draws are
 required. Comparator runtime errors are missing outcomes, not zero errors;
 `n_finite` in the summary table counts the samples with an estimate.
 
-Figures show StimGate, Tailgate (with its bias) and F-beta; Tailgate at its
+Figures show StimGate, F-beta and Tailgate (with its bias); Tailgate at its
 default settings is in the CSV tables only. Panels have their own y ranges.
 Without positive cells there is no separation setting, so those figures have
 one panel per transformation.
@@ -611,22 +619,22 @@ one panel per transformation.
 #| label: null-figures
 #| echo: false
 #| results: asis
-fig_methods <- c("stimgate", "tailgate", "fbeta")
+fig_methods <- c("stimgate", "fbeta", "tailgate")
 fig_specs <- list(
   list(stat = "error_median", name = "median_error",
     heading = "Median error",
     text = "The median signed error: a typical sample's estimate.",
-    y = "Median error (pp)", zero = TRUE),
+    y = "Estimated net response (%)", zero = TRUE),
   list(stat = "error_p90", name = "p90_error",
     heading = "90th percentile of the error",
     text = paste("The 90th percentile of the signed error: one sample in ten",
       "overestimates by more than this (an apparent response)."),
-    y = "90th percentile of error (pp)", zero = TRUE),
+    y = "90th percentile of estimated net response (%)", zero = TRUE),
   list(stat = "abs_error_p90", name = "p90_abs_error",
     heading = "90th percentile of the absolute error",
     text = paste("The 90th percentile of the absolute error, in either",
       "direction: one sample in ten is further from zero than this."),
-    y = "90th percentile of |error| (pp)", zero = FALSE)
+    y = "90th percentile of absolute response error (percentage points)", zero = FALSE)
 )
 for (bg in prob_background_vec) {
   .analysis_heading(.simCompareNullBackgroundLabel(bg), 3L)
@@ -726,4 +734,192 @@ compare_one <- .simCompareRunScenario(
 
 ```{r}
 
+```
+
+## Detection evidence under the null
+
+For each sample and method, the one-sided Fisher exact test asks whether the
+final gated-positive proportion is greater in the stimulated tube. The 2×2
+table contains positive and negative counts from each tube; cells are not paired.
+The saved final applied-gate counts are used, with no re-gating. Log upper-tail
+probabilities preserve very small p-values even when the ordinary p-value
+underflows. Errored gates and missing estimates are missing tests.
+
+A detection requires a positive estimated net response **and** p ≤ alpha.
+Under these simulated null scenarios the detection rate is an empirical
+false-positive rate, not a false discovery rate. The denominator is samples
+with valid estimates and count tables. Coverage, missing estimates and bootstrap
+validity are exported separately. Intervals resample whole datasets, preserving
+paired method results, using the same eligibility rules as the frequency figures.
+
+```{r}
+#| label: null-detection
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  .analysis_report_table(null_scores,
+    c(fig_key, "null-sample-evidence.csv"),
+    "Saved counts and uncapped Fisher/SBB evidence for every sample and method.", path_root = root_dir)
+  .analysis_report_table(null_detection,
+    c(fig_key, paste0("mcse_", mcse_mode), "null-detection.csv"),
+    "Empirical false-positive rates and valid/missing sample coverage.", path_root = root_dir)
+  .analysis_report_table(dplyr::filter(null_detection, abs(alpha - 0.05) < 1e-12),
+    c(fig_key, paste0("mcse_", mcse_mode), "null-detection-alpha-005.csv"),
+    "False-positive rates at the conventional 0.05 cutoff, by scenario and method.", path_root = root_dir)
+  for (bg in prob_background_vec) {
+    for (sep in unique(null_detection$mean_pos_setting[null_detection$prob_background == bg])) {
+      .analysis_heading(paste(.simCompareNullBackgroundLabel(bg), sep, "separation"), 3L)
+      d <- dplyr::filter(null_detection, prob_background == bg,
+        mean_pos_setting == sep, method %in% fig_methods, alpha >= 0.001, alpha <= 0.2)
+      .analysis_print_save_fig(.simCompareNullDetectionPlot(d),
+        file.path(plot_dir, "detection", paste0("fpr_background_", bg, "_", sep, ".png")),
+        mcse_mode = mcse_mode, fit_panels = TRUE)
+    }
+  }
+}
+```
+
+### Exploratory heat maps at alpha = 0.05
+
+These compact views use a common 0–100% colour scale and print each rate.
+Grey NA tiles distinguish unrun or unavailable scenarios from zero detections.
+Each separation has its own figure; no-background scenarios appear only at
+high separation because the other separations were not simulated.
+
+```{r}
+#| label: null-detection-heatmap
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  for (sep in unique(null_detection$mean_pos_setting)) {
+    .analysis_heading(paste(sep, "separation"), 4L)
+    .analysis_print_save_fig(.simCompareNullDetectionHeatmap(
+      dplyr::filter(null_detection, mean_pos_setting == sep, method %in% fig_methods)),
+      file.path(plot_dir, "detection_heatmap", paste0("fpr_005_", sep, ".png")),
+      width = 20, height = 16)
+  }
+}
+```
+
+### Evidence scales
+
+The base-10 Fisher scale is the primary view; base-2 is a companion with the
+same ordering. The [Sellke, Bayarri and Berger (2001) calibration](https://www2.stat.duke.edu/~berger/papers/99-13.html)
+uses B01_min = −e p log(p) for p < 1/e, and 1 otherwise. It is a lower bound
+on the Bayes factor favouring a precise null; −log10(B01_min) is an upper
+bound on log Bayes-factor evidence against that null, **not** an estimated or
+exact Bayes factor. Fisher p-values after adaptive gating are not guaranteed
+to be calibrated. Discreteness also differs from the continuous-null calibration
+assumptions, so the Berger transformation is exploratory until calibration
+has been established.
+
+Summaries are computed from uncapped scores. Display caps start at 12 on the
+base-10 Fisher scale, with corresponding caps on the other scales. Hollow upward
+triangles mark capped summaries; CSVs include the number of individual samples
+above the cap, even if their median or 90th percentile is below it. Dotted lines
+mark nominal p = 0.05. No testing family size is specified for this one-marker
+simulation, so no Bonferroni threshold is invented.
+
+```{r}
+#| label: null-evidence
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  .analysis_report_table(null_evidence,
+    c(fig_key, paste0("mcse_", mcse_mode), "null-evidence-summary.csv"),
+    "Uncapped evidence quantiles, cap exceedances and bootstrap coverage.", path_root = root_dir)
+  evidence_labels <- c(fisher_log10 = "Fisher evidence: −log10(p)",
+    fisher_log2 = "Fisher evidence: −log2(p)",
+    sbb_log10 = "Exploratory upper bound: −log10(B01_min)")
+  for (score in names(evidence_labels)) {
+    .analysis_heading(evidence_labels[[score]], 3L)
+    for (bg in prob_background_vec) {
+      .analysis_heading(.simCompareNullBackgroundLabel(bg), 4L)
+      for (stat in c("median", "p90")) {
+        .analysis_heading(if (stat == "median") "Median" else "90th percentile", 5L)
+        d <- dplyr::filter(null_evidence, prob_background == bg, method %in% fig_methods)
+        .analysis_print_save_fig(.simCompareNullPlot(d, paste0(score, "_", stat),
+          paste(if (stat == "median") "Median" else "90th percentile of", evidence_labels[[score]]),
+          zero_line = FALSE, by_separation = bg > 0,
+          display_cap = .simCompareEvidenceCap(score), reference = .simCompareEvidenceReference(score)),
+          file.path(plot_dir, "evidence", score, paste0(stat, "_background_", bg, ".png")),
+          mcse_mode = mcse_mode, fit_panels = TRUE)
+      }
+    }
+  }
+}
+```
+
+## Detection sensitivity versus empirical false-positive rate
+
+Analysis 7 uses background = 0.2 × response probability; Analysis 7b uses
+absolute backgrounds of 0, 0.01% and 1%. Only response 0.05% in Analysis 7
+matches a requested background (0.01%). Matching also requires the same
+transformation, separation, parent-cell count, perturbations, tube-size ratio
+and realised unstimulated background frequency. Realised zero responses are
+excluded from sensitivity. The source grid allows comparisons at 20k and 100k;
+the 0.01% null grid intentionally omits 1k and 5k. Quick/dev reductions can
+leave no matched scenarios. Other response magnitudes remain unmatched.
+
+Both analyses use the same positive-net-response rule and Fisher cutoffs.
+ROC-style points are empirical estimates, with independent dataset resampling
+between analyses and shared resampling across methods within each analysis.
+The 5% table selects the largest *simulated* cutoff whose observed FPR is at
+most 5%, only when thresholds bracket 5%. It reports the attained FPR and
+sensitivity, not interpolated sensitivity at exactly 5%. Missing brackets and
+large gaps remain limitations. Bootstrap intervals at a selected cutoff are
+pointwise; they do not include cutoff-selection uncertainty.
+
+```{r}
+#| label: null-response-roc
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  response_cache <- tryCatch({
+    response_ctx <- .analysis_results_context(.analysis_mode_key(c("sim", "compare", "freq_bs")),
+      path_root = root_dir, qmd_path = "analysis/7-sim-compare-freq_bs.qmd")
+    response_manifest <- .analysis_read_manifest(file.path(response_ctx$current_dir, "manifest.rds"))
+    source_params <- .simCompareDetectionResponseParams(
+      file.path(root_dir, "analysis", "7-sim-compare-freq_bs.qmd"), root_dir,
+      response_manifest$params$simulation_seed, analysis_quick, analysis_dev, sim_size)
+    .analysis_current_file(response_ctx, c("collated", "compare_raw.rds"),
+      required_params = source_params)
+    .analysis_current_file(response_ctx, c("collated", "compare_raw.rds"),
+    required_params = c(list(comparison_semantics_version = source_params$comparison_semantics_version),
+      analysis_result_params[c("stimgate_bias_uns_factor", "prob_exact", "cov_ev_min", "cov_ev_max",
+        "n_sample_sim", "n_iter_sim", "stimgate_bw_mtd", "stimgate_bw_scope",
+        "stimgate_bw_ncell_max", "stimgate_bw_ncell_min", "stimgate_bw_fallback",
+        "stimgate_bw_min", "stimgate_bw_max", "cluster_gates",
+        "loc_enforce_shape_threshold", "stimgate_loc_threshold_method", "calc_cyt_pos_gates",
+        "fbeta_beta", "fbeta_theta", "fbeta_width", "tailgate_adjust", "tailgate_method",
+        "tailgate_tol", "tailgate_auto_tol", "tailgate_bias", "tailgate_x")]))
+  },
+    error = function(e) { cat("Analysis 7 ROC comparison unavailable: ", conditionMessage(e), "\n\n"); NULL })
+  if (!is.null(response_cache)) {
+    response_scores <- .simCompareFisherScores(.analysis_read_rds(response_cache,
+      response_ctx$analysis_key, response_ctx$qmd_path))
+    roc <- .simCompareDetectionRoc(null_scores, response_scores, mcse = show_mcse)
+    .analysis_report_table(roc$audit, c(fig_key, "roc-scenario-matching.csv"),
+      "Explicit matched and unmatched genuine-response scenarios.", path_root = root_dir)
+    if (!nrow(roc$curves)) {
+      cat("No biologically matched null/response scenarios in these cache profiles.\n\n")
+    } else {
+      .analysis_report_table(roc$curves, c(fig_key, paste0("mcse_", mcse_mode), "roc-curves.csv"),
+        "Matched detection sensitivity and empirical FPR, with separate coverage.", path_root = root_dir)
+      .analysis_report_table(roc$at_5, c(fig_key, paste0("mcse_", mcse_mode), "roc-supported-005.csv"),
+        "Supported operating thresholds at or below 5% FPR; no interpolation.", path_root = root_dir)
+      for (sep in unique(roc$curves$mean_pos_setting)) {
+        for (prob in unique(roc$curves$prob_response)) {
+          .analysis_heading(paste(sep, "separation; response", .analysis_label_percent(prob)), 3L)
+          d <- dplyr::filter(roc$curves, mean_pos_setting == sep, prob_response == prob,
+            method %in% fig_methods)
+          if (!nrow(d)) next
+          .analysis_print_save_fig(.simCompareDetectionRocPlot(d),
+            file.path(plot_dir, "roc", paste0("roc_", sep, "_response_", prob, ".png")),
+            mcse_mode = mcse_mode, fit_panels = TRUE)
+        }
+      }
+    }
+  }
+}
 ```

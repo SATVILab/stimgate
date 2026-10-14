@@ -573,7 +573,8 @@ if (isTRUE(run_plots)) {
             .analysis_mcse_errorbar(plot_tbl, "mean_bw_lower", "mean_bw_upper")
           }) +
           scale_x_log10(
-            labels = .analysis_label_number,
+            breaks = sort(unique(plot_tbl$n_cell)),
+            labels = .analysis_label_cells,
             guide = guide_axis(angle = 45)
           ) +
           scale_y_continuous(labels = .analysis_label_number) +

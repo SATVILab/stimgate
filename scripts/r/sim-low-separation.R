@@ -1379,7 +1379,7 @@
     p <- p + geom_point(
       data = dplyr::distinct(pct, .data$scenario_lab, .data$quantity_lab, .data$truth),
       aes(x = .data$truth, y = .data$scenario_lab), inherit.aes = FALSE,
-      shape = 4, size = 2.2, colour = "black"
+      shape = 4, size = 2.2, colour = "#333333"
     )
   } else {
     p <- p + .simLowSepXFloor(c(0, 1))
@@ -1418,7 +1418,7 @@
     geom_point(aes(x = .data$rate, shape = .data$response_truth), position = dodge, size = 1.4) +
     scale_shape_manual(values = c(response = 16, none = 1), labels = c(
       response = "Net response (power)", none = "No net response (false-positive rate)"
-    ), name = NULL, drop = FALSE, guide = guide_legend(override.aes = list(colour = "black"))) +
+    ), name = NULL, drop = FALSE, guide = guide_legend(override.aes = list(colour = "#333333"))) +
     .simLowSepScaleRule() +
     .simLowSepXFloor(c(0, 0.1)) +
     scale_x_continuous(breaks = c(0, 0.5, 1), labels = function(x) paste0(100 * x, "%")) +
@@ -1513,7 +1513,7 @@
     geom_point(aes(shape = .data$response_truth), position = dodge, size = 1.4) +
     scale_shape_manual(values = c(response = 16, none = 1), labels = c(
       response = "Net response (power)", none = "No net response (false-positive rate)"
-    ), name = NULL, drop = FALSE, guide = guide_legend(override.aes = list(colour = "black"))) +
+    ), name = NULL, drop = FALSE, guide = guide_legend(override.aes = list(colour = "#333333"))) +
     .simLowSepScaleRule() +
     .simLowSepYFloor(c(0, 0.1)) +
     scale_y_continuous(labels = function(x) paste0(100 * x, "%")) +
