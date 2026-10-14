@@ -14,7 +14,7 @@ cmp <- old |> filter(method %in% c("fbeta", "tailgate")) |> mutate(F1 = f1(pick(
 q <- function(v) sprintf("%+.0f [%+.0f,%+.0f]", 100 * median(v, na.rm = TRUE), 100 * quantile(v, .1, na.rm = TRUE), 100 * quantile(v, .9, na.rm = TRUE))
 s <- m |> group_by(transformation, mean_pos_setting, prob_response, n_cell) |> summarise(n = n(), lowered = mean(gate_new < gate_old - 1e-9, na.rm = TRUE), raised = mean(gate_new > gate_old + 1e-9, na.rm = TRUE),
   F1old = median(F1_old, na.rm = TRUE), F1new = median(F1_new, na.rm = TRUE), errOld = q(err_old), errNew = q(err_new)) |> left_join(cmp, by = c("transformation", "mean_pos_setting", "prob_response", "n_cell")) |> ungroup()
-saveRDS(list(m = m, s = s), "/tmp/claude-465063597/-scratch-01463748-projects-2024-stimgate-stimgate/a44bc2c4-4e8b-4bd8-886a-e428ba2cbd39/scratchpad/res7.rds")
+saveRDS(list(m = m, s = s), "${P}/res7.rds")
 print(as.data.frame(s |> filter(prob_response <= 0.01) |> mutate(across(c(lowered, raised), ~ round(.x, 2)))), digits = 3)
 cat("\nOverall: median F1 change by transformation x separation (prob <= 1%)\n")
 print(as.data.frame(m |> filter(prob_response <= 0.01) |> group_by(transformation, mean_pos_setting) |> summarise(tubes = n(), lowered = round(mean(gate_new < gate_old - 1e-9, na.rm = TRUE), 2), raised = round(mean(gate_new > gate_old + 1e-9, na.rm = TRUE), 2), dF1med = median(F1_new - F1_old, na.rm = TRUE), worseBy0.05 = round(mean(F1_new < F1_old - 0.05, na.rm = TRUE), 3), betterBy0.05 = round(mean(F1_new > F1_old + 0.05, na.rm = TRUE), 3))), digits = 3)

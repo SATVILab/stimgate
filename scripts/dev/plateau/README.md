@@ -50,3 +50,32 @@ before re-running them.
 - `acsq25.R`: moving every tube to the higher of the 25th-percentile responder
   gate (population × cytokine as the cluster) and the edge. This is the loose
   version; the responder-only rule of #613 has not been run on ACS.
+
+## History (`history/`)
+
+The earlier steps that led to the plateau step and #613, in rough order. They
+read `dbg_*`/`res_*` files written by `../upstream-region/rerun-legacy.R`,
+whose `PLATEAU=1` switch prototyped the step in the antimode slot before it
+went into the package (`am_*` tags = current rule, `pb_*` = step before the
+cap; the after-cap version was applied offline).
+
+- `am.R`, `am2.R`, `am3.R`: why the taut-string antimode step never fires
+  (the fit starts just right of the negative peak and flattens the response).
+- `tsplot.R`, `tsf1.R`: plots of the taut string fitted from the flattening
+  point, with true-positive rugs; F1 at the antimode and the flattening point.
+- `plateau.R`, `bwstep.R`: moving to the plateau edge, and bandwidth-sized
+  steps towards it, with purity checks.
+- `cmpab.R`: the step before and after the cap.
+- `bias.R`, `ratio.R`, `base.R`, `shiftu.R`, `ls.R`: batch-shift handling
+  (edge margins, the stim/unstim tail ratio, shifting or rescaling unstim).
+- `gate_r0.R`, `grouprule.R`: switching the step off by the tail ratio, per
+  tube and pooled per group with between-tube spread; `realratio.R` applies
+  the ratio to ACS and OMIP-111 tubes.
+- `guards.R`, `guards2.R`, `half.R`: small-count guards (cautious purity,
+  minimum cells, empty-gap rule), graded unstim shifts and the automatic
+  half-step.
+- `diag.R`, `edgecmp.R`, `direct.R`, `pk2.R`, `smoke.R`, `smoke2.R`: checks of
+  the package implementation (example data, saved tubes gated directly,
+  package results against the offline rule).
+- `share.R`: own against shared gates (needs records that are no longer kept).
+- `batchq.sh`, `skewq.sh`: the queued batch-shift and skew re-runs.
