@@ -60,7 +60,10 @@
   }))
 }
 
-.acsScoreTubeColours <- c(stimulated = "#B2182B", unstimulated = "#2166AC")
+.acsScoreTubeColours <- c(stimulated = "#C2410C", unstimulated = "#1D4E89")
+# Ordinary and lowered gates in Analysis 11's rule colours (ordinary grey,
+# screened co-expression blue).
+.acsScoreOrdinaryColour <- "#7F7F7F"
 
 # Score histograms of both tubes as the fraction of each tube's cells per bin
 # (log10 y). Cells with score 0 (not high on any marker) are left out of the
@@ -111,7 +114,7 @@
   ggplot(d, aes(x = .data$threshold, y = .data$net)) +
     geom_hline(yintercept = 0, colour = "grey50") +
     geom_hline(data = rect, aes(yintercept = 100 * .data$net), linetype = "dashed",
-      colour = "#D55E00") +
+      colour = .acsScoreOrdinaryColour) +
     geom_line(linewidth = 0.6) +
     facet_wrap(~donor, ncol = 4, scales = "free_y", axes = "all") +
     .analysis_theme() +
@@ -136,9 +139,9 @@
     geom_contour(data = survGrid, aes(x = .data$gx, y = .data$gy, z = .data$z),
       breaks = levels, colour = contourColour, linewidth = 0.5, inherit.aes = FALSE) +
     geom_vline(data = lines[is.finite(lines$gx), ], aes(xintercept = .data$gx),
-      colour = "#D55E00", linewidth = 0.4) +
+      colour = .acsScoreOrdinaryColour, linewidth = 0.4) +
     geom_hline(data = lines[is.finite(lines$gy), ], aes(yintercept = .data$gy),
-      colour = "#D55E00", linewidth = 0.4) +
+      colour = .acsScoreOrdinaryColour, linewidth = 0.4) +
     facet_wrap(~panel, ncol = 6, axes = "all") +
     .analysis_theme() +
     labs(x = x, y = y)
@@ -272,8 +275,8 @@
     geom_tile() +
     scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B",
       limits = c(-limit, limit), name = "log2(interaction /\nindependence)") +
-    geom_vline(data = lines, aes(xintercept = .data$gx), colour = "#D55E00", linewidth = 0.4) +
-    geom_hline(data = lines, aes(yintercept = .data$gy), colour = "#D55E00", linewidth = 0.4) +
+    geom_vline(data = lines, aes(xintercept = .data$gx), colour = .acsScoreOrdinaryColour, linewidth = 0.4) +
+    geom_hline(data = lines, aes(yintercept = .data$gy), colour = .acsScoreOrdinaryColour, linewidth = 0.4) +
     facet_wrap(~panel, ncol = 6, axes = "all") +
     .analysis_theme(grid = "none") +
     labs(x = x, y = y)
@@ -290,8 +293,8 @@
   lines <- merge(lines, unique(res[c("donor", "tube", "panel")]))
   ggplot(res, aes(x = .data$x, y = .data$y, fill = .data$residual)) +
     geom_tile() +
-    geom_vline(data = lines, aes(xintercept = .data$gx), colour = "#D55E00", linewidth = 0.4) +
-    geom_hline(data = lines, aes(yintercept = .data$gy), colour = "#D55E00", linewidth = 0.4) +
+    geom_vline(data = lines, aes(xintercept = .data$gx), colour = .acsScoreOrdinaryColour, linewidth = 0.4) +
+    geom_hline(data = lines, aes(yintercept = .data$gy), colour = .acsScoreOrdinaryColour, linewidth = 0.4) +
     scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B",
       limits = c(-limit, limit), name = "(O - E) / sqrt(E)") +
     facet_wrap(~panel, ncol = 6, axes = "all") +
@@ -321,8 +324,8 @@
     geom_tile() +
     scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B",
       limits = c(-limit, limit), name = "Stimulated minus control\nexcess over independence (pp)") +
-    geom_vline(data = lines, aes(xintercept = .data$gx), colour = "#D55E00", linewidth = 0.4) +
-    geom_hline(data = lines, aes(yintercept = .data$gy), colour = "#D55E00", linewidth = 0.4) +
+    geom_vline(data = lines, aes(xintercept = .data$gx), colour = .acsScoreOrdinaryColour, linewidth = 0.4) +
+    geom_hline(data = lines, aes(yintercept = .data$gy), colour = .acsScoreOrdinaryColour, linewidth = 0.4) +
     facet_wrap(~donor, ncol = 4, axes = "all") +
     .analysis_theme(grid = "none") +
     labs(x = x, y = y)
@@ -415,7 +418,7 @@
       position = ggplot2::position_dodge(width = 0.5)) +
     geom_point(data = totalTbl[!is.na(totalTbl$manual), , drop = FALSE],
       aes(x = .data$manual, y = .data$donor), inherit.aes = FALSE, shape = 4, size = 2.5) +
-    scale_colour_manual(values = c("Ordinary gates" = "#D55E00", "Lowered gates" = "#0072B2"), name = NULL) +
+    scale_colour_manual(values = c("Ordinary gates" = .acsScoreOrdinaryColour, "Lowered gates" = "#0072B2"), name = NULL) +
     scale_shape_manual(values = c("Ordinary gates" = 16, "Lowered gates" = 17), name = NULL) +
     facet_wrap(~panel, nrow = 1, scales = "free_x") +
     labs(x = "Net frequency (stimulated minus control, %)", y = NULL) +
@@ -448,8 +451,8 @@
   p <- ggplot(hexTbl, aes(x = .data$x, y = .data$y)) +
     geom_hex(bins = 50) +
     scale_fill_viridis_c(trans = "log10", name = "Cells") +
-    geom_vline(data = base, aes(xintercept = .data$gx), colour = "#D55E00", linewidth = 0.4) +
-    geom_hline(data = base, aes(yintercept = .data$gy), colour = "#D55E00", linewidth = 0.4)
+    geom_vline(data = base, aes(xintercept = .data$gx), colour = .acsScoreOrdinaryColour, linewidth = 0.4) +
+    geom_hline(data = base, aes(yintercept = .data$gy), colour = .acsScoreOrdinaryColour, linewidth = 0.4)
   if (!is.null(seg) && nrow(seg)) {
     p <- p + geom_segment(data = merge(seg, panels),
       aes(x = .data$x, xend = .data$xend, y = .data$y, yend = .data$yend),

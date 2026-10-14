@@ -107,7 +107,11 @@
     ) +
     .analysis_y_floor(c(-10, 10)) +
     ggplot2::scale_shape_manual(values = c(`rule applied` = 16, `rule not applied` = 1)) +
-    ggplot2::scale_colour_manual(values = c(default = "#0072B2", `shifted peak` = "#D55E00")) +
+    # Default StimGate in its method colour; the rule-on variant in brown, so
+    # neither is read as F-beta (blue) or Tailgate (green).
+    ggplot2::scale_colour_manual(values = c(
+      default = .analysis_method_colours[["stimgate"]], `shifted peak` = "#8C510A"
+    )) +
     ggplot2::labs(
       x = NULL, y = "StimGate − reference (percentage points)",
       shape = NULL, colour = "StimGate setting"

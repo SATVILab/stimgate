@@ -121,9 +121,9 @@
     geom_hex(bins = 50) +
     scale_fill_viridis_c(trans = "log10", name = "Cells") +
     geom_vline(data = lines[is.finite(lines$gx), ], aes(xintercept = .data$gx),
-      colour = "#D55E00", linewidth = 0.4) +
+      colour = "#7F7F7F", linewidth = 0.4) +
     geom_hline(data = lines[is.finite(lines$gy), ], aes(yintercept = .data$gy),
-      colour = "#D55E00", linewidth = 0.4) +
+      colour = "#7F7F7F", linewidth = 0.4) +
     facet_wrap(~panel, ncol = 6, axes = "all") +
     .analysis_theme() +
     labs(x = x, y = y)
@@ -183,9 +183,9 @@
       colour = "#D55E00", linewidth = 0.5
     ) +
     scale_y_sqrt() +
-    scale_colour_manual(values = c(stimulated = "#B2182B", unstimulated = "#2166AC"),
+    scale_colour_manual(values = c(stimulated = "#C2410C", unstimulated = "#1D4E89"),
       name = "Tube") +
-    scale_fill_manual(values = c(stimulated = "#B2182B", unstimulated = "#2166AC"),
+    scale_fill_manual(values = c(stimulated = "#C2410C", unstimulated = "#1D4E89"),
       name = "Tube") +
     facet_wrap(~donor, ncol = 4, scales = "free_y", axes = "all",
       labeller = ggplot2::as_labeller(labels)) +

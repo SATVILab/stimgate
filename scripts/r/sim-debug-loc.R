@@ -458,7 +458,10 @@
     )
 }
 
-# Colours, line types and widths of the diagnostic plots.
+# Colours, line types and widths of the diagnostic plots. The gate is
+# StimGate's method colour (orange, as in .analysis_method_colours); the
+# intermediate boundaries avoid the method colours, so F-beta (blue), Tailgate
+# (green) and manual lines drawn on the same pages stay distinct.
 .simDebugLocColours <- c(
   stim = "#C2410C", unstim = "#1D4E89",
   raw = "#A3A3A3", smoothed = "#111111",
@@ -470,8 +473,8 @@
     "xSum"
   ),
   colour = c(
-    "#8C8C8C", "#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#000000",
-    "#0072B2"
+    "#8C8C8C", "#999933", "#882255", "#8C510A", "#555555", "#E69F00",
+    "#000000"
   ),
   linetype = c(
     "dotted", "dotdash", "dashed", "longdash", "twodash", "solid", "44"
