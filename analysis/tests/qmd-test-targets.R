@@ -58,10 +58,12 @@
     "9b-real-compare-acs-cytof.qmd" = c(
       "test-signed-percentile-plots.R",
       "test-acs-cytof-gate.R", "test-acs-cytof-methods.R", "test-ratio-companion-plots.R",
-      "test-acs-cytof-paths.R"
+      "test-acs-cytof-paths.R", "test-acs-cytof-threshold-plots.R"
     ),
     "10-real-compare-acs-cytof-validation.qmd" = c(
-      "test-signed-percentile-plots.R", "test-acs-cytof-validation-plots.R", "test-acs-cytof-paths.R"
+      "test-signed-percentile-plots.R", "test-acs-cytof-validation-plots.R", "test-acs-cytof-paths.R",
+      "test-acs-cytof-f1.R", "test-acs-cytof-ccc-summary.R", "test-analysis-thesis-table.R",
+      "test-acs-cytof-scatter-stacked.R", "test-acs-cytof-scatter-alt.R"
     ),
     "2c-sim-test.qmd" = c(
       "test-sim-test-qmd.R", "test-sim-debug-loc.R", "test-sim-debug-compare.R"
@@ -76,13 +78,10 @@
     "13-real-debug-acs-cytof.qmd" = c(
       "test-acs-cytof-debug.R", "test-sim-debug-loc.R", "test-acs-cytof-gate.R"
     ),
-    "14-real-compare-omip111.qmd" = "test-omip111.R",
-    "14b-real-compare-omip111-shifted-peak.qmd" = c(
-      "test-omip111.R", "test-omip-shifted-peak.R"
-    ),
-    "15-real-compare-omip016.qmd" = "test-omip016.R",
-    "15b-real-compare-omip016-shifted-peak.qmd" = c(
-      "test-omip016.R", "test-omip-shifted-peak.R"
+    "14-real-compare-omip111.qmd" = c("test-omip111.R", "test-omip-thesis-plots.R"),
+    "15-real-compare-omip016.qmd" = c(
+      "test-omip016.R", "test-omip-thesis-plots.R", "test-omip016-thesis.R",
+      "test-omip016-figures.R"
     ),
     "16-explore-acs-cytof-cytpos.qmd" = c(
       "test-acs-cytof-explore-cytpos.R", "test-acs-cytof-paths.R"

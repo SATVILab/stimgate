@@ -14,12 +14,13 @@
                   c(FALSE, TRUE, FALSE), c(TRUE, FALSE, TRUE))
   colnames(manual) <- colnames(x)
   prepared <- list(input = list(stim = list(CD8 = list(
-    expression = x, manual = manual, author = !manual
+    expression = x, manual = manual, projected = !manual,
+    parent = matrix(TRUE, nrow(x), ncol(x), dimnames = dimnames(x))
   ))))
   results <- data.frame(
     strain = "C57", mouse = "M1", population = "CD8", marker = colnames(x),
     method = "StimGate", sampleStim = "stim", threshold = 2, gate = 2,
-    gateCyt = 1, countStim = 2, nCellStim = 4
+    gateCyt = 2, countStim = c(1, 2, 0), nCellStim = 4
   )
   list(prepared = prepared, results = results)
 }
@@ -59,14 +60,14 @@ test_that("OMIP-016 score adds TN and render-time classification metrics", {
   expect_equal(out$freq_bs, 50)
 })
 
-test_that("OMIP-111 reconstructs strict conditional calls against primary masks", {
+test_that("OMIP-111 scores strict per-cytokine calls on each cytokine's parent", {
   env <- .omipReportTestEnv()
   fixture <- .omip111ReportFixture()
   out <- env$.omip111Classification(fixture$prepared, fixture$results)
-  expect_equal(out$tp, c(2, 1, 1))
-  expect_equal(out$fp, c(0, 1, 1))
-  expect_equal(out$fn, c(0, 1, 0))
-  expect_equal(out$tn, c(2, 1, 2))
+  expect_equal(out$tp, c(1, 1, 0))
+  expect_equal(out$fp, c(0, 1, 0))
+  expect_equal(out$fn, c(1, 1, 1))
+  expect_equal(out$tn, c(2, 1, 3))
   expect_equal(out$tp + out$fp, fixture$results$countStim)
   expect_equal(out$n, rep(4, 3))
   package_calls <- stimgate:::.getPosIndByChnl(
@@ -90,13 +91,20 @@ test_that("OMIP-111 reconstructs strict conditional calls against primary masks"
   failed <- env$.omip111Classification(fixture$prepared, comparator)
   expect_true(all(is.na(failed$precision)))
   expect_true(all(is.na(failed$specificity)))
+  # Cells outside a cytokine's CD44 parent are not scored for that cytokine.
+  fixture$prepared$input$stim$CD8$parent[4, "IFNg"] <- FALSE
+  fixture$results$countStim[1] <- 0
+  fixture$results$nCellStim[1] <- 3
+  out <- env$.omip111Classification(fixture$prepared, fixture$results)
+  expect_equal(out$n, c(3, 4, 4))
+  expect_equal(unlist(out[1, c("tp", "fp", "fn", "tn")]), c(tp = 0, fp = 0, fn = 1, tn = 2))
 })
 
 test_that("OMIP-111 refuses missing fields, incomplete gates and count mismatches", {
   env <- .omipReportTestEnv()
   fixture <- .omip111ReportFixture()
   bad <- fixture$results
-  bad$countStim[1] <- 1
+  bad$countStim[1] <- 3
   expect_error(env$.omip111Classification(fixture$prepared, bad), "marginal counts")
   bad <- fixture$results
   bad$gateCyt <- NULL
@@ -159,20 +167,19 @@ test_that("OMIP correlations reuse population CCC and retain finite-pair coverag
     expect_true(all(is.na(table$pearson)))
     expect_true(all(is.na(table$ccc)))
   }
-  data <- data.frame(method = rep(c("StimGate default", "StimGate shifted peak"), each = 4),
+  data <- data.frame(method = rep(c("StimGate", "Tailgate"), each = 4),
     population = "CD8", strain = rep(c("C57", "BALB"), 4), marker = "TNF",
     est = rep(x, 2), ref = rep(y, 2))
   table <- env$.omipFrequencyCorrelationTable(data,
     c("strain", "population", "marker"), "est", "ref", "population")
   expect_equal(table$n[table$scope == "pooled"], c(4, 4))
   expect_true(all(is.na(table$ccc[table$scope == "stratum"])))
-  expect_setequal(table$method, c("StimGate default", "StimGate shifted peak"))
+  expect_setequal(table$method, c("StimGate", "Tailgate"))
 })
 
 test_that("new OMIP report chunks guard plotting and missing results", {
   root <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork = TRUE)
-  files <- c("14-real-compare-omip111.qmd", "14b-real-compare-omip111-shifted-peak.qmd",
-             "15-real-compare-omip016.qmd", "15b-real-compare-omip016-shifted-peak.qmd")
+  files <- c("14-real-compare-omip111.qmd", "15-real-compare-omip016.qmd")
   for (file in files) {
     lines <- readLines(file.path(root, "analysis", file), warn = FALSE)
     labels <- c(if (startsWith(file, "14")) "classification-tables" else "classification",

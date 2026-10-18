@@ -58,6 +58,9 @@ source(file.path(scripts_r_dir, "sim-debug-loc.R"))
 source(file.path(scripts_r_dir, "acs_cytof-debug.R"))
 source(file.path(scripts_r_dir, "omip016-prepare.R"))
 source(file.path(scripts_r_dir, "omip016-methods.R"))
+source(file.path(scripts_r_dir, "omip-thesis-plots.R"))
+source(file.path(scripts_r_dir, "omip016-thesis.R"))
+source(file.path(scripts_r_dir, "omip016-figures.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations", "RUN_SIMULATIONS", FALSE
@@ -103,7 +106,11 @@ StimGate uses Analysis 9b's settings: `bwMtd = "nrd0"` with
 `bwNcellMax = 1e4`, shared per-marker bandwidths, `gateCombn = "min"`,
 `minCell = 100`, threshold clustering on, cytokine-positive refinement off
 (one gate per marker, as the manual gates and the comparators have),
-`locThresholdMethod = "cap"` and `biasUns` equal to the shared bandwidth. The
+`locThresholdMethod = "cap"`, `biasUns` equal to the shared bandwidth and the
+shifted-peak rule (`locShiftedPeakRef = TRUE`) used in every flow-cytometry
+analysis: when the stimulated main peak lies more than two bandwidths to the
+right of the unstimulated main peak, the search for responding cells starts
+above the unstimulated peak rather than above the stimulated one. The
 comparison scores the final `loc_minClust` gates. Tailgate uses the settings selected in the simulations (Analyses 6 and 7):
 the stimulated tube, automatic tolerance (1% of the largest absolute first
 derivative of the density) and a bias of 0.15 added to the cutpoint. F-beta
@@ -236,7 +243,24 @@ knitr::kable(bs[, c("stim", "population", "count_primary", "count_variant")],
 
 The difference is small for the unstimulated and Gag tubes but large for SEB,
 where cytokine-bright CD8 T cells fall inside the CD4 gates' sloped lower
-boundaries. The left-to-right reading is used throughout.
+boundaries. The left-to-right reading is used throughout. The paper settles
+the choice: its Figure 1 legend obtains total CD4+ cells from the CD4 gates
+"combined by the operator 'OR' and the exclusion of the CD8 cells", which is
+the left-to-right reading. The `&`-before-`|` table above is therefore not a
+plausible alternative reference, only a check of how much the reading matters.
+
+The polygons are tested as straight-edged shapes on the compensated linear
+scale. FlowJo draws them on a biexponential display (the paper's axes run
+0, 10^2^, ..., 10^5^), where the sloped edges of the CD3 and CD4 gates are
+straight, so they bend slightly on the linear scale. The workspace parser does
+not decode the display settings, so this cannot be reproduced exactly. In a
+one-off check (2026-10-16), the gates were re-applied with vertices and data on
+two display-like scales (`asinh(x / 150)` and a logicle with `w = 0.5`,
+`m = 4.5`). CD4+ counts changed by about 40 cells in the unstimulated and Gag
+tubes and about 210 in SEB. The largest change in a manual
+background-subtracted frequency was SEB MIP-1beta (5.38% to 5.42-5.45%), with
+every other marker changing by 1% or less of its value. All methods are scored
+against the same reference, so this does not affect the comparison.
 
 ### Manual reference
 
@@ -409,9 +433,9 @@ if (isTRUE(run_plots)) {
     geom_point(size = 2.5) +
     facet_wrap(~stim, scales = "free") +
     .analysis_theme() +
-    labs(x = "Manual background-subtracted frequency (%)",
-         y = "Method background-subtracted frequency (%)",
-         colour = "Method", shape = "Method")
+    labs(x = "Background-subtracted frequency\n(manual gating, %)",
+         y = "Background-subtracted frequency\n(automated gating, %)",
+         colour = NULL, shape = NULL)
   .analysis_print_save_fig(p, file.path(.analysis_fig_dir(c(fig_key, "frequency")),
                                         "freq_bs-vs-manual.png"))
 }
@@ -464,6 +488,124 @@ if (isTRUE(run_plots) && exists("scored") && nrow(scored) > 0L) {
   .analysis_report_table(correlations, c(fig_key, "frequency-correlations.csv"),
     "Frequency association and population-moment Lin concordance against the manual reference.")
   .omipAgreementKable(.omipAgreementOverview(report_scored, correlations, character()))
+}
+```
+
+### Thesis heatmaps and stacked scatter figures
+
+F1 compares cell masks on the same stimulated cells against the supplied author
+reference. Heatmaps show mean finite per-tube F1 and frequency PCC/CCC, with
+finite/intended coverage saved alongside the figures. Structurally unmeasured
+combinations stay blank; observed undefined scores are labelled NA. Viridis
+matches Analysis 7. Scatter panels retain the existing frequency estimand and
+cohort.
+
+```{r}
+#| label: thesis-stacked-real-comparison
+#| include: false
+if (isTRUE(run_plots) && exists("report_scored") && nrow(report_scored) > 0L) {
+  thesis_rows <- .omip016ThesisRows(report_scored)
+  .omipThesisFigures(
+    thesis_rows,
+    .analysis_project_dir("output-thesis", c("results", "qmd15", "stacked"), root_dir),
+    referenceLabel = "manual gating, author rectangle gates",
+    methodLabels = c(stimgate = "StimGate", fbeta = "F-beta", tailgate = "Tailgate"),
+    conditionLabels = c(gag = "Gag peptides", seb = "SEB")
+  )
+}
+```
+
+
+### Thesis figure by stimulation
+
+For each stimulation (rows; SEB responses are much larger than Gag), the
+correlation across the five cytokines between each method's and the manual
+net frequencies (one tile per method), beside automated against manual net
+frequencies (one panel per method, one point per cytokine, with the identity
+line). With one macaque, cytokines are the only replicates, so these
+correlations describe agreement across cytokines within one sample, not
+between independent donors. Saved to `output-thesis/results/qmd15/` in a CCC
+and a Pearson version.
+
+```{r}
+#| label: thesis-by-stimulation
+#| results: asis
+#| echo: false
+if (isTRUE(run_plots) && exists("report_scored") && nrow(report_scored) > 0L) {
+  stim_rows <- .omip016ThesisRows(report_scored)
+  stim_dir <- .analysis_project_dir("output-thesis", c("results", "qmd15"), root_dir)
+  for (metric in c("ccc", "pearson")) {
+    stim_figure <- .omip016ThesisStimFigure(stim_rows, metric)
+    stim_paths <- .analysis_save_thesis_fig(stim_figure,
+      file.path(stim_dir, paste0("omip016-by-stimulation-", metric)), 130)
+    cat("![", metric, " by stimulation](", knitr::image_uri(stim_paths[[2]]), ")\n\n", sep = "")
+  }
+  print(knitr::kable(attr(stim_figure, "correlations"), digits = 3))
+}
+```
+
+
+### Figure 1E redrawn
+
+Figure 1E of the OMIP-016 paper shows live CD3+ CD4+ T cells on the axes of
+each manual response gate: CD154 and MIP-1beta against IFN-gamma, and
+IFN-gamma, TNF-alpha and IL-2 against SSC-A. It is redrawn here for every
+tube from the prepared data, with the re-applied author rectangles (red) and
+their frequencies (% of CD4 T cells). Axes use the analysis scale,
+`asinh(x / 150)` of compensated fluorescence (ticks in raw units) with SSC-A
+linear, rather than FlowJo's biexponential display. Points are coloured by
+the number of cells in their bin, as in FlowJo's pseudocolour plots. The
+paper prints no frequencies and the workspace stores no counts, so this is a
+visual check of the reconstruction only.
+
+```{r}
+#| label: author-figure
+#| results: asis
+#| echo: false
+if (isTRUE(run_plots)) {
+  marker_map <- .omip016MarkerMap(path_small)
+  author_data <- .omip016FigurePanels(omip016_prep, manual_thresholds)
+  author_dir <- .analysis_fig_dir(c(fig_key, "author-figures"), root_dir)
+  path_png <- file.path(author_dir, "figure-1e.png")
+  ggplot2::ggsave(path_png, .omip016AuthorFigure(author_data, marker_map),
+    width = 34, height = 20, units = "cm", dpi = 150, bg = "white")
+  cat("![Figure 1E redrawn](", knitr::image_uri(path_png), ")\n\n", sep = "")
+}
+```
+
+### Automated and manual gates in the Figure 1E layout
+
+The stimulated tubes on Figure 1E's axes, with every method's gate (one
+cutoff per marker, as for OMIP-111 in Analysis 14):
+
+- **Bivariate**: CD4 T cells shaded grey by density. The grey frame is the
+  authors' rectangle, with its cutoff on the response marker dashed black.
+  Each method's gate is a vertical line (cells strictly above it are
+  positive) across the rectangle's y interval, coloured by method.
+- **Univariate**: histograms of each marker in CD4 T cells (square-root
+  count scale), with each method's gate and the authors' cutoff (dashed).
+
+Labels are stimulated-tube percentages of CD4 T cells, without background
+subtraction. The manual figure is the authors' 2-D gate count; each method's
+count must equal its scored count.
+
+```{r}
+#| label: method-author-figures
+#| results: asis
+#| echo: false
+if (isTRUE(run_plots)) {
+  figure_methods <- c(stimgate = "StimGate", fbeta = "F-beta", tailgate = "Tailgate")
+  figure_colours <- c(StimGate = "#0072B2", `F-beta` = "#D55E00", Tailgate = "#009E73")
+  method_data <- .omip016MethodFigureData(omip016_prep, manual_thresholds, scored, figure_methods)
+  method_dir <- .analysis_fig_dir(c(fig_key, "method-figures"), root_dir)
+  path_bi <- file.path(method_dir, "bivariate.png")
+  ggplot2::ggsave(path_bi, .omip016MethodsFigure(method_data, marker_map, figure_colours),
+    width = 34, height = 15, units = "cm", dpi = 150, bg = "white")
+  path_uni <- file.path(method_dir, "univariate.png")
+  ggplot2::ggsave(path_uni, .omip016UnivariateFigure(method_data, figure_colours),
+    width = 34, height = 13, units = "cm", dpi = 150, bg = "white")
+  cat("![Bivariate](", knitr::image_uri(path_bi), ")\n\n",
+    "![Univariate](", knitr::image_uri(path_uni), ")\n\n", sep = "")
 }
 ```
 
@@ -558,8 +700,10 @@ if (isTRUE(run_plots)) {
   differences between methods cannot be generalised.
 - The manual reference is the authors' gating re-applied from a decoded
   binary workspace without FlowJo-reported counts to check against. The CD4
-  definition depends on the Boolean evaluation order (see above); the SEB
-  reference changes materially under the alternative.
+  definition depends on the Boolean evaluation order; the paper's Figure 1
+  legend confirms the left-to-right reading used here (see above). Gates are
+  applied on the linear rather than FlowJo's display scale, which changes
+  manual frequencies by about 1% or less.
 - Only CD4 T cells carry manual response gates in these samples; the
   workspace's CD8 tables refer to populations absent from the deposited
   samples.
