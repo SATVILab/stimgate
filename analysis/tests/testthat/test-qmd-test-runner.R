@@ -8,14 +8,14 @@
 test_that("QMD registry covers all top-level documents with real test files", {
   loaded <- .load_qmd_test_targets()
   targets <- loaded$env$.qmd_test_targets(loaded$root_dir)
-  expect_length(targets, 24L)
+  expect_length(targets, 22L)
   expect_setequal(names(targets), list.files(
     file.path(loaded$root_dir, "analysis"), pattern = "[.]qmd$"
   ))
   expect_identical(targets[[11]], c(
     "test-signed-percentile-plots.R",
     "test-acs-cytof-gate.R", "test-acs-cytof-methods.R", "test-ratio-companion-plots.R",
-    "test-acs-cytof-paths.R"
+    "test-acs-cytof-paths.R", "test-acs-cytof-threshold-plots.R"
   ))
   for (target in c(2L, 3L, 7L, 9L, 11L)) {
     expect_true("test-ratio-companion-plots.R" %in% targets[[target]])
