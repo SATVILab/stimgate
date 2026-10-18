@@ -356,27 +356,6 @@
   if (is.finite(width) && width > 0) width else NA_real_
 }
 
-# Confusion-matrix counts (nTruePos, nFalsePos, nFalseNeg, nTrueNeg) of each
-# row's stimulated tube at that row's threshold, against the simulation labels.
-# Cells are classified on the single-precision GatingSet expression StimGate
-# gated, with the package's strict `x > gate` rule
-# (`.simCompareConfusionCounts()`); rows without a finite threshold get NA.
-.simBandwidthAddConfusionCounts <- function(tbl, gs, labelsList, chnl = "F1") {
-  expr <- list()
-  counts <- lapply(seq_len(nrow(tbl)), function(i) {
-    ind <- as.character(tbl$ind[[i]])
-    if (is.null(expr[[ind]])) {
-      expr[[ind]] <<- as.numeric(flowCore::exprs(
-        flowWorkspace::gh_pop_get_data(gs[[as.integer(ind)]], "root")
-      )[, chnl])
-    }
-    tibble::as_tibble(.simCompareConfusionCounts(
-      expr[[ind]], labelsList[[as.integer(ind)]], tbl$threshold[[i]]
-    ))
-  })
-  dplyr::bind_cols(tbl, dplyr::bind_rows(counts))
-}
-
 .simBandwidthBsFreq <- function(
   nSample,
   nMarker,
@@ -438,17 +417,10 @@
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
   gateCombn = "min",
-  calcCytPosGates = FALSE,
-  confusionCounts = FALSE
+  calcCytPosGates = FALSE
 ) {
   if (!is.logical(clusterGates) || length(clusterGates) != 1L || is.na(clusterGates)) {
     stop("clusterGates must be a single TRUE or FALSE.")
-  }
-  if (isTRUE(confusionCounts) && !exists(".simCompareConfusionCounts", mode = "function")) {
-    stop(
-      "confusionCounts = TRUE requires .simCompareConfusionCounts(). ",
-      "Source scripts/r/sim-compare-freq_bs.R before running this scenario."
-    )
   }
 
   bwMtdGate <- .simBandwidthAdaptiveBwMtd(
@@ -756,9 +728,6 @@
         propBsTblEst,
         by = c("sample", "ind", "chnl")
       )
-    if (isTRUE(confusionCounts)) {
-      comparisonTbl <- .simBandwidthAddConfusionCounts(comparisonTbl, gs, labelsList)
-    }
 
     comparisonTbl |>
       dplyr::mutate(

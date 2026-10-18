@@ -324,7 +324,8 @@
 # when given, holds the true frequency `y` per row and transformation, drawn as
 # a thick grey line. F1 (`measure = "f1"`) is on 0-1 in a grid with x free per
 # column; frequencies are in percent with x and y free per panel
-# (`facet_wrap`, strips naming row and transformation). One method alone gets
+# (`facet_wrap`, strips naming the row on one line and the transformation on
+# the next). One method alone gets
 # no legend.
 .simCompareThesisBandPlot <- function(d, rows, x_scale, x_lab,
                                       measure = c("frequency", "f1"),
@@ -338,6 +339,11 @@
   d$transformation <- .analysis_trans_factor(d$transformation)
   if (!is.null(truth)) truth$transformation <- .analysis_trans_factor(truth$transformation)
   series <- c("method", rows, "transformation")
+  d$.row_label <- interaction(d[rows], sep = ", ", lex.order = TRUE, drop = TRUE)
+  if (!is.null(truth)) {
+    truth$.row_label <- factor(do.call(paste, c(lapply(truth[rows], as.character), sep = ", ")),
+      levels(d$.row_label))
+  }
   single <- .analysis_band_single(d, "x", series)
   labs <- scales::label_parse()(.simCompareThesisMethodLabels()[methods])
   point <- function(data, position = "identity") {
@@ -361,10 +367,11 @@
     } else {
       # Frequencies differ by orders of magnitude between transformations
       # (e.g. gamma under a shift), so each panel gets its own range.
-      ggplot2::facet_wrap(ggplot2::vars(!!!rlang::syms(c(rows, "transformation"))),
-        ncol = nlevels(droplevels(d$transformation)), scales = "free",
-        labeller = ggplot2::labeller(.multi_line = FALSE))
+      # Strips: the row label(s) on one line, the transformation below it.
+      ggplot2::facet_wrap(ggplot2::vars(.data$.row_label, .data$transformation),
+        ncol = nlevels(droplevels(d$transformation)), scales = "free")
     }) +
+    (if (identical(measure, "frequency")) ggplot2::expand_limits(y = 0)) +
     x_scale +
     (if (identical(measure, "f1")) ggplot2::scale_y_continuous(limits = c(0, 1)) else
       ggplot2::scale_y_continuous(labels = .analysis_label_number)) +

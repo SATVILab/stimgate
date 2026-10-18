@@ -518,27 +518,6 @@
   )))
 }
 
-# Confusion-matrix counts saved with a finite gate must classify every
-# stimulated cell and reproduce the cells StimGate itself gated (TP + FP =
-# nPosStim). Results without counts (earlier semantics, other analyses) pass.
-.simBandwidthCheckConfusionCounts <- function(tbl) {
-  cols <- c("nTruePos", "nFalsePos", "nFalseNeg", "nTrueNeg")
-  if (!all(c(cols, "nPosStim", "nCellStim") %in% names(tbl))) {
-    return(invisible(TRUE))
-  }
-  counted <- is.finite(tbl$threshold) & stats::complete.cases(tbl[cols])
-  if (any(is.finite(tbl$threshold) & !counted)) {
-    stop("Missing confusion-matrix counts for a finite final gate.")
-  }
-  sel <- tbl[counted, , drop = FALSE]
-  total <- sel$nTruePos + sel$nFalsePos + sel$nFalseNeg + sel$nTrueNeg
-  if (any(total != sel$nCellStim, na.rm = TRUE) ||
-    any(sel$nTruePos + sel$nFalsePos != sel$nPosStim, na.rm = TRUE)) {
-    stop("Confusion-matrix counts do not reproduce the stimulated cells gated.")
-  }
-  invisible(TRUE)
-}
-
 #' Analysis 2 final sample-level results and scenario summary
 #'
 #' @param tbl data.frame Collated analysis 2 outputs.
@@ -560,8 +539,7 @@
       "iter", "sample", "ind", "method",
       "propRespTruth", "propRespEst", "threshold",
       dplyr::any_of(c(
-        "locGenerated", "locGeneratedDirect", "locSource", "locReason",
-        "nCellStim", "nPosStim", "nTruePos", "nFalsePos", "nFalseNeg", "nTrueNeg"
+        "locGenerated", "locGeneratedDirect", "locSource", "locReason"
       ))
     ) |>
     dplyr::mutate(
@@ -569,7 +547,6 @@
         is.finite(.data$propRespTruth) & .data$propRespTruth > 0 &
         is.finite(.data$propRespEst)
     )
-  .simBandwidthCheckConfusionCounts(results_raw)
   if (anyDuplicated(results_raw[c("sim_id", "iter", "ind")]) > 0L) {
     stop(
       "Expected exactly one final loc_sample result per sim_id/iter/ind, ",

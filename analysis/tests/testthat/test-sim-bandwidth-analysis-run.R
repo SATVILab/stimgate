@@ -593,44 +593,6 @@ test_that("Analysis 2 scenario treats NA bw and bias_uns as automatic", {
   expect_identical(auto$bwFallback, "auto")
 })
 
-test_that("2a saves confusion-matrix counts that reproduce the gated cells", {
-  env <- .load_bw_run_env()
-  source(file.path(root_dir, "scripts", "r", "sim-compare-freq_bs.R"), local = env)
-  # counts come from the GatingSet expression with the strict x > gate rule
-  x <- c(0.5, 1, 2, 3, 4, 5)
-  ff <- flowCore::flowFrame(matrix(x, ncol = 1, dimnames = list(NULL, "F1")))
-  gs <- flowWorkspace::GatingSet(flowCore::flowSet(list(a = ff, b = ff)))
-  labels <- list(rep("gn", 6), c("gn", "gn", "gn", "gp", "gp", "gn"))
-  tbl <- tibble::tibble(ind = c("2", "2", "1"), threshold = c(3, NA, 1))
-  res <- env$.simBandwidthAddConfusionCounts(tbl, gs, labels)
-  expect_identical(res$nTruePos, c(1L, NA, 0L))
-  expect_identical(res$nFalsePos, c(1L, NA, 4L))
-  expect_identical(res$nFalseNeg, c(1L, NA, 0L))
-  expect_identical(res$nTrueNeg, c(3L, NA, 2L))
-
-  final <- tibble::tibble(
-    sim_id = 1L, iter = 1L, ind = c("2", "4"), sample = c("1", "2"),
-    method = "loc_sample", threshold = c(3, NA), propRespTruth = 0.1,
-    propRespEst = c(0.1, NA), nCellStim = 6, nPosStim = c(2L, NA),
-    nTruePos = c(1L, NA), nFalsePos = c(1L, NA), nFalseNeg = c(1L, NA), nTrueNeg = c(3L, NA)
-  )
-  out <- env$.simBandwidthFreqBsGlobalCollate(final, "sim_id")$bw_tbl_results_raw
-  expect_identical(out$nTruePos, c(1L, NA))
-  expect_error(env$.simBandwidthFreqBsGlobalCollate(
-    dplyr::mutate(final, nPosStim = c(3L, NA)), "sim_id"), "reproduce")
-  expect_error(env$.simBandwidthFreqBsGlobalCollate(
-    dplyr::mutate(final, nTruePos = NA_integer_), "sim_id"), "Missing confusion")
-  # results saved before the counts existed still collate
-  expect_no_error(env$.simBandwidthFreqBsGlobalCollate(
-    dplyr::select(final, -dplyr::starts_with("nTrue"), -dplyr::starts_with("nFalse")), "sim_id"))
-  bare <- .load_bw_run_env()
-  expect_error(
-    bare$.simBandwidthBsFreq(nSample = 1, nMarker = 1, nCondition = 2, nCluster = 2, nIter = 1,
-      biasUns = 0, confusionCounts = TRUE),
-    "requires .simCompareConfusionCounts"
-  )
-})
-
 test_that("2a thesis band figures summarise the focused scenarios against bandwidth", {
   env <- .load_bw_run_env()
   for (fn in c("analysis-plot-style.R", "sim-bandwidth-analysis-plot.R", "sim-compare-thesis.R",
@@ -644,9 +606,6 @@ test_that("2a thesis band figures summarise the focused scenarios against bandwi
   )
   raw$propRespEst <- raw$prob_response * raw$sample / 5
   raw$valid_estimate <- raw$sample != 10
-  raw$nTruePos <- 8L; raw$nFalsePos <- 2L; raw$nFalseNeg <- 2L; raw$nTrueNeg <- 88L
-  raw$nTruePos[raw$sample == 1] <- 0L; raw$nFalsePos[raw$sample == 1] <- 0L
-  raw$nFalseNeg[raw$sample == 1] <- 0L
   s <- env$.simBandwidthThesisSummary(raw)
   expect_equal(nrow(s), 2L * 2L * 2L * 2L)
   expect_setequal(s$n_cell, c(5e3, 1e5))
@@ -654,26 +613,21 @@ test_that("2a thesis band figures summarise the focused scenarios against bandwi
   # frequency percentiles over valid estimates only, in percent
   expect_equal(unique(s$freq_median), 100 * 0.002 * 5 / 5)
   expect_equal(unique(s$n_valid), 9L)
-  # F1 = 2TP / (2TP + FP + FN), undefined (not zero) with nothing to find
-  expect_equal(unique(s$f1_median), 0.8)
-  expect_equal(unique(s$n_f1_defined), 9L)
-  no_counts <- env$.simBandwidthThesisSummary(dplyr::select(raw, -nTruePos))
-  expect_true(all(is.na(no_counts$f1_median)))
 
-  for (measure in c("f1", "frequency")) {
-    p <- env$.simBandwidthThesisPlot(s, measure, "thin")
+  for (lines in c("dotted", "thin")) {
+    p <- env$.simBandwidthThesisPlot(s, lines)
     b <- ggplot2::ggplot_build(p)
     expect_identical(levels(p$data$cells), c("5,000 cells", "100,000 cells"))
-    expect_identical(levels(p$data$separation), c("Low separation", "High separation"))
+    expect_identical(levels(p$data$separation), c("low separation", "high separation"))
     expect_equal(nrow(b$layout$layout), 4L * 2L)
-    expect_s3_class(p$facet, if (measure == "f1") "FacetGrid" else "FacetWrap")
+    expect_s3_class(p$facet, "FacetWrap")
+    expect_identical(levels(p$data$.row_label)[1:2],
+      c("5,000 cells, low separation", "5,000 cells, high separation"))
     expect_identical(p$labels$x, "Bandwidth")
     expect_identical(p$theme$legend.position, "none")
+    expect_true(any(vapply(p$layers, function(l) inherits(l$geom, "GeomHline"), logical(1))))
   }
-  freq <- env$.simBandwidthThesisPlot(s, "frequency", "dotted")
-  expect_true(any(vapply(freq$layers, function(l) inherits(l$geom, "GeomHline"), logical(1))))
   qmd <- paste(readLines(file.path(root_dir, "analysis", "2a-sim-bw-freq_bs-global.qmd")), collapse = "\n")
   expect_match(qmd, 'thesis_parts <- c("results", "qmd2a", fig_key[-1L])', fixed = TRUE)
   expect_match(qmd, '"sim-bandwidth-thesis.R"', fixed = TRUE)
-  expect_match(qmd, "confusionCounts = TRUE", fixed = TRUE)
 })

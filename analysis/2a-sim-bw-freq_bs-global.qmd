@@ -95,7 +95,7 @@ analysis_run_id <- .get_qmd_param_env(
   NULL
 )
 analysis_key <- c("sim", "bw", "freq_bs", "global")
-analysis_semantics_version <- "global-bw-freq-v17"
+analysis_semantics_version <- "global-bw-freq-v16"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 # "draft" (current default) or "final" sample/dataset counts; dev and quick win.
@@ -407,9 +407,7 @@ scenario_settings <- list(
   clusterGates = cluster_gates,
   locEnforceShapeThreshold = loc_enforce_shape_threshold,
   calcCytPosGates = calc_cyt_pos_gates,
-  locThresholdMethod = loc_threshold_method,
-  # Label-based confusion-matrix counts of each final gate, for F1.
-  confusionCounts = TRUE
+  locThresholdMethod = loc_threshold_method
 )
 
 analysis_required_params <- list(
@@ -1766,18 +1764,13 @@ Columns are transformations; rows are the number of cells and, within it,
 the separation, so low and high separation sit on adjacent rows. Bands use the
 same alpha and line styles as Analyses 7 and 8 (`.analysis_band_layers()`).
 
-- `f1/`: the $F_1$ score of the final gate against the simulated labels
-  (from confusion-matrix counts saved with each gate), on 0 to 1
-  (`sim-bw-f1-bands-dotted`, `sim-bw-f1-bands-thin`).
-- `frequency/`: the estimated background-subtracted response frequency in
-  percent, with the true frequency (0.2%) as a thick grey line and each panel's
-  x and y ranges set by its own data (each strip names the cells, separation
-  and transformation) (`sim-bw-frequency-bands-dotted`,
-  `sim-bw-frequency-bands-thin`).
-
-The `-dotted` versions draw the 10th and 90th percentiles as dotted lines; the
-`-thin` versions as thin solid lines, lighter than the median line and darker
-than the band.
+The figures in `frequency/` show the estimated background-subtracted response
+frequency in percent, with the true frequency (0.2%) as a thick grey line and
+each panel's x and y ranges set by its own data (each strip names the cells,
+separation and transformation). The `-dotted` version
+(`sim-bw-frequency-bands-dotted`) draws the 10th and 90th percentiles as
+dotted lines; the `-thin` version (`sim-bw-frequency-bands-thin`) as thin
+solid lines, lighter than the median line and darker than the band.
 
 ```{r}
 #| label: thesis-figures
@@ -1786,14 +1779,12 @@ if (isTRUE(run_plots)) {
   thesis_parts <- c("results", "qmd2a", fig_key[-1L])
   thesis_dir <- function(...) .analysis_project_dir("output-thesis", c(thesis_parts, ...), root_dir)
   thesis_summary <- .simBandwidthThesisSummary(bw_tbl_results_raw)
-  for (measure in c("f1", "frequency")) {
-    for (band_lines in c("dotted", "thin")) {
-      .analysis_save_thesis_fig(
-        .simBandwidthThesisPlot(thesis_summary, measure, band_lines),
-        file.path(thesis_dir(measure), paste0("sim-bw-", measure, "-bands-", band_lines)),
-        height = 200
-      )
-    }
+  for (band_lines in c("dotted", "thin")) {
+    .analysis_save_thesis_fig(
+      .simBandwidthThesisPlot(thesis_summary, band_lines),
+      file.path(thesis_dir("frequency"), paste0("sim-bw-frequency-bands-", band_lines)),
+      height = 200
+    )
   }
 }
 ```

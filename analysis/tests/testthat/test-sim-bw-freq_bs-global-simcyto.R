@@ -36,7 +36,6 @@ test_that("Analysis 2a executes its original bandwidth and fixed-bias design", {
   eval(parse(text = chunk("bw-manual-settings")), envir = env)
 
   expect_equal(env$scenario_settings$nSample, 200)
-  expect_true(env$scenario_settings$confusionCounts)
   # The thesis subset (Analysis 6's design at 0.2% response) is already in
   # the grid: 3 transformations x 2 separations x 2 cell counts x 10 bandwidths.
   source(file.path(root_dir, "scripts", "r", "sim-bandwidth-thesis.R"), local = env)

@@ -890,11 +890,11 @@ Do not restyle bands per analysis. Analysis 7 saves its response-probability
 frequency layout in all three versions to `frequency/bands/`; Analysis 8 saves
 F1 and frequency against the shift size, one figure per separation and cell
 count, to `<shift type>/bands/` (`.simCompareThesisMismatchPlot()`); Analysis
-2a (`sim-bandwidth-thesis.R`, `results/qmd2a/`) plots StimGate's F1 and
-frequency against the bandwidth for Analysis 6's focused design (0.2%
-response, low/high separation, 5k/100k cells, low bias), rows cells then
-separation. 2a's F1 uses label-based confusion-matrix counts saved with each
-gate (`confusionCounts = TRUE`, validated against `nPosStim` at collation).
+2a (`sim-bandwidth-thesis.R`, `results/qmd2a/`) plots StimGate's frequency
+against the bandwidth for Analysis 6's focused design (0.2% response, low/high
+separation, 5k/100k cells, low bias), rows cells then separation. Frequency
+band panels have their own x and y ranges (`facet_wrap`); F1 band panels share
+0-1 in a grid.
 
 ### Thesis tables
 
