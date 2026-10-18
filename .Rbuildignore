@@ -18,8 +18,10 @@
 ^_tmp$
 ^docs/
 ^docs$
-^_output/
-^_output$
+^_output/general/
+^_output/general$
+^_output/thesis/
+^_output/thesis$
 ^_projr\.yml$
 ^README\.Rmd$
 ^_dependencies\.R$

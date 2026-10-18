@@ -1382,7 +1382,12 @@ setting, with response probabilities from highest (top) to lowest:
   cells against the response probability, as the estimated over the true
   frequency, 1 (grey line) being correct
   (`sim-compare-frequency-by-cells-<separation>-separation`), because the
-  response probabilities differ by orders of magnitude.
+  response probabilities differ by orders of magnitude. Every panel uses the
+  same linear 0–4x display (0x and 2x are equally far from 1x), and response
+  probabilities occupy equally spaced numeric positions. The companion
+  `sim-compare-frequency-by-cells-bands-<separation>-separation` uses shaded
+  10th–90th percentile bands with pale boundary lines. Values outside 0–4x
+  remain in the summaries but lie outside this figure's display.
 - `thresholds/`: outline histograms of each method's thresholds over the
   stimulated tube's density (grey; a seeded 100,000-cell reference simulation
   of the biological setting, scaled to the tallest threshold bin), with a rug
@@ -1424,6 +1429,11 @@ if (isTRUE(run_plots)) {
         stem(thesis_dir("f1", "percentiles"), paste0("f1-percentiles", suffix)), height = h)
       .analysis_save_thesis_fig(.simCompareThesisPctPlot(thesis_pct, pos, "frequency", lay),
         stem(thesis_dir("frequency"), paste0("frequency", suffix)), height = h)
+      if (identical(lay, "cells")) {
+        .analysis_save_thesis_fig(
+          .simCompareThesisPctPlot(thesis_pct, pos, "frequency", lay, intervals = "bands"),
+          stem(thesis_dir("frequency"), "frequency-by-cells-bands"), height = h)
+      }
     }
     thr <- function(data, ...) {
       .simCompareThesisThresholdPlot(data, threshold_reference_densities, pos, ...)
