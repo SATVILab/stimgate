@@ -1161,6 +1161,9 @@ add_bw_labs <- function(.data) {
 # towards the median; comparison figures (with a `method` column) draw each
 # method's seven percentiles as lines. Percentiles are calculated before the
 # signed display scale is applied. Facets retain scenario dimensions.
+# Median colour of single-method signed-percentile figures (BrBG teal).
+.simBandwidthSignedMedianColour <- "#01665E"
+
 .simBandwidthSignedPercentilePlot <- function(
     tbl, x = "bw", x_label = "Bandwidth", x_log = FALSE,
     by_prob = FALSE, facet = NULL, mcse = FALSE,
@@ -1252,11 +1255,22 @@ add_bw_labs <- function(.data) {
     bands <- dplyr::bind_rows(lapply(seq_len(mid - 1L), wide))
     bands$band_group <- interaction(bands$curve, bands$band, drop = TRUE)
     median_tbl <- long[long$percentile == labels[mid], , drop = FALSE]
-    fills <- stats::setNames(utils::tail(c("#C7EAE5", "#80CDC1", "#35978F"), mid - 1L), band_labels)
+    # Shared band style (`.analysis_band_layers()`): each band is the median
+    # colour at `.analysis_band_alpha`, so nested bands darken inwards as if
+    # stacked; opaque blends keep one legend key per range. The outermost
+    # range is edged by thin solid percentile lines.
+    fills <- stats::setNames(vapply(seq_len(mid - 1L), function(depth) {
+      .analysis_band_blend(.simBandwidthSignedMedianColour, 1 - (1 - .analysis_band_alpha)^depth)
+    }, character(1)), band_labels)
+    thin <- .analysis_band_line_styles$thin
+    outer <- long[long$percentile %in% labels[c(1L, k)], , drop = FALSE]
     p <- ggplot2::ggplot(long, ggplot2::aes(x = .data[[x]], y = .data$value_shown)) +
       ggplot2::geom_ribbon(data = bands, ggplot2::aes(x = .data[[x]],
         ymin = .data$value_shown, ymax = .data$upper_shown, fill = .data$band,
         group = .data$band_group), inherit.aes = FALSE) +
+      ggplot2::geom_line(data = outer, ggplot2::aes(group = .data$series),
+        colour = .simBandwidthSignedMedianColour, linetype = thin$linetype,
+        linewidth = thin$linewidth, alpha = thin$alpha) +
       ggplot2::geom_hline(yintercept = 0, colour = "grey40", linetype = "dashed")
     if (!is.null(bars)) {
       bars$aes_params$colour <- "grey20"
@@ -1264,10 +1278,11 @@ add_bw_labs <- function(.data) {
     }
     p <- p +
       ggplot2::geom_line(data = median_tbl, ggplot2::aes(group = .data$series,
-        colour = .data$percentile), linewidth = 0.9) +
+        colour = .data$percentile), linewidth = .analysis_band_median_linewidth) +
       ggplot2::geom_point(data = median_tbl, ggplot2::aes(colour = .data$percentile), size = 1) +
       ggplot2::scale_fill_manual(values = fills, name = "Percentile range", drop = FALSE) +
-      ggplot2::scale_colour_manual(values = stats::setNames("#01665E", labels[mid]), name = NULL)
+      ggplot2::scale_colour_manual(values = stats::setNames(.simBandwidthSignedMedianColour,
+        labels[mid]), name = NULL)
     return(finish(p))
   }
   # Alpha, line width and line type all map to the percentile under one legend

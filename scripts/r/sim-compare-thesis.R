@@ -20,26 +20,32 @@
 # Response probability strip labels, e.g. "Response 0.2%".
 .simCompareThesisProbLab <- function(x) paste("Response", .simCompareThesisPercent(as.numeric(x)))
 
-# Percentile figures: each method's median (points joined by lines) with the
-# 10th to 90th percentile range as error bars or pale bands, over the samples of each
-# scenario. Error bars are dodged by method so single points show their range. Columns
+# Percentile figures: each method's median (points joined by lines) over a
+# pale band from its 10th to 90th percentile over the samples of each scenario,
+# edged by thin solid percentile lines (`.analysis_band_layers()`, the thesis
+# standard). `intervals = "bars"` draws dodged error bars instead. Columns
 # are transformations. With rows = "prob", rows are response probabilities and
 # the x axis is the number of cells; with rows = "cells", rows are numbers of
 # cells and the x axis is the response probability.
 # - measure = "frequency": `tbl` holds percentiles of the relative error of the
 #   background-subtracted frequency (q10, median, q90). With rows = "prob" the
 #   y axis is the background-subtracted frequency in percent (truth: grey line,
-#   y range free per row); with rows = "cells" it is the estimated over the
+#   y range free per row, from 0 to at least `truth_upper` times the truth and
+#   further only if the data reach higher); with rows = "cells" it is the estimated over the
 #   true frequency (1 = correct), on a common linear 0-4x display. Probabilities
 #   occupy equally spaced numeric positions so lines still join the medians.
 # - measure = "f1": `tbl` holds f1_q10, f1_median and f1_q90; the y axis is F1
 #   on 0-1.
 .simCompareThesisPctPlot <- function(tbl, pos, measure = c("frequency", "f1"),
                                      rows = c("prob", "cells"),
-                                     intervals = c("bars", "bands")) {
+                                     intervals = c("bands", "bars"),
+                                     band_lines = c("thin", "none", "dotted"),
+                                     truth_upper = 1.5,
+                                     band_alpha = .analysis_band_alpha) {
   measure <- match.arg(measure)
   rows <- match.arg(rows)
   intervals <- match.arg(intervals)
+  band_lines <- match.arg(band_lines)
   ratio <- identical(measure, "frequency") && identical(rows, "cells")
   tbl <- tbl[tbl$mean_pos_setting == pos & tbl$method %in% .simCompareThesisMethods, , drop = FALSE]
   if (identical(measure, "f1")) {
@@ -87,6 +93,7 @@
   dodge <- if (identical(intervals, "bars")) ggplot2::position_dodge(width = 0.18) else
     ggplot2::position_identity()
   labs <- .simCompareThesisMethodLabels()
+  band_series <- c("method", "row", "transformation")
   p <- ggplot2::ggplot(d, ggplot2::aes(x = .data$x, colour = .data$method, group = .data$method))
   if (!is.null(truth)) {
     p <- p + ggplot2::geom_hline(data = truth, ggplot2::aes(yintercept = .data$y),
@@ -94,21 +101,37 @@
   }
   if (identical(intervals, "bands")) {
     p <- p +
-      ggplot2::geom_ribbon(ggplot2::aes(ymin = .data$lo, ymax = .data$hi, fill = .data$method),
-        alpha = 0.10, colour = NA, show.legend = FALSE) +
-      ggplot2::geom_line(ggplot2::aes(y = .data$lo), alpha = 0.35, linewidth = 0.35) +
-      ggplot2::geom_line(ggplot2::aes(y = .data$hi), alpha = 0.35, linewidth = 0.35) +
+      .analysis_band_layers(band_lines, fill = "method", alpha = band_alpha,
+        series = band_series) +
       ggplot2::scale_fill_manual(values = .analysis_method_colours[.simCompareThesisMethods])
   } else {
     p <- p + ggplot2::geom_errorbar(ggplot2::aes(ymin = .data$lo, ymax = .data$hi),
       width = 0.12, linewidth = 0.4, position = dodge)
   }
+  mid_width <- if (identical(intervals, "bands")) .analysis_band_median_linewidth else 0.5
   p +
-    ggplot2::geom_line(ggplot2::aes(y = .data$mid), linewidth = 0.5, position = dodge) +
-    ggplot2::geom_point(ggplot2::aes(y = .data$mid, shape = .data$method), size = 1.4,
-      position = dodge) +
+    ggplot2::geom_line(ggplot2::aes(y = .data$mid), linewidth = mid_width, position = dodge) +
+    (if (identical(intervals, "bands")) {
+      single <- .analysis_band_single(d, "x", band_series)
+      list(
+        ggplot2::geom_point(ggplot2::aes(y = .data$mid, shape = .data$method),
+          data = d[!single, , drop = FALSE], size = 1.4),
+        ggplot2::geom_point(ggplot2::aes(y = .data$mid, shape = .data$method),
+          data = d[single, , drop = FALSE], size = 1.4,
+          position = ggplot2::position_dodge(width = 0.18))
+      )
+    } else {
+      ggplot2::geom_point(ggplot2::aes(y = .data$mid, shape = .data$method), size = 1.4,
+        position = dodge)
+    }) +
     ggplot2::facet_grid(ggplot2::vars(.data$row), ggplot2::vars(.data$transformation),
       scales = if (identical(measure, "f1") || ratio) "fixed" else "free_y") +
+    (if (!is.null(truth) && !ratio) {
+      # Train (never clip) each row from 0 to at least truth_upper x truth.
+      list(ggplot2::expand_limits(y = 0), ggplot2::geom_blank(
+        data = transform(truth, y = truth_upper * truth$y),
+        mapping = ggplot2::aes(y = .data$y), inherit.aes = FALSE))
+    }) +
     x_scale +
     (if (identical(measure, "f1")) ggplot2::scale_y_continuous(limits = c(0, 1)) else
       if (ratio) ggplot2::scale_y_continuous(breaks = 0:4, labels = paste0(0:4, "x"),
@@ -296,3 +319,155 @@
 
 # Height (mm) for a threshold figure with `n_rows` rows of panels.
 .simCompareThesisThresholdHeight <- function(n_rows) min(215, 45 + 34 * n_rows)
+
+# Band figures: each method's median (line and points) over its shaded 10th to
+# 90th percentile band (`.analysis_band_layers()`, with `band_lines` "none",
+# "dotted" or "thin" percentile lines), columns for transformation with their
+# own x range. `d` holds method, transformation, x, lo, mid and hi plus the
+# row facet columns named in `rows` (factors with display labels). `truth`,
+# when given, holds the true frequency `y` per row and transformation, drawn as
+# a thick grey line. F1 (`measure = "f1"`) is on 0-1 in a grid with x free per
+# column; frequencies are in percent with x and y free per panel
+# (`facet_wrap`, strips naming the row on one line and the transformation on
+# the next). One method alone gets
+# no legend. With `truth_upper` (e.g. 1.5), each frequency panel's y range
+# runs from 0 to at least `truth_upper` times its truth, expanded further by
+# the data rather than clipped, so there is always room above the truth line.
+# `free_y = "row"` lays frequencies out as a grid instead, with the row facets
+# combined (joined by `row_sep`) in one strip on the right and y free per row.
+.simCompareThesisBandPlot <- function(d, rows, x_scale, x_lab,
+                                      measure = c("frequency", "f1"),
+                                      band_lines = c("thin", "none", "dotted"),
+                                      truth = NULL, truth_upper = NULL,
+                                      free_y = c("panel", "row"), row_sep = ", ",
+                                      single_dodge = 0.18,
+                                      band_alpha = .analysis_band_alpha) {
+  measure <- match.arg(measure)
+  band_lines <- match.arg(band_lines)
+  free_y <- match.arg(free_y)
+  methods <- intersect(.simCompareThesisMethods, as.character(d$method))
+  d$method <- factor(as.character(d$method), methods)
+  d$transformation <- .analysis_trans_factor(d$transformation)
+  if (!is.null(truth)) truth$transformation <- .analysis_trans_factor(truth$transformation)
+  series <- c("method", rows, "transformation")
+  d$.row_label <- interaction(d[rows], sep = row_sep, lex.order = TRUE, drop = TRUE)
+  if (!is.null(truth)) {
+    truth$.row_label <- factor(do.call(paste, c(lapply(truth[rows], as.character), sep = row_sep)),
+      levels(d$.row_label))
+  }
+  single <- .analysis_band_single(d, "x", series)
+  labs <- scales::label_parse()(.simCompareThesisMethodLabels()[methods])
+  point <- function(data, position = "identity") {
+    ggplot2::geom_point(ggplot2::aes(y = .data$mid, shape = .data$method),
+      data = data, size = 1.4, position = position)
+  }
+  p <- ggplot2::ggplot(d, ggplot2::aes(x = .data$x, colour = .data$method, group = .data$method))
+  if (!is.null(truth)) {
+    p <- p + ggplot2::geom_hline(data = truth, ggplot2::aes(yintercept = .data$y),
+      colour = "grey55", linewidth = 1.1)
+  }
+  p +
+    .analysis_band_layers(band_lines, fill = "method", series = series,
+      single_dodge = single_dodge, alpha = band_alpha) +
+    ggplot2::geom_line(ggplot2::aes(y = .data$mid), linewidth = .analysis_band_median_linewidth) +
+    point(d[!single, , drop = FALSE]) +
+    point(d[single, , drop = FALSE], ggplot2::position_dodge(width = single_dodge)) +
+    (if (identical(measure, "f1")) {
+      ggplot2::facet_grid(rows = ggplot2::vars(!!!rlang::syms(rows)),
+        cols = ggplot2::vars(.data$transformation), scales = "free_x")
+    } else if (identical(free_y, "row")) {
+      # One combined row strip on the right, transformation on top; y free
+      # per row (for rows that share a truth), x free per column.
+      ggplot2::facet_grid(rows = ggplot2::vars(.data$.row_label),
+        cols = ggplot2::vars(.data$transformation), scales = "free")
+    } else {
+      # Frequencies differ by orders of magnitude between transformations
+      # (e.g. gamma under a shift), so each panel gets its own range.
+      # Strips: the row label(s) on one line, the transformation below it.
+      ggplot2::facet_wrap(ggplot2::vars(.data$.row_label, .data$transformation),
+        ncol = nlevels(droplevels(d$transformation)), scales = "free")
+    }) +
+    (if (identical(measure, "frequency")) ggplot2::expand_limits(y = 0)) +
+    (if (!is.null(truth) && !is.null(truth_upper)) {
+      # Train (never clip) each panel's y range up to truth_upper x truth.
+      ggplot2::geom_blank(data = transform(truth, y = truth_upper * truth$y),
+        mapping = ggplot2::aes(y = .data$y), inherit.aes = FALSE)
+    }) +
+    x_scale +
+    (if (identical(measure, "f1")) ggplot2::scale_y_continuous(limits = c(0, 1)) else
+      ggplot2::scale_y_continuous(labels = .analysis_label_number)) +
+    ggplot2::scale_colour_manual(values = .analysis_method_colours[methods], labels = labs,
+      name = "Method", aesthetics = c("colour", "fill")) +
+    ggplot2::scale_shape_manual(values = .analysis_method_shapes[methods], labels = labs,
+      name = "Method") +
+    ggplot2::labs(x = x_lab, y = if (identical(measure, "f1")) {
+      expression(F[1] ~ "score")
+    } else {
+      "Background-subtracted frequency (%)"
+    }) +
+    .analysis_theme(grid = "y") + .analysis_thesis_theme() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(size = 7, angle = 45, hjust = 1),
+      legend.position = if (length(methods) > 1L) "bottom" else "none",
+      panel.spacing.x = ggplot2::unit(4, "mm")
+    )
+}
+
+# Shift types of Analysis 8 (condition mismatch): x-axis labels of the band
+# figures and output folder names.
+.simCompareThesisMismatchLabels <- c(
+  mean_shift_all = "Shift of all stimulated cells (transformed scale)",
+  mean_shift_negative = "Shift of stimulated negative cells (transformed scale)",
+  sd_inflation = "Fractional increase in stimulated negative SD"
+)
+.simCompareThesisMismatchDirs <- c(
+  mean_shift_all = "mean-shift-all", mean_shift_negative = "mean-shift-negative",
+  sd_inflation = "sd-inflation-negative"
+)
+
+# Analysis 8 band figure for one shift type, separation and number of cells:
+# F1 (`tbl` from .simCompareClassificationSummary(), f1_q10/f1_median/f1_q90)
+# or the background-subtracted frequency in percent (`tbl` from
+# .simCompareSignedPercentileSummary(), relative-error q10/median/q90, truth
+# as a grey line) against the shift size, rows for response probability
+# (highest at the top), columns for transformation with their own shift range
+# (gamma's mean shifts stop at 0.2, Gaussian and skew at 0.35). Frequency
+# panels run from 0 to at least `truth_upper` times their own truth.
+.simCompareThesisMismatchPlot <- function(tbl, pos, type, cells,
+                                          measure = c("frequency", "f1"),
+                                          band_lines = c("thin", "none", "dotted"),
+                                          truth_upper = 1.5) {
+  measure <- match.arg(measure)
+  tbl <- tbl[tbl$mean_pos_setting == pos & tbl$mismatch_type == type & tbl$n_cell == cells &
+    tbl$method %in% .simCompareThesisMethods, , drop = FALSE]
+  if (identical(measure, "f1")) {
+    conv <- function(v, prob) v
+    cols <- c("f1_q10", "f1_median", "f1_q90")
+  } else {
+    conv <- function(v, prob) 100 * prob * (1 + v)
+    cols <- c("q10", "median", "q90")
+  }
+  probs <- sort(unique(tbl$prob_response), decreasing = TRUE)
+  d <- data.frame(
+    method = tbl$method, transformation = tbl$transformation,
+    row = factor(tbl$prob_response, probs, .simCompareThesisProbLab(probs)),
+    x = tbl$mismatch_val,
+    lo = conv(tbl[[cols[[1]]]], tbl$prob_response),
+    mid = conv(tbl[[cols[[2]]]], tbl$prob_response),
+    hi = conv(tbl[[cols[[3]]]], tbl$prob_response)
+  )
+  truth <- if (identical(measure, "frequency")) {
+    t <- dplyr::distinct(data.frame(row = d$row, transformation = d$transformation,
+      y = 100 * tbl$prob_response))
+    t
+  }
+  .simCompareThesisBandPlot(d, rows = "row",
+    x_scale = ggplot2::scale_x_continuous(labels = .analysis_label_number,
+      breaks = scales::breaks_extended(4), expand = ggplot2::expansion(mult = 0.04)),
+    x_lab = unname(.simCompareThesisMismatchLabels[[type]]),
+    measure = measure, band_lines = band_lines, truth = truth,
+    truth_upper = truth_upper, single_dodge = 0.01)
+}
+
+# Height (mm) for a band figure with `n_rows` rows of panels.
+.simCompareThesisBandHeight <- function(n_rows) min(215, 40 + 42 * n_rows)

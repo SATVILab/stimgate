@@ -552,6 +552,12 @@ test_that("one small dataset gates, validates against the package and plots", {
     expect_no_error(ggplot2::ggplot_build(p))
     expect_null(p$labels$title)
   }
+  # 11b's mismatch error uses the shared thin band style around the median.
+  err <- env$.simLowSepPlotMismatchError(mm(summ$error_pct), "mean_shift")
+  geoms <- vapply(err$layers, function(l) class(l$geom)[1], character(1))
+  expect_true(all(c("GeomRibbon", "GeomHline") %in% geoms))
+  expect_false("GeomLinerange" %in% geoms)
+  expect_equal(err$layers[[which(geoms == "GeomRibbon")]]$aes_params$alpha, env$.analysis_band_alpha)
   expect_length(list.files(plot_dir, recursive = TRUE), 0L)
 })
 

@@ -36,6 +36,15 @@ test_that("Analysis 2a executes its original bandwidth and fixed-bias design", {
   eval(parse(text = chunk("bw-manual-settings")), envir = env)
 
   expect_equal(env$scenario_settings$nSample, 200)
+  # The thesis subset (Analysis 6's design at 0.2% response) is already in
+  # the grid: 3 transformations x 2 separations x 2 cell counts x 10 bandwidths.
+  source(file.path(root_dir, "scripts", "r", "sim-bandwidth-thesis.R"), local = env)
+  thesis <- env$.simBandwidthThesisGrid(env$sim_grid_all)
+  expect_equal(nrow(thesis), 3L * 2L * 2L * 10L)
+  expect_setequal(thesis$n_cell, c(5e3, 1e5))
+  expect_setequal(as.character(thesis$mean_pos_setting), c("low", "high"))
+  expect_setequal(thesis$transformation, c("gaussian", "skew", "gamma"))
+  expect_true(all(thesis$prob_response == 0.002 & thesis$bias_uns_setting == "low"))
   expect_false(env$scenario_settings$clusterGates)
   expect_false(env$scenario_settings$locEnforceShapeThreshold)
   expect_false(env$scenario_settings$calcCytPosGates)

@@ -151,3 +151,31 @@ test_that("fitted HTML figures use their own device dimensions", {
   dims <- dim(png::readPNG(path))
   expect_equal(dims[[1]] / dims[[2]], 20 / 16, tolerance = 0.01)
 })
+
+test_that("percentile band layers share one alpha and three boundary-line styles", {
+  env <- .plot_style_env()
+  expect_equal(env$.analysis_band_alpha, 0.18)
+  none <- env$.analysis_band_layers("none", fill = "method")
+  expect_length(none, 1L)
+  expect_s3_class(none[[1]]$geom, "GeomRibbon")
+  expect_equal(none[[1]]$aes_params$alpha, 0.18)
+  dotted <- env$.analysis_band_layers("dotted", fill = "method")
+  thin <- env$.analysis_band_layers("thin", fill = "method")
+  expect_length(dotted, 3L)
+  expect_identical(dotted[[2]]$aes_params$linetype, "11")
+  expect_identical(thin[[2]]$aes_params$linetype, "solid")
+  # thin lines are narrower than the median and darker than the band
+  expect_lt(thin[[2]]$aes_params$linewidth, env$.analysis_band_median_linewidth)
+  expect_gt(thin[[2]]$aes_params$alpha, env$.analysis_band_alpha)
+  expect_lt(thin[[2]]$aes_params$alpha, 1)
+  expect_error(env$.analysis_band_layers("dashed", fill = "method"))
+
+  d <- data.frame(method = rep(c("a", "b"), c(3, 1)), x = c(1, 2, 3, 1),
+    lo = 0, mid = 1, hi = 2)
+  expect_identical(env$.analysis_band_single(d, "x", "method"), c(FALSE, FALSE, FALSE, TRUE))
+  p <- ggplot2::ggplot(d, ggplot2::aes(x = .data$x, colour = .data$method, group = .data$method)) +
+    env$.analysis_band_layers("thin", fill = "method", series = "method")
+  b <- ggplot2::ggplot_build(p)
+  # the single-x series gets a bar instead of an invisible ribbon
+  expect_equal(nrow(b$data[[2]]), 1L)
+})

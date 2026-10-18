@@ -592,3 +592,57 @@ test_that("Analysis 2 scenario treats NA bw and bias_uns as automatic", {
   expect_null(auto$bw)
   expect_identical(auto$bwFallback, "auto")
 })
+
+test_that("2a thesis band figures summarise the focused scenarios against bandwidth", {
+  env <- .load_bw_run_env()
+  for (fn in c("analysis-plot-style.R", "sim-bandwidth-analysis-plot.R", "sim-compare-thesis.R",
+    "sim-bandwidth-thesis.R")) {
+    source(file.path(root_dir, "scripts", "r", fn), local = env)
+  }
+  raw <- tidyr::expand_grid(
+    transformation = c("gaussian", "gamma"), mean_pos_setting = c("low", "high"),
+    n_cell = c(5e3, 2e4, 1e5), prob_response = c(0.002, 0.2), bias_uns_setting = c("low", "high"),
+    condition_perturbation_sd = 0, bw = c(0.05, 0.5), sample = 1:10
+  )
+  raw$propRespEst <- raw$prob_response * raw$sample / 5
+  raw$valid_estimate <- raw$sample != 10
+  s <- env$.simBandwidthThesisSummary(raw)
+  expect_equal(nrow(s), 2L * 2L * 2L * 2L)
+  expect_setequal(s$n_cell, c(5e3, 1e5))
+  expect_true(all(s$prob_response == 0.002))
+  # frequency percentiles over valid estimates only, in percent
+  expect_equal(unique(s$freq_median), 100 * 0.002 * 5 / 5)
+  expect_equal(unique(s$n_valid), 9L)
+
+  {
+    p <- env$.simBandwidthThesisPlot(s)
+    b <- ggplot2::ggplot_build(p)
+    expect_identical(levels(p$data$cells), c("5,000 cells", "100,000 cells"))
+    expect_identical(levels(p$data$separation), c("low separation", "high separation"))
+    expect_equal(nrow(b$layout$layout), 4L * 2L)
+    # one combined row strip on the right, transformations on top
+    expect_s3_class(p$facet, "FacetGrid")
+    expect_identical(levels(p$data$.row_label), c(
+      "5,000 cells,\nlow separation", "5,000 cells,\nhigh separation",
+      "100,000 cells,\nlow separation", "100,000 cells,\nhigh separation"))
+    expect_identical(p$labels$x, "Bandwidth")
+    expect_identical(p$theme$legend.position, "none")
+    expect_true(any(vapply(p$layers, function(l) inherits(l$geom, "GeomHline"), logical(1))))
+    # every panel runs from 0 to at least 1.5 times the 0.2% truth
+    for (pp in b$layout$panel_params) {
+      expect_lte(pp$y.range[1], 0)
+      expect_gte(pp$y.range[2], 1.5 * 0.2)
+    }
+  }
+  # the multiplier is an option; data above it extend the range, never clip
+  b_two <- ggplot2::ggplot_build(env$.simBandwidthThesisPlot(s, "thin", truth_upper = 2))
+  for (pp in b_two$layout$panel_params) expect_gte(pp$y.range[2], 2 * 0.2)
+  s_high <- s
+  s_high$freq_q90 <- 1
+  b_high <- ggplot2::ggplot_build(env$.simBandwidthThesisPlot(s_high, "thin"))
+  for (pp in b_high$layout$panel_params) expect_gte(pp$y.range[2], 1)
+  qmd <- paste(readLines(file.path(root_dir, "analysis", "2a-sim-bw-freq_bs-global.qmd")), collapse = "\n")
+  expect_match(qmd, 'thesis_parts <- c("results", "qmd2a", fig_key[-1L])', fixed = TRUE)
+  expect_match(qmd, '"sim-bandwidth-thesis.R"', fixed = TRUE)
+  expect_match(qmd, '"sim-bw-frequency-bands"', fixed = TRUE)
+})
