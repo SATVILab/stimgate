@@ -1770,8 +1770,9 @@ same alpha and line styles as Analyses 7 and 8 (`.analysis_band_layers()`).
   (from confusion-matrix counts saved with each gate), on 0 to 1
   (`sim-bw-f1-bands-dotted`, `sim-bw-f1-bands-thin`).
 - `frequency/`: the estimated background-subtracted response frequency in
-  percent, with the true frequency (0.2%) as a thick grey line and each row's
-  y range set by its own data (`sim-bw-frequency-bands-dotted`,
+  percent, with the true frequency (0.2%) as a thick grey line and each panel's
+  x and y ranges set by its own data (each strip names the cells, separation
+  and transformation) (`sim-bw-frequency-bands-dotted`,
   `sim-bw-frequency-bands-thin`).
 
 The `-dotted` versions draw the 10th and 90th percentiles as dotted lines; the

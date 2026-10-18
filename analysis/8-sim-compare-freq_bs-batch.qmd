@@ -1857,7 +1857,9 @@ probabilities (highest at the top) and columns transformations, each with its
 own shift range: gamma's mean shifts stop at 0.2 on its scale, Gaussian and
 skew at 0.35. The measure is the $F_1$ score (0 to 1) or the
 background-subtracted frequency in percent with the truth as a thick grey line
-and each row's y range set by its own data. The `-dotted` versions draw the
+and each panel's x and y ranges set by its own data, since gamma's estimates
+under a shift can be orders of magnitude above Gaussian and skew's (each
+strip names the response probability and transformation). The `-dotted` versions draw the
 10th and 90th percentiles as dotted lines, the `-thin` versions as thin solid
 lines, lighter than the median and darker than the band; bands use the same
 alpha and line styles as Analyses 2a and 7 (`.analysis_band_layers()`).

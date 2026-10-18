@@ -322,8 +322,10 @@
 # own x range. `d` holds method, transformation, x, lo, mid and hi plus the
 # row facet columns named in `rows` (factors with display labels). `truth`,
 # when given, holds the true frequency `y` per row and transformation, drawn as
-# a thick grey line. F1 (`measure = "f1"`) is on 0-1; frequencies are in
-# percent with y free per row. One method alone gets no legend.
+# a thick grey line. F1 (`measure = "f1"`) is on 0-1 in a grid with x free per
+# column; frequencies are in percent with x and y free per panel
+# (`facet_wrap`, strips naming row and transformation). One method alone gets
+# no legend.
 .simCompareThesisBandPlot <- function(d, rows, x_scale, x_lab,
                                       measure = c("frequency", "f1"),
                                       band_lines = c("dotted", "thin", "none"),
@@ -353,9 +355,16 @@
     ggplot2::geom_line(ggplot2::aes(y = .data$mid), linewidth = .analysis_band_median_linewidth) +
     point(d[!single, , drop = FALSE]) +
     point(d[single, , drop = FALSE], ggplot2::position_dodge(width = single_dodge)) +
-    ggplot2::facet_grid(rows = ggplot2::vars(!!!rlang::syms(rows)),
-      cols = ggplot2::vars(.data$transformation),
-      scales = if (identical(measure, "f1")) "free_x" else "free") +
+    (if (identical(measure, "f1")) {
+      ggplot2::facet_grid(rows = ggplot2::vars(!!!rlang::syms(rows)),
+        cols = ggplot2::vars(.data$transformation), scales = "free_x")
+    } else {
+      # Frequencies differ by orders of magnitude between transformations
+      # (e.g. gamma under a shift), so each panel gets its own range.
+      ggplot2::facet_wrap(ggplot2::vars(!!!rlang::syms(c(rows, "transformation"))),
+        ncol = nlevels(droplevels(d$transformation)), scales = "free",
+        labeller = ggplot2::labeller(.multi_line = FALSE))
+    }) +
     x_scale +
     (if (identical(measure, "f1")) ggplot2::scale_y_continuous(limits = c(0, 1)) else
       ggplot2::scale_y_continuous(labels = .analysis_label_number)) +

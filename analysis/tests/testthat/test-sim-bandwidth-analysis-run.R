@@ -666,6 +666,7 @@ test_that("2a thesis band figures summarise the focused scenarios against bandwi
     expect_identical(levels(p$data$cells), c("5,000 cells", "100,000 cells"))
     expect_identical(levels(p$data$separation), c("Low separation", "High separation"))
     expect_equal(nrow(b$layout$layout), 4L * 2L)
+    expect_s3_class(p$facet, if (measure == "f1") "FacetGrid" else "FacetWrap")
     expect_identical(p$labels$x, "Bandwidth")
     expect_identical(p$theme$legend.position, "none")
   }
