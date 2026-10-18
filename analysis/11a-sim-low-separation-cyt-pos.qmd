@@ -73,7 +73,7 @@ show_mcse <- mcse_mode != "off"
 sim_retry_errors <- .as_flag(.get_qmd_param_env("sim_retry_errors", "SIM_RETRY_ERRORS", TRUE))
 analysis_run_id <- .get_qmd_param_env("analysis_run_id", "ANALYSIS_RUN_ID", NULL)
 
-analysis_semantics_version <- "sim-low-separation-v8"
+analysis_semantics_version <- "sim-low-separation-v10"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 sim_size <- .analysis_sim_size()
@@ -99,15 +99,15 @@ for (fn in c(
 
 Both cytokines are simulated on the Gaussian transformation, with negative cells centred at zero and positive cells centred at a scenario-specific mean, with variance 1.5. Each parent population has either 100,000 or 5,000 cells in each tube. The scenarios come in families:
 
-- **Main grid** (the original scenarios): "low" separation (mean 4.5, the low setting of Analyses 7 and 8) and "lower" separation (mean 3.5), lower (1%) and higher (5%) responses. Of the responding cells, 60% are TNF+ IFNγ+, 25% TNF+ IFNγ- only and 15% TNF- IFNγ+ only. The unstimulated tube has background positive cells at 0.2 times the response probability, in the same proportions.
+- **Main grid** (the original scenarios): "low" separation (mean 4.5, the low setting of Analyses 7 and 8) and "lower" separation (mean 3.5), lower (1%) and higher (5%) responses. Of the responding cells, 60% are TNF+ IFNγ+, 25% TNF+ IFNγ- only and 15% TNF- IFNγ+ only. As in Analyses 2 to 8, background is set by the net response: both tubes have background positive cells at 0.2 times the response, in the same proportions, and the stimulated tube adds the response on top. With a 1% response, for example, 0.2% of unstimulated cells and 1.2% of stimulated cells are positive, so the net frequency is the response itself.
 - **High separation** (mean 6): the ordinary gates should already work; the lowering rules should not make things worse.
 - **Responders single-positive only** (50% TNF+ only, 50% IFNγ+ only): there is no double-positive response at all, so the co-expression gates should not move, and any net double-positive frequency is error.
-- **Weak double-positive response** (47% TNF+ only, 47% IFNγ+ only, 6% TNF+ IFNγ+): a very weak double-positive response. Its net double-positive frequency is 0.048% of cells with the lower response and 0.24% with the higher one (2.4 and 12 cells per 5,000), close to what a test or a gate can detect.
+- **Weak double-positive response** (47% TNF+ only, 47% IFNγ+ only, 6% TNF+ IFNγ+): a very weak double-positive response. Its net double-positive frequency is 0.06% of cells with the lower response and 0.3% with the higher one (3 and 15 cells per 5,000), close to what a test or a gate can detect.
 - **Responders double-positive only**: all responders co-express.
 - **Weak IFNγ, stronger TNF** (TNF mean 4.5, IFNγ mean 3): the case the lowering rules target, weak IFNγ among TNF+ cells.
-- **No response** (the stimulated tube has the same 1% background as the unstimulated tube): any net frequency is error.
-- **No response, co-expressing background**: both tubes have the same 1% background, all of it TNF+ IFNγ+. There is no response, but the double positives are plentiful in both tubes, which tests whether a rule mistakes co-expression for a response.
-- **Co-expressing background** (background at 0.5 times the response, all double-positive, as in some NK donors): the unstimulated tube co-expresses too, and the response is mostly as in the main grid.
+- **No response**: both tubes have the same 1% background, in the main grid's proportions, and there is no response, so any net frequency is error.
+- **No response, co-expressing background**: both tubes have the same 1% background, all of it TNF+ IFNγ+, and there is no response. There is no response, but the double positives are plentiful in both tubes, which tests whether a rule mistakes co-expression for a response.
+- **Co-expressing background** (background in both tubes at 0.5 times the response, all double-positive, as in some NK donors): the unstimulated tube co-expresses too, and the response is as in the main grid.
 
 Each local-FDR gate is the lower boundary of the region kept after filtering the smoothed response probabilities, moved up only where its frequency exceeds 1.3 times the probability-sum estimate (`locThresholdMethod = "cap"`), set explicitly here. Threshold clustering is on.
 
