@@ -945,9 +945,14 @@ the `flowWorkspace` stack from source.
     `.coexLowerGates()`. Scenario families are appended after the
     original grid, each block with its own seed stream
     (`simulation_seed`, `+ 1`, `+ 2`), so earlier IDs and seeds never
-    change; dataset seeds come from the scenario seed. 11b crosses a
-    baseline subset with stimulated TNF- IFNg- mean shifts (0, 0.025,
-    0.05, 0.2) and 10% SD inflation, applied by simcyto to that
+    change; dataset seeds come from the scenario seed. As in Analyses
+    2–8, `prob_response` is the net response and background is relative
+    to it: both tubes get `background_relative * prob_response`
+    background positives and the stimulated tube adds the response (1%
+    response: 0.2% unstimulated, 1.2% stimulated); no-response families
+    use `prob_response = 0` with an absolute `prob_background`. 11b
+    crosses a baseline subset with stimulated TNF- IFNg- mean shifts (0,
+    0.025, 0.05, 0.2) and 10% SD inflation, applied by simcyto to that
     component only and sharing the baseline’s data seed (11a’s),
     reported in `mean_shift/` and `sd_inflation/`. Reports F1, frequency
     percentiles pooled over datasets, what each rule gates, and response
