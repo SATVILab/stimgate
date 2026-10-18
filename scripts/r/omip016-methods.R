@@ -32,21 +32,20 @@
   list(cacheVersion = 4L, method = method, family = method, params = params)
 }
 
-# `locShiftedPeakRef = TRUE` (Analysis 15b) adds the shifted-peak rule; the
-# element is omitted when FALSE so Analysis 15's saved settings still match.
+# The flow-cytometry analyses use the shifted-peak rule (`locShiftedPeakRef`).
 .omip016StimGateSettings <- function(locThresholdMethod = "cap",
                                      clusterGates = TRUE,
                                      calcCytPosGates = FALSE,
-                                     locShiftedPeakRef = FALSE) {
+                                     locShiftedPeakRef = TRUE) {
   settings <- list(
     biasUns = NULL, biasUnsFactor = 1, bwMtd = "nrd0", bwScope = "cytokine",
     bwNcellMax = 1e4, bwFallback = "auto", bwMin = "none", bwMax = "none",
     gateCombn = "min", clusterGates = clusterGates,
     calcCytPosGates = calcCytPosGates, minCell = 100,
     locThresholdMethod = locThresholdMethod,
+    locShiftedPeakRef = isTRUE(locShiftedPeakRef),
     gateName = if (isTRUE(clusterGates)) "loc_minClust" else "loc"
   )
-  if (isTRUE(locShiftedPeakRef)) settings$locShiftedPeakRef <- TRUE
   settings
 }
 

@@ -20,9 +20,9 @@
   configs <- .acsCytofTailgateConfigLabels()
   c(
     stimgate = "StimGate",
-    fbeta = "F-beta",
+    fbeta = "F-beta (zeros removed)",
     tailgate = "Tailgate",
-    fbeta_default = "F-beta (default settings)",
+    fbeta_default = "F-beta",
     stats::setNames(paste0("Tailgate: ", configs), names(configs))
   )
 }
@@ -306,11 +306,13 @@
 .acsCytofValidationPlotCorrelation <- function(
   correlationTbl,
   method,
-  metric = c("pcc", "ccc"),
+  metric = c("pcc", "ccc", "f1"),
   realPopulationsOnly = TRUE,
-  thesis = FALSE
+  thesis = FALSE,
+  palette = c("standard", "midpoint_0_5", "f1", "viridis")
 ) {
   metric <- match.arg(metric)
+  palette <- match.arg(palette)
   method <- match.arg(method, names(.acsCytofValidationMethodLabels()))
   requiredCols <- c("method", "pop", "cyt", "stim", metric)
   missingCols <- setdiff(requiredCols, names(correlationTbl))
@@ -362,32 +364,70 @@
     )
 
   plotTbl$cellLabel <- ifelse(
-    plotTbl$excluded, "excl.",
+    plotTbl$excluded, "",
     ifelse(
       is.finite(plotTbl[[metric]]),
       format(round(plotTbl[[metric]], 2), trim = TRUE), "NA"
     )
   )
-  plotTbl$textColour <- ifelse(
-    !plotTbl$excluded & is.finite(plotTbl[[metric]]) & abs(plotTbl[[metric]]) >= 0.6,
-    "white", "black"
-  )
-
   metricLabel <- if (metric == "pcc") {
     "Pearson correlation"
-  } else {
+  } else if (metric == "ccc") {
     "Concordance correlation"
+  } else {
+    "Mean F1 score"
   }
+  limits <- if (metric == "f1") c(0, 1) else c(-1, 1)
+  useViridis <- palette %in% c("f1", "viridis") ||
+    (metric == "f1" && palette == "standard")
   colourValues <- rev(RColorBrewer::brewer.pal(11, "RdBu"))
+  stops <- seq(limits[1], limits[2], length.out = length(colourValues))
+  if (palette == "midpoint_0_5") {
+    colourValues[6] <- "#FFFFFF"
+    stops <- seq(0, 1, length.out = length(colourValues))
+    if (metric != "f1") {
+      stops <- c(-1, stops)
+      colourValues <- c(colourValues[1], colourValues)
+    }
+  }
+  colourPositions <- scales::rescale(stops, from = limits)
+  fillScale <- ggplot2::scale_fill_gradientn(
+    colours = colourValues, values = colourPositions, limits = limits,
+    na.value = "white", name = metricLabel,
+    breaks = if (metric == "f1") c(0, 0.25, 0.5, 0.75, 1) else c(-1, -0.5, 0, 0.5, 1),
+    guide = ggplot2::guide_colourbar(
+      title.position = "top", barwidth = ggplot2::unit(38, "mm"),
+      barheight = ggplot2::unit(3, "mm")
+    )
+  )
+  if (useViridis) {
+    # Keep correlation legend values signed, while matching the F1 colours on [0, 1].
+    fillScale$palette <- function(x) {
+      .acsCytofF1Palette(pmax(scales::rescale(x, to = limits, from = c(0, 1)), 0))
+    }
+  }
+  fillColours <- fillScale$palette(scales::rescale(plotTbl[[metric]], from = limits))
+  # Choose the higher-contrast text colour from the actual mapped fill.
+  rgb <- grDevices::col2rgb(ifelse(is.na(fillColours), "white", fillColours)) / 255
+  linearRgb <- ifelse(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055)^2.4)
+  luminance <- as.numeric(c(0.2126, 0.7152, 0.0722) %*% linearRgb)
+  plotTbl$textColour <- ifelse(
+    !plotTbl$excluded & luminance < sqrt(0.0525) - 0.05, "white", "black"
+  )
+  plotTbl$tileColour <- ifelse(
+    palette != "standard" & !plotTbl$excluded, "grey80", NA_character_
+  )
 
   ggplot2::ggplot(
     plotTbl,
     ggplot2::aes(x = .data$cyt, y = .data$pop)
   ) +
     .analysis_theme(grid = "none") +
-    ggplot2::geom_tile(ggplot2::aes(fill = .data[[metric]])) +
     ggplot2::geom_tile(
-      data = dplyr::filter(plotTbl, .data$excluded), fill = "grey85"
+      ggplot2::aes(fill = .data[[metric]], colour = .data$tileColour), linewidth = 0.25
+    ) +
+    ggplot2::geom_tile(
+      data = dplyr::filter(plotTbl, .data$excluded), fill = "white"
     ) +
     ggplot2::geom_text(
       ggplot2::aes(label = .data$cellLabel, colour = .data$textColour),
@@ -395,20 +435,10 @@
     ) +
     ggplot2::scale_colour_identity() +
     ggplot2::facet_wrap(ggplot2::vars(stim), ncol = 3, scales = "fixed") +
-    ggplot2::scale_fill_gradientn(
-      colours = colourValues,
-      values = seq(0, 1, length.out = length(colourValues)),
-      limits = c(-1, 1),
-      na.value = "white",
-      name = metricLabel
-    ) +
+    fillScale +
     ggplot2::labs(
       x = "Cytokine",
-      y = "Population",
-      caption = paste0(
-        "Grey / excl.: excluded by signal eligibility rules.\n",
-        "White / NA: eligible but correlation unavailable."
-      )
+      y = "Population"
     ) +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1),
@@ -416,6 +446,62 @@
       legend.title = ggplot2::element_text(size = 10)
     ) +
     if (isTRUE(thesis)) .acsCytofThesisHeatmapTheme()
+}
+
+# The same default viridis mapping as Analysis 7's thesis F1 heatmaps.
+.acsCytofF1Palette <- function(values) {
+  ggplot2::scale_fill_viridis_c(limits = c(0, 1))$palette(values)
+}
+
+# One shared colour bar and stimulus columns, with methods ordered top to bottom.
+.acsCytofThesisPlotCorrelation <- function(
+  correlationTbl, metric = c("pcc", "ccc", "f1"), realPopulationsOnly = TRUE,
+  palette = c("standard", "midpoint_0_5", "f1", "viridis")
+) {
+  metric <- match.arg(metric)
+  palette <- match.arg(palette)
+  methods <- c("stimgate", "fbeta_default", "tailgate")
+  if (!all(methods %in% correlationTbl$method)) {
+    stop("ACS thesis heatmaps require StimGate, F-beta with all cells, and Tailgate results.")
+  }
+  plots <- lapply(methods, function(method) {
+    .acsCytofValidationPlotCorrelation(
+      correlationTbl, method, metric, realPopulationsOnly, thesis = TRUE, palette = palette
+    )
+  })
+  rows <- dplyr::bind_rows(lapply(plots, function(plot) plot$data))
+  rows$method <- factor(
+    rows$method, levels = methods,
+    labels = .acsCytofValidationMethodLabels()[methods]
+  )
+  plot <- plots[[1]]
+  plot$data <- rows
+  # The excluded-cell overlay has its own data; include all three methods.
+  plot$layers[[2]]$data <- dplyr::filter(rows, .data$excluded)
+  plot <- plot +
+    ggplot2::facet_grid(ggplot2::vars(method), ggplot2::vars(stim)) +
+    ggplot2::scale_y_discrete(expand = ggplot2::expansion(add = 0.5)) +
+    ggplot2::geom_hline(
+      data = data.frame(
+        method = factor(levels(rows$method)[1:2], levels = levels(rows$method)),
+        yintercept = 0.5
+      ),
+      ggplot2::aes(yintercept = .data$yintercept),
+      colour = "black", linewidth = 1.2, inherit.aes = FALSE
+    ) +
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(6, 6, 6, 6),
+      plot.caption.position = "plot",
+      plot.caption = ggplot2::element_text(size = 7, hjust = 0.5)
+    )
+  if (palette != "standard" && metric != "f1") {
+    plot <- plot + ggplot2::labs(caption = if (palette == "midpoint_0_5") {
+      "Blue at zero or below; white at 0.5; red at 1."
+    } else {
+      "Viridis F1 palette: colours at zero and below use the zero endpoint."
+    })
+  }
+  plot
 }
 
 # Heatmap text for printing at the thesis text width

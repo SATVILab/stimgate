@@ -3,8 +3,8 @@
 OMIP-111 per-mouse diagnostic pages in Analysis 14 reuse `.simDebugLocPlots()`
 and the Analysis 13 recorder. Rerun each complete strain/population with the
 comparison seed and controls, and require exact parity of final base and
-conditional gates before publishing. Overlay the actual projected author raw
-cutoffs on the common asinh scale; use saved combination-count frequencies for
+conditional gates before publishing. Overlay the cytokine side of the author
+gates (raw cutoffs) on the common asinh scale; use saved combination-count frequencies for
 the final result block rather than recomputing StimGate from its base gate alone.
 
 This file is the **canonical source of truth** for all AI coding agents
@@ -412,10 +412,10 @@ the QMDs end to end in quick mode instead (simulate, then plot; one job per QMD)
 
 The default Slurm job list includes Analysis 2a, 2b, 7, 7b, 8, 11a and 11b as chunked runs,
 Analysis 12 as a serial non-chunked simulation, Analyses 13
-and 17 after Analysis 9b (which follows 9a), and the OMIP analyses 14, 14b, 15 and 15b. Analysis 17
+and 17 after Analysis 9b (which follows 9a), and the OMIP analyses 14 and 15. Analysis 17
 only draws plots: like the OMIP analyses it renders with plots on in its own
 job, has no plot job and waits `afterany` on Analysis 1's projr build. `sim_dependency_for_script()`
-makes 9b's job wait `afterok` on 9a's, 13's, 17's and 18's on 9b's (and 14b on 14, 15b on 15) when both are
+makes 9b's job wait `afterok` on 9a's, 13's, 17's and 18's on 9b's when both are
 submitted, and `dev.sh` (`move_after()`) submits the analysis that is read first
 whatever the order requested. OMIP launchers reuse prepared data unless
 `RUN_PREPROCESSING=true` and draw plots by default; plot jobs also set `RUN_METHODS=false`. Keep enabled
@@ -439,7 +439,7 @@ is set (`n_chunks_for_script()`).
 Select Slurm analyses with `bash scripts/slurm/dev.sh 2a`, `2b`, or `2a 2b`;
 validate all target arguments before submitting jobs. After the simulation jobs,
 `dev.sh` submits one `scripts/slurm/render-plots.sh` job per analysis (except
-the OMIP analyses 14, 14b, 15 and 15b, which are quick enough to draw their
+the OMIP analyses 14 and 15, which are quick enough to draw their
 plots in the simulation render, `plots_in_sim_job()`, and wait `afterany` on
 Analysis 1's projr build) that
 renders the real QMD once with `SHOW_MCSE=on`, with simulations off and plots
@@ -532,6 +532,19 @@ equally spaced numeric response-probability positions and a common linear
 the same scale; use coordinate limits so off-display quantiles remain in data.
 
 ### Website Maintenance (`pkgdown`)
+
+ACS thesis correlation heatmaps (Analysis 10) stack StimGate, F-beta and Tailgate
+as rows with a shared -1 to 1 red-blue scale and stimulus columns. Leave excluded
+strata white and unlabelled, keep unavailable eligible correlations as `NA`, and
+put colour-bar titles above the bar. Export PDF/PNG to output-thesis/results/qmd10. Add thick horizontal
+separators between method rows. Preserve the standard palette alongside
+`palette-midpoint-0.5` (blue at zero and below, white at 0.5, red at one) and
+`palette-viridis` companions (the default continuous viridis scale from Analysis 7); keep signed scores and the -1 to 1 legend in each.
+Alternate palettes outline eligible tiles only, and label text uses contrast
+against its actual fill. Palette saturation changes colour, never the score.
+For ACS thesis figures, F-beta means the all-cell, no-zero-removal variant
+(`fbeta_default` in saved caches). Label `fbeta` as "F-beta (zeros removed)";
+keep these stored method IDs and their preprocessing provenance unchanged.
 
 Whenever functions are added, removed, or have their export status changed (via
 `@export`), update `_pkgdown.yml` to ensure the reference section accurately
@@ -694,6 +707,9 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     `acs_cytof_coexpression/` (semantics `acs-coexpression-gates-v2`);
     `ACS_COEX_WORKERS` forks tubes and COMPASS
     fits. Not in `dev.sh`'s default list: run it with `dev.sh 18` (waits for 9).
+  - `omip111.R`, `omip111-debug.R` and `omip111-thesis.R`: Analysis 14
+    (`14-real-compare-omip111.qmd`): import, method runs and scoring; per-mouse
+    gate diagnostics for both fit populations; the thesis validation figure.
   - `omip016-prepare.R` / `omip016-methods.R`: Analysis 15
     (`15-real-compare-omip016.qmd`, FlowRepository FR-FCM-ZZ2T). The deposited
     FCS files are uncompensated; `scripts/python/omip016_flowjo_jo.py` decodes
@@ -701,7 +717,10 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     tree, polygon vertices, Boolean gates) and fails rather than guess. The
     gates are re-applied to the raw events (vertices at or below zero on
     compensated axes extended to the data minimum; Boolean expressions read
-    left to right, with the `&`-before-`|` reading reported as a sensitivity).
+    left to right, as the paper's Figure 1 legend confirms; the
+    `&`-before-`|` reading is reported only as a check). Polygons are tested
+    on the linear scale, not FlowJo's undecoded biexponential display; a
+    one-off check found manual frequencies change by about 1% or less.
     Curated sample/marker maps and raw MD5s live in
     `_raw/data/small/comparison_data/omip016/`; prepared data and method
     results go to the projr cache `omip016/prepared` and `omip016/methods`.
@@ -710,6 +729,11 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
     method/tube jointly across markers with StimGate's cytokine-positive rule
     (`x > gate`, or `x > gateCyt` when ordinarily positive for another marker)
     and must reproduce `getStimStats()`.
+    `omip016-figures.R` redraws the paper's Figure 1E (CD4 T cells on each
+    manual gate's axes, author rectangles and frequencies) and the same
+    panels with every method's gate, as Analysis 14 does for OMIP-111; there
+    is one parent (CD4+), so no fit-population or denominator variants.
+    Method lines must reproduce the scored stimulated counts.
   - `sim-compare-freq_bs.R`: Bootstrap frequency comparison for simulation.
   - `sim-compare-null.R`: Analysis 7b (`7b-sim-compare-null.qmd`): Analysis 7's
     methods and settings with no response (`prob_response = 0`) and the same
@@ -879,7 +903,23 @@ blank so columns line up). Response probabilities run from
 highest (top) to lowest in all of them. The "Without Tailgate" method set is
 gone from Analyses 7 and 8.
 
+Analysis 8 saves the same thesis figures with the same helpers to
+`output-thesis/results/qmd8/<shift type>/<level>/` (`mean-shift-all`,
+`mean-shift-negative`, `sd-inflation-negative`; `shift-<size>` or
+`sd-increase-<fraction>`), once per level of every shift type, subsetting the
+summaries to that level. Its threshold reference densities carry the level's
+stimulated-tube shift (`.simBandwidthThresholdDensities(mismatch = TRUE)`,
+through `.simCompareSimCytExperiment()`); without `mismatch` they are unchanged.
+
 ### Thesis tables
+
+ACS Analysis 10's CCC comparison table reuses the thesis heatmap CCCs and
+manual-signal exclusions, omits p4 and compares StimGate, all-cell F-beta and
+Tailgate. Best counts include exact top ties; wins require the highest CCC (ties allowed)
+and the stated margin against one or both competitors. Count losses against the best competitor,
+and keep the stated low-CCC/high-competitor failure rule separate from missing
+CCCs. Record complete-comparison and missing coverage, and display NA when no
+complete comparisons remain.
 
 StimGate generates the numbers and the table Markdown; the thesis
 (`SATVILab/Manuscript22RodoThesis`, Quarto `stanford-thesis-typst`) only
@@ -892,14 +932,6 @@ change the generating R functions, so formatting survives reruns.
   `_output/thesis/<chapter folder>/`); and, where the rules need it, the Typst
   styling. Build them with `scripts/r/analysis-thesis-table.R`
   (`.analysis_md_table()`, `.analysis_md_show()`), which wraps the pipe table in
-Analysis 8 saves the same thesis figures with the same helpers to
-`output-thesis/results/qmd8/<shift type>/<level>/` (`mean-shift-all`,
-`mean-shift-negative`, `sd-inflation-negative`; `shift-<size>` or
-`sd-increase-<fraction>`), once per level of every shift type, subsetting the
-summaries to that level. Its threshold reference densities carry the level's
-stimulated-tube shift (`.simBandwidthThresholdDensities(mismatch = TRUE)`,
-through `.simCompareSimCytExperiment()`); without `mismatch` they are unchanged.
-
   a locally scoped `#[ #set table(stroke: ...) ... ]` Typst block.
 - **Quarto/Typst:** Quarto-native pipe tables only, each with a caption and a
   stable identifier, so Quarto numbering, cross-references and the List of
@@ -1240,7 +1272,7 @@ Keep the ordinary-method plots unchanged when that table is unavailable.
    exclusions rather than hiding omitted rows behind render warnings. With ACS
    clustering enabled, score `loc_minClust`, and preserve cluster provenance
    when assembling the final package gate rows. Comparisons against manual
-   gates (Analyses 9a/9b/10/13, 14/14b and 15/15b) run StimGate with
+   gates (Analyses 9a/9b/10/13, 14 and 15) run StimGate with
    `calcCytPosGates = FALSE`: the manual gates and the comparators set one gate
    per cytokine, so a second, conditional StimGate gate would score a different
    rule. Analyses 11a/11b, which study the cytokine-positive gates, keep them on. The scoring code
@@ -1359,8 +1391,12 @@ Keep the ordinary-method plots unchanged when that table is unavailable.
    (`.getCpUnsLocShiftedPeakSettings()`). Provenance is the
    `locShiftedPeakRef` column of `getStimGates()` and `locShiftedPeak*`
    columns of the condition rows in `getStimGatesDetailed()`, present only
-   when the rule is requested. Analyses 14b/15b are the rule-on versions of
-   14/15 and keep their own cache and figure keys.
+   when the rule is requested. Every flow-cytometry analysis (OMIP-111,
+   Analysis 14; OMIP-016, Analysis 15) runs with the rule on; there is no
+   separate rule-off report. Their figures label the methods simply
+   StimGate, F-beta and Tailgate, and their frequency axes use the ACS
+   wording: "Background-subtracted frequency (manual gating, %)" and
+   "(automated gating, %)".
 
 ---
 
@@ -1514,19 +1550,50 @@ OMIP-111 (Analysis 14) imports the supplied FlowJo workspaces with FlowKit and
 audits saved population counts and cytokine frequencies before comparing methods. Keep each strain's
 matched mouse pairs separate, use the same float32 parent-population expression
 (arcsinh raw unmixed fluorescence with recorded cofactor) for all methods,
-and marginalise final StimGate combination counts (cytokine-positive
-refinement is off for this comparison, so these equal `x > gate` counts). IL-4/5 is one measured channel.
+and use final StimGate counts (single-cytokine runs with cytokine-positive
+refinement off, so these equal `x > gate` counts). IL-4/5 is one measured channel.
 Manual gates are an imperfect reference; retain negative net frequencies and
 explicit comparator errors and report finite-mouse coverage per marker.
 
-OMIP-111's author cytokine rectangles also restrict CD44. Analysis 14 uses
-the raw cytokine lower cutoff alone as its primary one-dimensional reference,
-with full author 2-D counts retained as context. Never score the CD44-restricted
-frequencies as if they were unrestricted cytokine positivity; validate projected
-reference masks against the raw FCS read by R before method execution.
+OMIP-111's author cytokine gates are cytokine-by-CD44 rectangles inside a
+CD44/CD62L non-naive gate; the published frequencies (Figures S11/S12) divide
+their counts by the non-naive count. Stimulation sheds CD62L, putting nearly
+every stimulated T cell in that non-naive gate, so it is not a matched parent.
+Analysis 14 gives each cytokine its own CD44+ parent, following the authors'
+gating path exactly: the non-naive gate within that tube's cytokine gate's
+CD44 interval, on the gate's display scale. Report how much of the same CD44
+interval within the lineage gate this keeps per tube (`lineageCd44Parent`),
+since control tubes lose CD62L-high cells that stimulated tubes keep. Every method, including StimGate (one
+run per strain, population and cytokine), gates each cytokine on its parent.
+The reference is the author 2-D gate membership; a cytokine-only cut is kept
+as an audit. Validate both masks against the raw FCS read by R, and leave unscored
+any tube/marker whose import misses FlowJo's published-scale frequency by more
+than the tolerance. The supplement's Mice 1-5 are files M1-M5 (read the
+rendered figure: PDF text extraction lists the panels out of order). The prepared rows
+also include every non-naive cell (with raw CD44), so Analysis 14 redraws
+Figures S11/S12 (`.omip111AuthorFigureData()`), the same panels with each
+method's final gate (frames are the author rectangles, never extended;
+method lines span only the rectangle's CD44 interval). Every method is also fitted on every non-naive cell
+(`.omip111RunNonNaive()`, saved as `resultsNonNaive`; StimGate jointly per
+strain and population). Bivariate figures label % of non-naive cells and
+univariate figures (each cytokine's CD44 parent) label % of that parent. PCC/CCC
+heatmaps cover fit (CD44+ or non-naive) by evaluation population (A-D,
+`.omip111FitEval()`) against both the bivariate author gate and its cytokine
+cutoff alone. The fit only sets the threshold: positives are always CD44+
+parent cells above it (never CD44-low cells), and the evaluation population
+sets the denominator. Correlation heatmaps use the standard palette only. Only
+the three-panel validation figure (`omip111-thesis.R`: one tube's bivariate
+panel with the manual gate thick and red, its CD44+ densities, and the
+combination-B Pearson heatmap) goes to `output-thesis/results/qmd14/`, and the
+combination-B automated-versus-manual scatter (CD4, CD8) and the standalone
+combination-D Pearson heatmap (gates fitted on non-naive cells) to
+`output-thesis/appendix/qmd14/`; the
+other Analysis 14 print-size figures go to the projr cache
+`omip111/thesis-drafts/`. Recounts on
+each fit's own population must reproduce the saved counts.
 
 Comparison analyses with a cell-level reference (simulated labels in 7/8,
-manual masks in 14/14b and 15/15b) report sensitivity (recall), precision,
+manual masks in 14 and 15) report sensitivity (recall), precision,
 specificity and F1 from TP/FP/FN/TN of the stimulated tube, plus Pearson and
 concordance correlations (CCC, population moments via
 `.acsCytofValidationCcc()`) between estimated and reference frequencies.
@@ -1534,7 +1601,9 @@ Precision is not specificity. These are computed at render time from saved
 gates and counts, without reruns. OMIP-111 rebuilds StimGate calls with the
 cytokine-positive rule (equal to `x > gate` with the refinement off) and must
 reproduce the saved marginal counts. ACS
-(9/10) has frequency-only manual references, so only correlations apply.
+(9/10) has frequency-only manual references. Its F1 uses a frequency-inferred
+upper-tail gate, then compares stimulated-cell masks with no further background
+subtraction; it is not agreement with manual event labels.
 
 Simulation parent-cell axes use actual observed counts and `.analysis_label_cells()`
 (1k, 5k, 20k, 100k on the common grid). Use `.analysis_cell_x()` and
@@ -1565,3 +1634,43 @@ method/cache settings. Report supported cutoffs and attained FPR, never an
 unsupported interpolated 5% sensitivity. SBB transformations are exploratory
 bounds, not estimated Bayes factors, until post-gating calibration is established.
 Caps affect displays only; retain uncapped sample evidence and cap coverage.
+
+ACS threshold-distribution figures in Analysis 9b read final `loc_minClust` base gates
+and validated comparator caches for all donors, including populations without manual
+references. Keep conditional cytokine-positive gates separate. Sample stimulated
+expression reproducibly from every tube, retain exact zeros, use the cached asinh
+scale and label density peak rescaling and finite/fallback coverage explicitly.
+
+ACS Analysis 10 F1 heatmaps use the full cached stimulated expression and a strict
+`x > gate` reference whose attainable count is closest to the manual net frequency.
+Keep ties intact and choose the lowest gate on equal count error. Score saved final
+base gates on those same cells; do not background-subtract predicted cell sets.
+Report per-tube counts, reference-frequency mismatch and failed/undefined coverage;
+both-empty sets have undefined F1. Summarise equal-weight tube scores within the
+existing manual-signal eligibility strata, rather than pooling cell counts.
+Derive the reference target from manual stimulated minus control frequencies;
+negative or missing targets remain unscored with explicit reference provenance.
+Require count and frequency parity wherever saved per-marker counts exist, and
+report missing saved audit counts separately from gate failures.
+
+Derive ACS F1 reference targets from signed manual stimulated minus control
+frequencies. Keep invalid targets unscored with explicit reasons; validate
+reconstructed method counts and frequencies against saved statistics. ACS thesis
+stacked scatter figures retain the ordinary scatter cohorts (including p4), use
+all-cell F-beta and common stimulation colours, and export both per-population
+method stacks (2x3/1x6) and per-method population stacks (1x6).
+
+Analysis 15 also saves a 2x2 thesis figure per correlation measure
+(`.omip016ThesisStimFigure()` in `omip016-thesis.R`, to
+`output-thesis/results/qmd15/omip016-by-stimulation-{ccc,pearson}`): per
+stimulation, one correlation per method across the five cytokines (the single
+macaque's only replicates) beside a 1x3 automated-versus-manual scatter.
+OMIP thesis heatmaps/scatter exports are shared through omip-thesis-plots.R and
+retain each analysis's author-reference, estimand and cohort. Show unmeasured
+marker/population cells blank and undefined correlations as NA; OMIP-016's
+single donor cannot provide per-marker/stimulation correlations. Keep pooled
+correlations descriptive and separate. F1 heatmaps use equal-weight means of
+finite stimulated-tube scores and explicit coverage, not pooled-cell F1.
+ACS mean, median and 10th-percentile F1 figures share their per-tube scores and
+eligibility; use raw finite scores (type-7 quantiles) and never substitute zero
+for undefined outcomes. The ACS F1 winner table compares the mean scores.

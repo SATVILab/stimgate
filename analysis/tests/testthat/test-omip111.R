@@ -34,7 +34,14 @@ local({
     testthat::expect_equal(lengths(regmatches(out, gregexpr("<details>", out))), nrow(index))
     testthat::expect_equal(lengths(regmatches(out, gregexpr("data:image/png", out))), nrow(index))
     testthat::expect_true(all(vapply(index$note, grepl, logical(1), x = out, fixed = TRUE)))
-    testthat::expect_match(out, "### BALB non-naïve CD8", fixed = TRUE)
+    testthat::expect_match(out, "### BALB CD44-high CD8", fixed = TRUE)
+    # Both fit populations are grouped under their own headings.
+    both <- rbind(transform(index, fit = "cd44"), transform(index, fit = "nonnaive"))
+    out <- paste(utils::capture.output(env$.omip111DiagnosticPages(both, dir)), collapse = "\n")
+    testthat::expect_equal(lengths(regmatches(out, gregexpr("<details>", out))), nrow(both))
+    testthat::expect_match(out, "### Fitted on all non-naïve cells", fixed = TRUE)
+    testthat::expect_match(out, "#### BALB non-naïve CD8", fixed = TRUE)
+    testthat::expect_match(out, "#### C57 CD44-high CD4", fixed = TRUE)
   })
 
   testthat::test_that("OMIP-111 pairs by mouse and condition and rejects incomplete pairs", {
@@ -61,6 +68,54 @@ local({
     failed <- env$.omip111Counts(NA_real_, 100, NA_real_, 100, 0, 0)
     testthat::expect_true(is.na(failed$propBs))
     testthat::expect_error(env$.omip111Counts(1, 0, 2, 100, 0, 0), "positive")
+  })
+
+  testthat::test_that("author figure labels follow the printed precision", {
+    testthat::expect_equal(
+      env$.omip111AuthorFigureLabel(c(5.843, 10.312, 0.0371, 0.0603, 0.117)),
+      c("5.84", "10.3", "0.037", "0.060", "0.12")
+    )
+  })
+
+  testthat::test_that("fit and evaluation populations rescore the same gates", {
+    m <- function(x) matrix(x, dimnames = list(NULL, "IFNg"))
+    tube <- function(x, parent, nonNaive, manual, cut) list(CD8 = list(
+      expression = m(x), parent = m(parent), manual = m(manual), cytokineCut = m(cut),
+      nonNaive = nonNaive
+    ))
+    # The CD44+ parent lies within the non-naive gate, as the authors gated.
+    prepared <- list(input = list(
+      stim = tube(c(3, 3, 3, 0, 0), c(TRUE, FALSE, FALSE, TRUE, FALSE),
+        c(TRUE, TRUE, TRUE, TRUE, FALSE), c(TRUE, FALSE, FALSE, FALSE, FALSE),
+        c(TRUE, TRUE, TRUE, FALSE, FALSE)),
+      uns = tube(c(3, 0, 0, 0), c(FALSE, FALSE, TRUE, TRUE), rep(TRUE, 4), rep(FALSE, 4),
+        c(TRUE, FALSE, FALSE, FALSE))
+    ))
+    base <- data.frame(strain = "C57", mouse = "C57_M1", population = "CD8", marker = "IFNg",
+      method = "StimGate", sampleStim = "stim", sampleUns = "uns", threshold = 2)
+    # Saved counts on each fit's own population.
+    results <- cbind(base, countStim = 1, countUns = 0, referenceAccepted = FALSE)
+    nonNaive <- cbind(base, countStim = 3, countUns = 1)
+    score <- function(fit, evaluate, reference = "bivariate") {
+      env$.omip111FitEval(prepared, results, nonNaive, fit, evaluate, reference)
+    }
+    # A and C: 1 of 2 CD44+ stimulated cells, none of the control's.
+    testthat::expect_equal(score("cd44", "cd44")$propBs, 1 / 2)
+    testthat::expect_equal(score("nonnaive", "cd44")$propBs, 1 / 2)
+    testthat::expect_equal(score("cd44", "cd44")$manualBs, 1 / 2)
+    # B and D: the same CD44+ positives over every non-naive cell; CD44-low
+    # cells above the gate are never positive (unrestricted D would be 1/2).
+    testthat::expect_equal(score("cd44", "nonnaive")$propBs, 1 / 4)
+    testthat::expect_equal(score("nonnaive", "nonnaive")$propBs, 1 / 4)
+    testthat::expect_equal(score("nonnaive", "nonnaive")$manualBs, 1 / 4)
+    # The cytokine cutoff alone is also counted within the CD44+ parent.
+    testthat::expect_equal(score("cd44", "cd44", "univariate")$manualBs, 1 / 2)
+    testthat::expect_equal(score("nonnaive", "nonnaive", "univariate")$manualBs, 1 / 4)
+    # Only the 2-D reconstruction carries the import tolerance.
+    testthat::expect_false(score("cd44", "cd44")$referenceAccepted)
+    testthat::expect_true(score("cd44", "cd44", "univariate")$referenceAccepted)
+    results$countStim <- 3
+    testthat::expect_error(score("cd44", "cd44"), "saved counts")
   })
 
   testthat::test_that("float32 inputs share exactly the package precision", {

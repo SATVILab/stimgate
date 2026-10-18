@@ -38,5 +38,6 @@ test_that("one group has no separator, and numbers keep their precision", {
   expect_false(grepl("D6D6D6", md, fixed = TRUE))
   expect_match(md, "bottom: if y == 0 or y == 3 {", fixed = TRUE)
   expect_identical(env$.analysis_md_num(c(0.7351381, 0.05, NA)), c("0.735", "0.050", "NA"))
+  expect_identical(env$.analysis_md_num(c(1000, 0, NA), digits = 0, big.mark = ","), c("1,000", "0", "NA"))
   expect_identical(env$.analysis_md_pow10(c(0.01, 10^-2.5, 1e-3)), c("10^{-2}", "10^{-2.5}", "10^{-3}"))
 })
