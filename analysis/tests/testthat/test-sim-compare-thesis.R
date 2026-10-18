@@ -152,3 +152,56 @@ test_that("frequency by cells has even probability spacing and a shared linear r
   expect_false(any(vapply(bands$layers, function(l) inherits(l$geom, "GeomErrorbar"), logical(1))))
   expect_no_error(ggplot2::ggplot_build(bands))
 })
+
+test_that("frequency band figures come in three boundary-line versions", {
+  env <- .thesisCompareEnv()
+  g <- .thesisGrid()
+  g <- rbind(g, transform(g[g$prob_response == 0.2 & g$n_cell == 1e5, ], prob_response = 1e-4))
+  bars <- env$.simCompareThesisPctPlot(g, "low", "frequency", "prob")
+  geoms <- function(p) vapply(p$layers, function(l) class(l$geom)[1], character(1))
+  for (lines in c("none", "dotted", "thin")) {
+    p <- env$.simCompareThesisPctPlot(g, "low", "frequency", "prob", intervals = "bands",
+      band_lines = lines)
+    # same values as the error-bar figure: actual frequencies in percent
+    expect_equal(p$data, bars$data)
+    expect_true("GeomRibbon" %in% geoms(p))
+    expect_equal(sum(geoms(p) == "GeomLine"), 1L + 2L * (lines != "none"))
+    b <- ggplot2::ggplot_build(p)
+    # the response simulated at one cell count gets bars, not an empty ribbon
+    expect_true(any(geoms(p) == "GeomLinerange"))
+  }
+  expect_identical(names(env$.simCompareThesisBandSuffix), c("none", "dotted", "thin"))
+  qmd <- paste(readLines(file.path(root_dir, "analysis", "7-sim-compare-freq_bs.qmd")), collapse = "\n")
+  expect_match(qmd, 'paste0("frequency-bands", .simCompareThesisBandSuffix[[band_lines]])', fixed = TRUE)
+  expect_match(qmd, 'thesis_dir("frequency", "bands")', fixed = TRUE)
+})
+
+test_that("Analysis 8 band figures put the shift on a free x axis per transformation", {
+  env <- .thesisCompareEnv()
+  g <- expand.grid(method = c("stimgate", "fbeta", "tailgate", "tailgate_default"),
+    transformation = c("gaussian", "skew", "gamma"), prob_response = c(0.2, 0.002),
+    n_cell = c(5e3, 1e5), mean_pos_setting = c("low", "high"),
+    mismatch_type = "mean_shift_all", mismatch_val = c(0, 0.1, 0.35), stringsAsFactors = FALSE)
+  g$mismatch_val[g$transformation == "gamma"] <- g$mismatch_val[g$transformation == "gamma"] / 2
+  g$q10 <- -0.5; g$median <- 0; g$q90 <- 1
+  g$f1_q10 <- 0.2; g$f1_median <- 0.5; g$f1_q90 <- 0.9
+  freq <- env$.simCompareThesisMismatchPlot(g, "low", "mean_shift_all", 5e3, "frequency", "thin")
+  expect_false("tailgate_default" %in% as.character(freq$data$method))
+  expect_setequal(unique(freq$data$x[freq$data$transformation == "Gamma"]), c(0, 0.05, 0.175))
+  # actual frequency in percent, truth from the response probability
+  expect_equal(unique(freq$data$mid[freq$data$row == "Response 20%"]), 20)
+  expect_equal(unique(freq$data$hi[freq$data$row == "Response 0.2%"]), 0.4)
+  expect_identical(levels(freq$data$row), c("Response 20%", "Response 0.2%"))
+  expect_identical(freq$facet$params$free, list(x = TRUE, y = TRUE))
+  b <- ggplot2::ggplot_build(freq)
+  ranges <- vapply(b$layout$panel_params, function(p) p$x.range[2], numeric(1))
+  expect_true(length(unique(round(ranges, 6))) > 1L)
+  f1 <- env$.simCompareThesisMismatchPlot(g, "high", "mean_shift_all", 1e5, "f1", "dotted")
+  expect_identical(f1$facet$params$free, list(x = TRUE, y = FALSE))
+  expect_equal(unique(f1$data$mid), 0.5)
+  expect_no_error(ggplot2::ggplot_build(f1))
+  expect_equal(env$.simCompareThesisBandHeight(4), 208)
+  qmd <- paste(readLines(file.path(root_dir, "analysis", "8-sim-compare-freq_bs-batch.qmd")), collapse = "\n")
+  expect_match(qmd, 'thesis_dir(thesis_types[[type]], "bands", measure)', fixed = TRUE)
+  expect_match(qmd, "nrd0 bandwidth", fixed = TRUE)
+})

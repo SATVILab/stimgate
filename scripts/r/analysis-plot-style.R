@@ -293,6 +293,61 @@
 )
 .analysis_stat_colours <- c(median = "#0072B2", upper = "#56B4E9", max = "#8C8DBA")
 
+# 10th-90th percentile bands behind median lines (thesis figures of Analyses
+# 2a, 7 and 8). The band is the series colour at `.analysis_band_alpha` (0.18):
+# at 0.10-0.12 the orange StimGate band almost vanishes on white, while at 0.25
+# three overlapping bands turn a muddy grey-green that hides which method is
+# where; 0.18 keeps each hue identifiable with the medians drawn on top. Band
+# boundary lines are left out ("none"), dotted ("dotted") or thin solid lines
+# ("thin") whose darkness lies between the full-colour median line and the
+# pale fill.
+.analysis_band_alpha <- 0.18
+.analysis_band_median_linewidth <- 0.6
+.analysis_band_line_styles <- list(
+  dotted = list(linetype = "11", linewidth = 0.45, alpha = 0.9),
+  thin = list(linetype = "solid", linewidth = 0.25, alpha = 0.55)
+)
+
+# Ribbon and optional boundary lines for `lo`-`hi` bands. The ribbon fill is
+# mapped to `fill` (add the matching fill scale); boundary lines take the
+# plot's colour and group mappings. A ribbon needs two x values, so series
+# with a single x value (identified by the `series` columns, which must
+# include the facet variables) get a pale vertical bar of the same alpha,
+# dodged by `single_dodge` (x units; dodge their median points the same way).
+# Rows of `d` whose series (`series` columns) has a single x value.
+.analysis_band_single <- function(d, x, series) {
+  key <- interaction(d[series], drop = TRUE)
+  n_x <- tapply(d[[x]], key, function(v) length(unique(v)))
+  as.vector(n_x[as.character(key)] == 1L)
+}
+
+.analysis_band_layers <- function(lines = c("none", "dotted", "thin"), fill,
+                                  lo = "lo", hi = "hi", x = "x", series = NULL,
+                                  single_dodge = 0.18,
+                                  alpha = .analysis_band_alpha) {
+  lines <- match.arg(lines)
+  out <- list(ggplot2::geom_ribbon(
+    ggplot2::aes(ymin = .data[[lo]], ymax = .data[[hi]], fill = .data[[fill]]),
+    alpha = alpha, colour = NA, show.legend = FALSE
+  ))
+  if (length(series)) {
+    out <- c(out, list(ggplot2::geom_linerange(
+      data = function(d) d[.analysis_band_single(d, x, series), , drop = FALSE],
+      ggplot2::aes(ymin = .data[[lo]], ymax = .data[[hi]], colour = .data[[fill]]),
+      alpha = 2 * alpha, linewidth = 1.6, show.legend = FALSE,
+      position = ggplot2::position_dodge(width = single_dodge)
+    )))
+  }
+  if (identical(lines, "none")) {
+    return(out)
+  }
+  style <- .analysis_band_line_styles[[lines]]
+  c(out, lapply(c(lo, hi), function(y) {
+    ggplot2::geom_line(ggplot2::aes(y = .data[[y]]), linetype = style$linetype,
+      linewidth = style$linewidth, alpha = style$alpha)
+  }))
+}
+
 .analysis_method_order <- names(.analysis_method_labels)
 .analysis_method_factor <- function(x) {
   x <- as.character(x)

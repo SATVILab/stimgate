@@ -635,6 +635,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `functionsForBenchmarking-Cyt.R`: Cytokine simulation utilities.
   - `sim-bandwidth.R`: Simulation bandwidth utilities.
   - `sim-bandwidth-analysis-io.R` / `sim-bandwidth-analysis-plot.R`: Output-file lookup and plotting helpers for the bandwidth QMDs.
+  - `sim-bandwidth-thesis.R`: Analysis 2a thesis band figures against the bandwidth (sourced after `sim-compare-thesis.R`).
   - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2-6 (the adaptive-bandwidth QMDs 5 and 6 are archived in `analysis/_archive/`), followed by one delimited section of scenario/validation/collation callbacks per analysis.
   - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating, comparator, manual-comparison and plotting helpers for analyses 9a, 9b and 10. `.acsCytofGateStim()` (in `acs_cytof-gate.R`) is the one `gateStim()` call shared by Analyses 9b and 13.
   - `acs_cytof-debug.R`: Analysis 13 (`13-real-debug-acs-cytof.qmd`): re-gates
@@ -878,6 +879,22 @@ transformation with cell counts as columns, and one figure per cell count
 blank so columns line up). Response probabilities run from
 highest (top) to lowest in all of them. The "Without Tailgate" method set is
 gone from Analyses 7 and 8.
+
+Percentile-band thesis figures (Analyses 2a, 7 and 8) draw each method's
+median line over a 10th-90th percentile band through the shared
+`.analysis_band_layers()` in `analysis-plot-style.R`: one band alpha
+(`.analysis_band_alpha`, 0.18, chosen so three overlapping method bands stay
+identifiable), boundary lines left out, dotted or thin solid
+(`.analysis_band_line_styles`), and a pale bar for a series with one x value.
+Do not restyle bands per analysis. Analysis 7 saves its response-probability
+frequency layout in all three versions to `frequency/bands/`; Analysis 8 saves
+F1 and frequency against the shift size, one figure per separation and cell
+count, to `<shift type>/bands/` (`.simCompareThesisMismatchPlot()`); Analysis
+2a (`sim-bandwidth-thesis.R`, `results/qmd2a/`) plots StimGate's F1 and
+frequency against the bandwidth for Analysis 6's focused design (0.2%
+response, low/high separation, 5k/100k cells, low bias), rows cells then
+separation. 2a's F1 uses label-based confusion-matrix counts saved with each
+gate (`confusionCounts = TRUE`, validated against `nPosStim` at collation).
 
 ### Thesis tables
 
