@@ -39,8 +39,8 @@ test_that("ACS threshold plots use common bins and a peak-scaled real density", 
   cells <- data.frame(ind = rep(c("1", "2"), each = 100), expression = seq(0, 6, length.out = 200))
   plot <- env$.acsCytofThresholdPlot(gates, cells, "cd4 / p1 / IFNg")
   expect_no_error(ggplot2::ggplotGrob(plot))
-  expect_match(plot$labels$subtitle, "F-beta (zeros removed): 2/3 finite", fixed = TRUE)
-  expect_match(plot$labels$subtitle, "StimGate: 3/3 finite, 1 fallback")
+  expect_match(plot$labels$caption, "F-beta (zeros removed): 2/3 finite", fixed = TRUE)
+  expect_match(plot$labels$caption, "StimGate: 3/3 finite, 1 fallback")
   expect_equal(max(plot$layers[[1]]$data$y), max(plot$layers[[2]]$data$y))
   steps <- plot$layers[[2]]$data
   expect_equal(length(unique(steps$x)), 21L)

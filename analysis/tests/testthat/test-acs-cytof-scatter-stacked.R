@@ -52,5 +52,5 @@ test_that("a missing method remains an explicitly labelled block", {
   tbl <- .acs_stacked_scatter_fixture() |> dplyr::filter(.data$method != "tailgate")
   result <- scatter_env$.acsCytofStackedScatter(tbl, population = "CD4 T cells")
   expect_length(result$blocks, 3)
-  expect_equal(result$blocks[[3]]$labels$subtitle, "No matched rows available")
+  expect_equal(result$blocks[[3]]$labels$caption, "No matched rows available")
 })

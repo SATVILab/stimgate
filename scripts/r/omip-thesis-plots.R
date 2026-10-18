@@ -122,7 +122,11 @@
 .omipThesisScatterPanel <- function(rows, marker, ranges, conditionColours, conditionShapes,
                                    referenceLabel) {
   d <- rows[rows$marker == marker & rows$scatterEligible %in% TRUE, ]
+  # The marker is named by a facet strip (figures carry no titles); the blank
+  # layer keeps the strip when the marker has no eligible rows.
+  d$.marker_strip <- rep(marker, nrow(d))
   ggplot2::ggplot(d, ggplot2::aes(.data$reference, .data$estimate)) +
+    ggplot2::geom_blank(data = data.frame(.marker_strip = marker), inherit.aes = FALSE) +
     .analysis_theme(grid = "xy") +
     ggplot2::geom_abline(slope = 1, intercept = 0, colour = "grey60", linewidth = 0.3) +
     ggplot2::geom_point(ggplot2::aes(colour = .data$condition, shape = .data$condition),
@@ -134,9 +138,10 @@
     ggplot2::scale_y_continuous(limits = ranges[[marker]], n.breaks = 3,
       labels = .analysis_label_number) +
     .analysis_thesis_theme() +
-    ggplot2::labs(title = marker, x = NULL, y = NULL, colour = NULL, shape = NULL) +
+    ggplot2::facet_wrap(ggplot2::vars(.marker_strip)) +
+    ggplot2::labs(x = NULL, y = NULL, colour = NULL, shape = NULL) +
     ggplot2::theme(legend.position = "none", axis.title = ggplot2::element_text(size = 7),
-      axis.text = ggplot2::element_text(size = 7), plot.title = ggplot2::element_text(size = 8))
+      axis.text = ggplot2::element_text(size = 7), strip.text = ggplot2::element_text(size = 8))
 }
 
 # One row of cytokine panels per population: colour gives the method and

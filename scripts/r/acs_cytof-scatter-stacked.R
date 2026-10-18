@@ -3,10 +3,9 @@
 .acsCytofStackedScatterBlock <- function(comparisonTbl, method, population, ncol) {
   rows <- comparisonTbl |>
     dplyr::filter(.data$method == .env$method, .data$pop == .env$population)
-  title <- paste(.acsCytofValidationMethodLabels()[[method]], population, sep = " — ")
   if (!nrow(rows)) {
     return(ggplot2::ggplot() + ggplot2::theme_void() +
-      ggplot2::labs(title = title, subtitle = "No matched rows available"))
+      ggplot2::labs(caption = "No matched rows available"))
   }
   failed <- if ("thresholdFailed" %in% names(rows)) rows$thresholdFailed else rep(FALSE, nrow(rows))
   # Unknown failure status is missing, never a valid automated estimate.
@@ -31,8 +30,7 @@
       labels = .acsCytofValidationStimLabels(), drop = FALSE
     ) +
     ggplot2::labs(
-      title = title,
-      subtitle = paste0(
+      caption = paste0(
         sum(paired), "/", nrow(rows), " matched pairs plotted; ",
         sum(!paired), " missing; ", sum(failed, na.rm = TRUE), " failed thresholds"
       )
@@ -41,8 +39,7 @@
       strip.text = ggplot2::element_text(size = 9),
       axis.text = ggplot2::element_text(size = 8),
       axis.title = ggplot2::element_text(size = 9),
-      plot.title = ggplot2::element_text(size = 11, face = "bold"),
-      plot.subtitle = ggplot2::element_text(size = 8),
+      plot.caption = ggplot2::element_text(size = 8),
       legend.text = ggplot2::element_text(size = 9)
     )
 }
@@ -64,6 +61,7 @@
   if (!is.null(population)) {
     population <- match.arg(population, populations)
     groups <- methods
+    rowLabels <- unname(.acsCytofValidationMethodLabels()[methods])
     blocks <- lapply(methods, function(m) {
       .acsCytofStackedScatterBlock(comparisonTbl, m, population, ncol)
     })
@@ -72,16 +70,23 @@
       stop("method must be one of: ", paste(methods, collapse = ", "), ".")
     }
     groups <- populations
+    rowLabels <- populations
     blocks <- lapply(populations, function(p) {
       .acsCytofStackedScatterBlock(comparisonTbl, method, p, ncol)
     })
   }
   legends <- lapply(blocks, cowplot::get_legend)
   legends <- Filter(Negate(is.null), legends)
-  panels <- cowplot::plot_grid(
-    plotlist = lapply(blocks, function(p) p + ggplot2::theme(legend.position = "none")),
-    ncol = 1, align = "v", axis = "lr"
-  )
+  # Figures carry no titles: each block is named once by a label on its right
+  # (the method or population held fixed is given by the file path and prose).
+  rows <- lapply(seq_along(blocks), function(i) {
+    cowplot::plot_grid(
+      blocks[[i]] + ggplot2::theme(legend.position = "none"),
+      cowplot::ggdraw() + cowplot::draw_label(rowLabels[[i]], angle = -90, size = 10),
+      nrow = 1, rel_widths = c(1, 0.03)
+    )
+  })
+  panels <- cowplot::plot_grid(plotlist = rows, ncol = 1)
   if (length(legends)) {
     panels <- cowplot::plot_grid(
       panels, legends[[1L]], ncol = 1,

@@ -134,9 +134,9 @@
       limits = .analysis_method_limits, name = "Method"
     ) +
     ggplot2::labs(
-      title = title, subtitle = paste(coverage, collapse = "\n"),
       x = "Threshold / expression (asinh scale)", y = "Threshold density",
       caption = paste0(
+        paste(coverage, collapse = "\n"), "\n",
         "Grey: sampled stimulated expression (", length(x), " cells, ",
         length(unique(cells$ind)), " tubes); ",
         "peak scaled to tallest threshold bin.\n",
