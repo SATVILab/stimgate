@@ -88,6 +88,6 @@ test_that("F1 winners reuse CCC comparison rules on a small finite cohort", {
   expect_match(md, "{#tbl-stimgate-results-acs-f1-wins}", fixed = TRUE)
   expect_match(md, "mean finite per-tube F1", fixed = TRUE)
   expect_match(md, "strict upper-tail reference closest to the manual", fixed = TRUE)
-  expect_match(md, "does not use manual event labels", fixed = TRUE)
+  expect_match(md, "manual event labels are unavailable", fixed = TRUE)
   expect_false(grepl("signed CCC", md, fixed = TRUE))
 })
