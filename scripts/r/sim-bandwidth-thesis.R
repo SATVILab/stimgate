@@ -50,7 +50,7 @@
 # and the separation in one strip on the right, as Analysis 6's figures label
 # scenarios (e.g. "5,000 cells," over "low separation"), so the low and high
 # separation of each cell count sit on adjacent rows.
-.simBandwidthThesisPlot <- function(summary, band_lines = c("dotted", "thin", "none"),
+.simBandwidthThesisPlot <- function(summary, band_lines = c("thin", "none", "dotted"),
                                     truth_upper = 1.5) {
   cells <- sort(unique(summary$n_cell))
   sep <- intersect(c("low", "high"), as.character(summary$mean_pos_setting))

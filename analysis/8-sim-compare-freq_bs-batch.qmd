@@ -1848,28 +1848,29 @@ scale, so some levels have only some transformations. A level of zero is the
 same simulated data for every type.
 
 Each type's `bands/` folder (`<type>/bands/f1/` and `<type>/bands/frequency/`)
-holds figures across its levels: every method's median as a line over a shaded
+holds figures across its levels: every method's median as a line over a pale
 band from its 10th to 90th percentile over the samples of each scenario,
-against the size of the shift, one figure per separation and number of cells
-(`sim-compare-batch-<measure>-bands-<lines>-<separation>-separation-<cells>`,
-e.g. `sim-compare-batch-f1-bands-dotted-low-separation-5k`). Rows are response
+edged by thin solid percentile lines, against the size of the shift, one
+figure per separation and number of cells
+(`sim-compare-batch-<measure>-bands-<separation>-separation-<cells>`, e.g.
+`sim-compare-batch-f1-bands-low-separation-5k`). Rows are response
 probabilities (highest at the top) and columns transformations, each with its
 own shift range: gamma's mean shifts stop at 0.2 on its scale, Gaussian and
 skew at 0.35. The measure is the $F_1$ score (0 to 1) or the
 background-subtracted frequency in percent with the truth as a thick grey line
 and each panel's x and y ranges set by its own data, since gamma's estimates
 under a shift can be orders of magnitude above Gaussian and skew's (each
-strip names the response probability and transformation). The `-dotted` versions draw the
-10th and 90th percentiles as dotted lines, the `-thin` versions as thin solid
-lines, lighter than the median and darker than the band; bands use the same
-alpha and line styles as Analyses 2a and 7 (`.analysis_band_layers()`).
-Separations and cell counts are separate figures rather than extra rows,
-columns or line types: separation and cell count change the scale of the
-results, line types are taken by the percentile lines, and a fourth facet
-level would leave the panels too small at the thesis width. StimGate's
-bandwidth is not fixed: as in Analysis 7, it is the data-driven nrd0 bandwidth
-per cytokine with tubes resampled to 10,000 cells (about 0.18 for Gaussian and
-skew, correspondingly smaller on gamma's scale); state this in the captions.
+strip names the response probability and transformation); each frequency
+panel's y axis runs from 0 to at least 1.5 times its truth, further only when
+the data reach higher. The per-level percentile figures use the same band
+style, and all bands share the alpha and line styles of Analyses 2a and 7
+(`.analysis_band_layers()`). Separations and cell counts are separate figures
+rather than extra rows, columns or line types: separation and cell count
+change the scale of the results, and a fourth facet level would leave the
+panels too small at the thesis width. StimGate's bandwidth is not fixed: as in
+Analysis 7, it is the data-driven nrd0 bandwidth per cytokine with tubes
+resampled to 10,000 cells (about 0.18 for Gaussian and skew, correspondingly
+smaller on gamma's scale); state this in the captions.
 
 ```{r}
 #| label: thesis-figures
@@ -1910,19 +1911,17 @@ if (isTRUE(run_plots) && isTRUE(results_available)) {
           thesis_pct$mean_pos_setting == pos & thesis_pct$n_cell == nc]))
         if (!n_band_rows) next
         for (measure in c("f1", "frequency")) {
-          for (band_lines in c("dotted", "thin")) {
-            .analysis_save_thesis_fig(
-              .simCompareThesisMismatchPlot(
-                if (identical(measure, "f1")) class_scenario else thesis_pct,
-                pos, type, nc, measure, band_lines
-              ),
-              file.path(thesis_dir(thesis_types[[type]], "bands", measure), paste0(
-                "sim-compare-batch-", measure, "-bands-", band_lines, "-", pos,
-                "-separation-", .analysis_label_cells(nc)
-              )),
-              height = .simCompareThesisBandHeight(n_band_rows)
-            )
-          }
+          .analysis_save_thesis_fig(
+            .simCompareThesisMismatchPlot(
+              if (identical(measure, "f1")) class_scenario else thesis_pct,
+              pos, type, nc, measure
+            ),
+            file.path(thesis_dir(thesis_types[[type]], "bands", measure), paste0(
+              "sim-compare-batch-", measure, "-bands-", pos,
+              "-separation-", .analysis_label_cells(nc)
+            )),
+            height = .simCompareThesisBandHeight(n_band_rows)
+          )
         }
       }
     }

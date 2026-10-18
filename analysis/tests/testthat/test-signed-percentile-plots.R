@@ -114,13 +114,20 @@ test_that("percentile plots build with single-method and method-colour encodings
   single <- env$.simBandwidthSignedPercentilePlot(tbl, mcse = TRUE)
   expect_no_error(ggplot2::ggplot_build(single))
   expect_equal(length(unique(single$data$percentile)), 7L)
-  # Nested bands share one hue, darker towards the median; the median is a line.
+  # Nested bands share the median's hue at the shared band alpha, stacked so
+  # they darken towards the median; the outer range has thin edge lines.
   built_single <- ggplot2::ggplot_build(single)
   ribbon <- built_single$data[[1]]
-  expect_setequal(ribbon$fill, c("#C7EAE5", "#80CDC1", "#35978F"))
+  fills <- vapply(1:3, function(d) env$.analysis_band_blend("#01665E",
+    1 - (1 - env$.analysis_band_alpha)^d), character(1))
+  expect_setequal(ribbon$fill, fills)
+  expect_identical(fills[[1]], env$.analysis_band_blend("#01665E", env$.analysis_band_alpha))
+  edges <- built_single$data[[2]]
+  expect_equal(unique(edges$linewidth), env$.analysis_band_line_styles$thin$linewidth)
+  expect_equal(unique(edges$alpha), env$.analysis_band_line_styles$thin$alpha)
   band_q <- list(c("q025", "q975"), c("q10", "q90"), c("q25", "q75"))
   for (i in seq_along(band_q)) {
-    rows <- ribbon[ribbon$fill == c("#C7EAE5", "#80CDC1", "#35978F")[[i]], ]
+    rows <- ribbon[ribbon$fill == fills[[i]], ]
     expect_equal(sort(rows$ymin), sort(env$.simBandwidthSignedErrorTrans()$transform(pmin(tbl[[band_q[[i]][1]]], env$.simBandwidthSignedErrorCap))))
     expect_equal(sort(rows$ymax), sort(env$.simBandwidthSignedErrorTrans()$transform(pmin(tbl[[band_q[[i]][2]]], env$.simBandwidthSignedErrorCap))))
   }

@@ -1770,10 +1770,10 @@ Transformations are labelled at the top and each row on the right by its
 number of cells and separation (e.g. "5,000 cells, low separation"). Each
 column has its own bandwidth range and each row its own y range, from 0 to at
 least 1.5 times the truth (0.3%), further when the data reach higher, so there
-is always room above the truth line. The `-dotted` version
-(`sim-bw-frequency-bands-dotted`) draws the 10th and 90th percentiles as
-dotted lines; the `-thin` version (`sim-bw-frequency-bands-thin`) as thin
-solid lines, lighter than the median line and darker than the band.
+is always room above the truth line. The figure is
+`frequency/sim-bw-frequency-bands`; its 10th and 90th percentiles are thin
+solid lines edging the band, lighter than the median line and darker than
+the band.
 
 ```{r}
 #| label: thesis-figures
@@ -1782,12 +1782,10 @@ if (isTRUE(run_plots)) {
   thesis_parts <- c("results", "qmd2a", fig_key[-1L])
   thesis_dir <- function(...) .analysis_project_dir("output-thesis", c(thesis_parts, ...), root_dir)
   thesis_summary <- .simBandwidthThesisSummary(bw_tbl_results_raw)
-  for (band_lines in c("dotted", "thin")) {
-    .analysis_save_thesis_fig(
-      .simBandwidthThesisPlot(thesis_summary, band_lines),
-      file.path(thesis_dir("frequency"), paste0("sim-bw-frequency-bands-", band_lines)),
-      height = 200
-    )
-  }
+  .analysis_save_thesis_fig(
+    .simBandwidthThesisPlot(thesis_summary),
+    file.path(thesis_dir("frequency"), "sim-bw-frequency-bands"),
+    height = 200
+  )
 }
 ```

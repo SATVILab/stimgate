@@ -17,32 +17,30 @@
   ifelse(is.finite(x), out, NA_character_)
 }
 
-# File-name suffixes of the three band versions (`band_lines`).
-.simCompareThesisBandSuffix <- c(none = "", dotted = "-dotted", thin = "-thin")
-
 # Response probability strip labels, e.g. "Response 0.2%".
 .simCompareThesisProbLab <- function(x) paste("Response", .simCompareThesisPercent(as.numeric(x)))
 
-# Percentile figures: each method's median (points joined by lines) with the
-# 10th to 90th percentile range as error bars or pale bands, over the samples of each
-# scenario. Error bars are dodged by method so single points show their range.
-# Bands (`.analysis_band_layers()`) have no boundary lines, dotted ones or thin
-# solid ones (`band_lines`), at the shared band alpha. Columns
+# Percentile figures: each method's median (points joined by lines) over a
+# pale band from its 10th to 90th percentile over the samples of each scenario,
+# edged by thin solid percentile lines (`.analysis_band_layers()`, the thesis
+# standard). `intervals = "bars"` draws dodged error bars instead. Columns
 # are transformations. With rows = "prob", rows are response probabilities and
 # the x axis is the number of cells; with rows = "cells", rows are numbers of
 # cells and the x axis is the response probability.
 # - measure = "frequency": `tbl` holds percentiles of the relative error of the
 #   background-subtracted frequency (q10, median, q90). With rows = "prob" the
 #   y axis is the background-subtracted frequency in percent (truth: grey line,
-#   y range free per row); with rows = "cells" it is the estimated over the
+#   y range free per row, from 0 to at least `truth_upper` times the truth and
+#   further only if the data reach higher); with rows = "cells" it is the estimated over the
 #   true frequency (1 = correct), on a common linear 0-4x display. Probabilities
 #   occupy equally spaced numeric positions so lines still join the medians.
 # - measure = "f1": `tbl` holds f1_q10, f1_median and f1_q90; the y axis is F1
 #   on 0-1.
 .simCompareThesisPctPlot <- function(tbl, pos, measure = c("frequency", "f1"),
                                      rows = c("prob", "cells"),
-                                     intervals = c("bars", "bands"),
+                                     intervals = c("bands", "bars"),
                                      band_lines = c("thin", "none", "dotted"),
+                                     truth_upper = 1.5,
                                      band_alpha = .analysis_band_alpha) {
   measure <- match.arg(measure)
   rows <- match.arg(rows)
@@ -128,6 +126,12 @@
     }) +
     ggplot2::facet_grid(ggplot2::vars(.data$row), ggplot2::vars(.data$transformation),
       scales = if (identical(measure, "f1") || ratio) "fixed" else "free_y") +
+    (if (!is.null(truth) && !ratio) {
+      # Train (never clip) each row from 0 to at least truth_upper x truth.
+      list(ggplot2::expand_limits(y = 0), ggplot2::geom_blank(
+        data = transform(truth, y = truth_upper * truth$y),
+        mapping = ggplot2::aes(y = .data$y), inherit.aes = FALSE))
+    }) +
     x_scale +
     (if (identical(measure, "f1")) ggplot2::scale_y_continuous(limits = c(0, 1)) else
       if (ratio) ggplot2::scale_y_continuous(breaks = 0:4, labels = paste0(0:4, "x"),
@@ -333,7 +337,7 @@
 # combined (joined by `row_sep`) in one strip on the right and y free per row.
 .simCompareThesisBandPlot <- function(d, rows, x_scale, x_lab,
                                       measure = c("frequency", "f1"),
-                                      band_lines = c("dotted", "thin", "none"),
+                                      band_lines = c("thin", "none", "dotted"),
                                       truth = NULL, truth_upper = NULL,
                                       free_y = c("panel", "row"), row_sep = ", ",
                                       single_dodge = 0.18,
@@ -427,10 +431,12 @@
 # .simCompareSignedPercentileSummary(), relative-error q10/median/q90, truth
 # as a grey line) against the shift size, rows for response probability
 # (highest at the top), columns for transformation with their own shift range
-# (gamma's mean shifts stop at 0.2, Gaussian and skew at 0.35).
+# (gamma's mean shifts stop at 0.2, Gaussian and skew at 0.35). Frequency
+# panels run from 0 to at least `truth_upper` times their own truth.
 .simCompareThesisMismatchPlot <- function(tbl, pos, type, cells,
                                           measure = c("frequency", "f1"),
-                                          band_lines = c("dotted", "thin", "none")) {
+                                          band_lines = c("thin", "none", "dotted"),
+                                          truth_upper = 1.5) {
   measure <- match.arg(measure)
   tbl <- tbl[tbl$mean_pos_setting == pos & tbl$mismatch_type == type & tbl$n_cell == cells &
     tbl$method %in% .simCompareThesisMethods, , drop = FALSE]
@@ -459,7 +465,8 @@
     x_scale = ggplot2::scale_x_continuous(labels = .analysis_label_number,
       breaks = scales::breaks_extended(4), expand = ggplot2::expansion(mult = 0.04)),
     x_lab = unname(.simCompareThesisMismatchLabels[[type]]),
-    measure = measure, band_lines = band_lines, truth = truth, single_dodge = 0.01)
+    measure = measure, band_lines = band_lines, truth = truth,
+    truth_upper = truth_upper, single_dodge = 0.01)
 }
 
 # Height (mm) for a band figure with `n_rows` rows of panels.

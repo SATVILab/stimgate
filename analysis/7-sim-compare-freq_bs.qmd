@@ -1367,38 +1367,32 @@ setting, with response probabilities from highest (top) to lowest:
   percentile over the samples of each scenario
   (`sim-compare-f1-q10-<separation>-separation`), as number of cells by
   response probability, with rows for method and columns for transformation.
-- `f1/percentiles/`: each method's median $F_1$ (points joined by lines) with
-  its 10th to 90th percentiles over the samples of a scenario as error bars,
-  on 0 to 1, in two layouts: rows for response probability against the number
-  of cells (`sim-compare-f1-percentiles-<separation>-separation`), and rows for
-  number of cells against the response probability
+- `f1/percentiles/`: each method's median $F_1$ (points joined by a line)
+  over a pale band from its 10th to its 90th percentile over the samples of a
+  scenario, edged by thin solid percentile lines (lighter than the median,
+  darker than the band; the shared thesis band style of Analyses 2a, 7 and 8,
+  `.analysis_band_layers()`), on 0 to 1, in two layouts: rows for response
+  probability against the number of cells
+  (`sim-compare-f1-percentiles-<separation>-separation`), and rows for number
+  of cells against the response probability
   (`sim-compare-f1-percentiles-by-cells-<separation>-separation`). Columns are
-  transformations.
+  transformations. A response probability simulated at one number of cells
+  (0.01%) cannot have a band; its percentiles are a pale bar beside each
+  median.
 - `frequency/`: the estimated background-subtracted response frequency, drawn
   the same way, in two layouts: rows for response probability against the
-  number of cells, with the frequency in percent, each row's y range set by
-  its own data and the true frequency as a thick grey line
+  number of cells, with the frequency in percent, the true frequency as a
+  thick grey line and each row's y axis running from 0 to at least 1.5 times
+  its truth, further only when the data reach higher
   (`sim-compare-frequency-<separation>-separation`); and rows for number of
   cells against the response probability, as the estimated over the true
   frequency, 1 (grey line) being correct
   (`sim-compare-frequency-by-cells-<separation>-separation`), because the
-  response probabilities differ by orders of magnitude. Every panel uses the
-  same linear 0–4x display (0x and 2x are equally far from 1x), and response
-  probabilities occupy equally spaced numeric positions. The companion
-  `sim-compare-frequency-by-cells-bands-<separation>-separation` uses shaded
-  10th–90th percentile bands with pale boundary lines. Values outside 0–4x
-  remain in the summaries but lie outside this figure's display.
-- `frequency/bands/`: the first layout (rows for response probability, the
-  estimated frequency in percent against the number of cells, truth as a grey
-  line) with every method's median line over a shaded band from its 10th to
-  90th percentile, in three versions: bands alone
-  (`sim-compare-frequency-bands-<separation>-separation`), bands with dotted
-  10th and 90th percentile lines (`frequency-bands-dotted`), and bands with
-  thin solid percentile lines, lighter than the median and darker than the
-  fill (`frequency-bands-thin`). Bands share the alpha and line styles of the
-  Analysis 2a and 8 band figures (`.analysis_band_layers()`). A response
-  probability simulated at one number of cells (0.01%) has no band; its
-  percentiles are a pale bar beside each median.
+  response probabilities differ by orders of magnitude. Every panel of the
+  latter uses the same linear 0–4x display (0x and 2x are equally far from
+  1x), and response probabilities occupy equally spaced numeric positions.
+  Values outside 0–4x remain in the summaries but lie outside this figure's
+  display.
 - `thresholds/`: outline histograms of each method's thresholds over the
   stimulated tube's density (grey; a seeded 100,000-cell reference simulation
   of the biological setting, scaled to the tallest threshold bin), with a rug
@@ -1440,20 +1434,6 @@ if (isTRUE(run_plots)) {
         stem(thesis_dir("f1", "percentiles"), paste0("f1-percentiles", suffix)), height = h)
       .analysis_save_thesis_fig(.simCompareThesisPctPlot(thesis_pct, pos, "frequency", lay),
         stem(thesis_dir("frequency"), paste0("frequency", suffix)), height = h)
-      if (identical(lay, "cells")) {
-        .analysis_save_thesis_fig(
-          .simCompareThesisPctPlot(thesis_pct, pos, "frequency", lay, intervals = "bands"),
-          stem(thesis_dir("frequency"), "frequency-by-cells-bands"), height = h)
-      } else {
-        for (band_lines in names(.simCompareThesisBandSuffix)) {
-          .analysis_save_thesis_fig(
-            .simCompareThesisPctPlot(thesis_pct, pos, "frequency", lay, intervals = "bands",
-              band_lines = band_lines),
-            stem(thesis_dir("frequency", "bands"),
-              paste0("frequency-bands", .simCompareThesisBandSuffix[[band_lines]])),
-            height = h)
-        }
-      }
     }
     thr <- function(data, ...) {
       .simCompareThesisThresholdPlot(data, threshold_reference_densities, pos, ...)

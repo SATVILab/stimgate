@@ -153,27 +153,39 @@ test_that("frequency by cells has even probability spacing and a shared linear r
   expect_no_error(ggplot2::ggplot_build(bands))
 })
 
-test_that("frequency band figures come in three boundary-line versions", {
+test_that("percentile figures default to thin bands with room above the truth", {
   env <- .thesisCompareEnv()
   g <- .thesisGrid()
   g <- rbind(g, transform(g[g$prob_response == 0.2 & g$n_cell == 1e5, ], prob_response = 1e-4))
-  bars <- env$.simCompareThesisPctPlot(g, "low", "frequency", "prob")
   geoms <- function(p) vapply(p$layers, function(l) class(l$geom)[1], character(1))
-  for (lines in c("none", "dotted", "thin")) {
-    p <- env$.simCompareThesisPctPlot(g, "low", "frequency", "prob", intervals = "bands",
-      band_lines = lines)
-    # same values as the error-bar figure: actual frequencies in percent
-    expect_equal(p$data, bars$data)
+  bars <- env$.simCompareThesisPctPlot(g, "low", "frequency", "prob", intervals = "bars")
+  expect_true("GeomErrorbar" %in% geoms(bars))
+  for (measure in c("frequency", "f1")) for (rows in c("prob", "cells")) {
+    p <- env$.simCompareThesisPctPlot(g, "low", measure, rows)
     expect_true("GeomRibbon" %in% geoms(p))
-    expect_equal(sum(geoms(p) == "GeomLine"), 1L + 2L * (lines != "none"))
-    b <- ggplot2::ggplot_build(p)
-    # the response simulated at one cell count gets bars, not an empty ribbon
-    expect_true(any(geoms(p) == "GeomLinerange"))
+    expect_false("GeomErrorbar" %in% geoms(p))
+    # median plus the two thin percentile lines
+    expect_equal(sum(geoms(p) == "GeomLine"), 3L)
+    lines <- p$layers[geoms(p) == "GeomLine"]
+    expect_equal(lines[[1]]$aes_params$alpha, env$.analysis_band_line_styles$thin$alpha)
+    expect_no_error(ggplot2::ggplot_build(p))
   }
-  expect_identical(names(env$.simCompareThesisBandSuffix), c("none", "dotted", "thin"))
+  p <- env$.simCompareThesisPctPlot(g, "low", "frequency", "prob")
+  # same values as the error-bar figure: actual frequencies in percent
+  expect_equal(p$data, bars$data)
+  # the response simulated at one cell count gets bars, not an empty ribbon
+  expect_true("GeomLinerange" %in% geoms(p))
+  # each row runs from 0 to at least 1.5 times its truth
+  b <- ggplot2::ggplot_build(p)
+  truth <- c(20, 0.2, 0.01)
+  for (i in seq_len(nrow(b$layout$layout))) {
+    row <- b$layout$layout$ROW[[i]]
+    yr <- b$layout$panel_params[[i]]$y.range
+    expect_lte(yr[1], 0)
+    expect_gte(yr[2], 1.5 * truth[[row]])
+  }
   qmd <- paste(readLines(file.path(root_dir, "analysis", "7-sim-compare-freq_bs.qmd")), collapse = "\n")
-  expect_match(qmd, 'paste0("frequency-bands", .simCompareThesisBandSuffix[[band_lines]])', fixed = TRUE)
-  expect_match(qmd, 'thesis_dir("frequency", "bands")', fixed = TRUE)
+  expect_false(grepl("bands-dotted|frequency-by-cells-bands|band_lines", qmd))
 })
 
 test_that("Analysis 8 band figures put the shift on a free x axis per transformation", {
@@ -185,7 +197,7 @@ test_that("Analysis 8 band figures put the shift on a free x axis per transforma
   g$mismatch_val[g$transformation == "gamma"] <- g$mismatch_val[g$transformation == "gamma"] / 2
   g$q10 <- -0.5; g$median <- 0; g$q90 <- 1
   g$f1_q10 <- 0.2; g$f1_median <- 0.5; g$f1_q90 <- 0.9
-  freq <- env$.simCompareThesisMismatchPlot(g, "low", "mean_shift_all", 5e3, "frequency", "thin")
+  freq <- env$.simCompareThesisMismatchPlot(g, "low", "mean_shift_all", 5e3, "frequency")
   expect_false("tailgate_default" %in% as.character(freq$data$method))
   expect_setequal(unique(freq$data$x[freq$data$transformation == "Gamma"]), c(0, 0.05, 0.175))
   # actual frequency in percent, truth from the response probability
@@ -194,10 +206,18 @@ test_that("Analysis 8 band figures put the shift on a free x axis per transforma
   expect_identical(levels(freq$data$row), c("Response 20%", "Response 0.2%"))
   expect_s3_class(freq$facet, "FacetWrap")
   expect_identical(freq$facet$params$free, list(x = TRUE, y = TRUE))
+  # every panel runs from 0 to at least 1.5 times its own truth
+  bf <- ggplot2::ggplot_build(freq)
+  rows <- as.character(bf$layout$layout$.row_label)
+  for (i in seq_along(rows)) {
+    yr <- bf$layout$panel_params[[i]]$y.range
+    expect_gte(yr[2], 1.5 * if (rows[[i]] == "Response 20%") 20 else 0.2)
+    expect_lte(yr[1], 0)
+  }
   b <- ggplot2::ggplot_build(freq)
   ranges <- vapply(b$layout$panel_params, function(p) p$x.range[2], numeric(1))
   expect_true(length(unique(round(ranges, 6))) > 1L)
-  f1 <- env$.simCompareThesisMismatchPlot(g, "high", "mean_shift_all", 1e5, "f1", "dotted")
+  f1 <- env$.simCompareThesisMismatchPlot(g, "high", "mean_shift_all", 1e5, "f1")
   expect_s3_class(f1$facet, "FacetGrid")
   expect_identical(f1$facet$params$free, list(x = TRUE, y = FALSE))
   expect_equal(unique(f1$data$mid), 0.5)
@@ -206,4 +226,5 @@ test_that("Analysis 8 band figures put the shift on a free x axis per transforma
   qmd <- paste(readLines(file.path(root_dir, "analysis", "8-sim-compare-freq_bs-batch.qmd")), collapse = "\n")
   expect_match(qmd, 'thesis_dir(thesis_types[[type]], "bands", measure)', fixed = TRUE)
   expect_match(qmd, "nrd0 bandwidth", fixed = TRUE)
+  expect_false(grepl("band_lines|bands-dotted", qmd))
 })

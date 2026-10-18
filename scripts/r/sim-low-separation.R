@@ -1538,9 +1538,11 @@
     ) |>
     ggplot(aes(x = .data$mismatch_x, colour = .data$gate_type, group = .data$gate_type)) +
     geom_hline(yintercept = 0, colour = "grey40") +
-    geom_linerange(aes(ymin = .data$p10, ymax = .data$p90), position = position_dodge(width = 0.6), linewidth = 0.4) +
-    geom_point(aes(y = .data$p50), position = position_dodge(width = 0.6), size = 1.2) +
-    .simLowSepScaleRule() +
+    # Shared thesis band style: median line over a p10-p90 band edged by thin lines.
+    .analysis_band_layers("thin", fill = "gate_type", lo = "p10", hi = "p90") +
+    geom_line(aes(y = .data$p50), linewidth = .analysis_band_median_linewidth) +
+    geom_point(aes(y = .data$p50), size = 1.2) +
+    .simLowSepScaleRule(c("colour", "fill")) +
     facet_wrap(~ scenario_lab + quantity_lab, ncol = 5, scales = "free_y",
       labeller = ggplot2::label_wrap_gen(width = 22, multi_line = TRUE)) +
     labs(x = .simLowSepMismatchXLab[[type]], y = "Estimated minus true frequency (percentage points)") +

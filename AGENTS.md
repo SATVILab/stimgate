@@ -528,8 +528,8 @@ sample denominators explicit.
 
 Thesis frequency-by-cell-count figures use comma-formatted cell counts,
 equally spaced numeric response-probability positions and a common linear
-0–4x estimate/truth display. Keep the error-bar and pale-band companions on
-the same scale; use coordinate limits so off-display quantiles remain in data.
+0–4x estimate/truth display (percentile bands, see below); use coordinate
+limits so off-display quantiles remain in data.
 
 ### Website Maintenance (`pkgdown`)
 
@@ -866,8 +866,8 @@ Analysis 7's thesis figures (`sim-compare-thesis.R`, saved to
 subfolders, not shown in the HTML) are, per separation: median
 and 10th-percentile $F_1$ heat maps (rows method, columns transformation;
 `.simCompareThesisF1Plot(stat = )`); median $F_1$ and background-subtracted
-frequency with 10th-90th percentile error bars, dodged by method so single
-points show their range (`.simCompareThesisPctPlot(measure = , rows = )`), with
+frequency over 10th-90th percentile bands
+(`.simCompareThesisPctPlot(measure = , rows = )`), with
 rows for response probability against cells (frequency in percent, truth as a
 grey line, y free per row) or rows for cells against response probability
 (frequency as estimated over true, 1 = correct); and outline threshold histograms over
@@ -880,25 +880,32 @@ blank so columns line up). Response probabilities run from
 highest (top) to lowest in all of them. The "Without Tailgate" method set is
 gone from Analyses 7 and 8.
 
-Percentile-band thesis figures (Analyses 2a, 7 and 8) draw each method's
-median line over a 10th-90th percentile band through the shared
-`.analysis_band_layers()` in `analysis-plot-style.R`: one band alpha
-(`.analysis_band_alpha`, 0.18, chosen so three overlapping method bands stay
-identifiable), boundary lines left out, dotted or thin solid
-(`.analysis_band_line_styles`), and a pale bar for a series with one x value.
-Do not restyle bands per analysis. Analysis 7 saves its response-probability
-frequency layout in all three versions to `frequency/bands/`; Analysis 8 saves
-F1 and frequency against the shift size, one figure per separation and cell
-count, to `<shift type>/bands/` (`.simCompareThesisMismatchPlot()`); Analysis
-2a (`sim-bandwidth-thesis.R`, `results/qmd2a/`) plots StimGate's frequency
-against the bandwidth for Analysis 6's focused design (0.2% response, low/high
-separation, 5k/100k cells, low bias), rows cells then separation. Frequency
-band panels have their own x and y ranges (`facet_wrap`); F1 band panels share
-0-1 in a grid. 2a's frequency figure is a grid instead (`free_y = "row"`):
-transformations on top and one combined row strip on the right in Analysis 6's
-wording ("5,000 cells," over "low separation"); its y axes run from 0 to at
-least 1.5 times the truth (`truth_upper`, trained with `geom_blank`, never
-clipped), further only when the data reach higher.
+Percentile thesis figures with a continuous or ordered x axis (Analyses 2a, 7
+and 8, including Analysis 8's per-level figures) draw each method's median
+line over a 10th-90th percentile band edged by thin solid percentile lines,
+through the shared `.analysis_band_layers()` in `analysis-plot-style.R`: one
+band alpha (`.analysis_band_alpha`, 0.18, chosen so three overlapping method
+bands stay identifiable), thin lines lighter than the median and darker than
+the fill (`.analysis_band_line_styles`), and a pale bar, dodged by method, for
+a series with one x value. Save only this thin version (the "none" and
+"dotted" options are for exploration); do not restyle bands per analysis.
+Analysis 11b's mismatch frequency error (`.simLowSepPlotMismatchError()`)
+uses the same thin bands around a zero line, and single-method signed
+percentile fans (`.simBandwidthSignedPercentilePlot()`, Analyses 2a/2b) fill
+each nested range with the median colour at the shared alpha, stacked
+(`.analysis_band_blend()`), with thin edges on the outer range.
+Categorical-x figures (e.g. Analysis 6's settings comparison, Analysis 11a's
+per-scenario bars) keep points with ranges. Frequency figures in percent run from 0 to at least 1.5 times each
+panel's truth (`truth_upper`, trained with `geom_blank`, never clipped).
+Analysis 8 saves F1 and frequency against the shift size, one figure per
+separation and cell count, to `<shift type>/bands/`
+(`.simCompareThesisMismatchPlot()`), each frequency panel with its own x and y
+ranges (`facet_wrap`); F1 panels share 0-1 in a grid. Analysis 2a
+(`sim-bandwidth-thesis.R`, `results/qmd2a/frequency/sim-bw-frequency-bands`)
+plots StimGate's frequency against the bandwidth for Analysis 6's focused
+design (0.2% response, low/high separation, 5k/100k cells, low bias) as a grid
+(`free_y = "row"`): transformations on top and one combined row strip on the
+right in Analysis 6's wording ("5,000 cells," over "low separation").
 
 ### Thesis tables
 

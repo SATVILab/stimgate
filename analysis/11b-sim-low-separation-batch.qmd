@@ -297,7 +297,7 @@ The figures below are shown for each mismatch kind and baseline family. Rows of 
 
 **Does a test find a response?** The share of tests rejecting at 5%, for each rule, as in Analysis 11a: one-sided Fisher's exact tests of each sample's stimulated against unstimulated counts (rates pooled over every sample of every dataset, with 95% bootstrap intervals over whole datasets when at least five contribute), and one-sided paired Wilcoxon signed-rank tests across each dataset's samples (rates over datasets, with 95% Clopper-Pearson intervals). Filled points are power (the quantity has a net response), open points false-positive rates (it has none; the mismatch is not a response). The dashed line marks 5%. Intervals are Monte Carlo intervals; the paired t-test is in the summary table only.
 
-**Frequency error**: the estimated minus true background-subtracted frequency (percentage points), median as a point and 10th to 90th percentiles as a bar, over every sample of every dataset.
+**Frequency error**: the estimated minus true background-subtracted frequency (percentage points), median as a line over a pale band from the 10th to the 90th percentile edged by thin lines (the shared band style of the thesis figures), over every sample of every dataset.
 
 **What the lowering rules gate**: the share of sample gates each rule lowered (both markers together), and the cells it adds over the ordinary gates in the stimulated tube per 100,000 cells, split into cells truly negative and truly positive for the marker (summed over the two markers, so a cell newly positive for both counts twice).
 

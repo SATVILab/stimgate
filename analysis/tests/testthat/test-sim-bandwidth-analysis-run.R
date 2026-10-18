@@ -614,8 +614,8 @@ test_that("2a thesis band figures summarise the focused scenarios against bandwi
   expect_equal(unique(s$freq_median), 100 * 0.002 * 5 / 5)
   expect_equal(unique(s$n_valid), 9L)
 
-  for (lines in c("dotted", "thin")) {
-    p <- env$.simBandwidthThesisPlot(s, lines)
+  {
+    p <- env$.simBandwidthThesisPlot(s)
     b <- ggplot2::ggplot_build(p)
     expect_identical(levels(p$data$cells), c("5,000 cells", "100,000 cells"))
     expect_identical(levels(p$data$separation), c("low separation", "high separation"))
@@ -644,4 +644,5 @@ test_that("2a thesis band figures summarise the focused scenarios against bandwi
   qmd <- paste(readLines(file.path(root_dir, "analysis", "2a-sim-bw-freq_bs-global.qmd")), collapse = "\n")
   expect_match(qmd, 'thesis_parts <- c("results", "qmd2a", fig_key[-1L])', fixed = TRUE)
   expect_match(qmd, '"sim-bandwidth-thesis.R"', fixed = TRUE)
+  expect_match(qmd, '"sim-bw-frequency-bands"', fixed = TRUE)
 })

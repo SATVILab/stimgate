@@ -300,7 +300,7 @@
 # where; 0.18 keeps each hue identifiable with the medians drawn on top. Band
 # boundary lines are left out ("none"), dotted ("dotted") or thin solid lines
 # ("thin") whose darkness lies between the full-colour median line and the
-# pale fill.
+# pale fill. Thesis figures use "thin"; the others remain for exploration.
 .analysis_band_alpha <- 0.18
 .analysis_band_median_linewidth <- 0.6
 .analysis_band_line_styles <- list(
@@ -314,6 +314,14 @@
 # with a single x value (identified by the `series` columns, which must
 # include the facet variables) get a pale vertical bar of the same alpha,
 # dodged by `single_dodge` (x units; dodge their median points the same way).
+# Opaque colour that looks like `colour` at `alpha` over white, for fills
+# that need distinct legend keys (e.g. nested percentile ranges).
+.analysis_band_blend <- function(colour, alpha) {
+  rgb <- grDevices::col2rgb(colour)[, 1] / 255
+  out <- alpha * rgb + (1 - alpha)
+  grDevices::rgb(out[[1]], out[[2]], out[[3]])
+}
+
 # Rows of `d` whose series (`series` columns) has a single x value.
 .analysis_band_single <- function(d, x, series) {
   key <- interaction(d[series], drop = TRUE)
@@ -321,7 +329,7 @@
   as.vector(n_x[as.character(key)] == 1L)
 }
 
-.analysis_band_layers <- function(lines = c("none", "dotted", "thin"), fill,
+.analysis_band_layers <- function(lines = c("thin", "none", "dotted"), fill,
                                   lo = "lo", hi = "hi", x = "x", series = NULL,
                                   single_dodge = 0.18,
                                   alpha = .analysis_band_alpha) {
