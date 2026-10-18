@@ -43,11 +43,15 @@
     )
 }
 
-# Estimated frequency (percent, truth as a grey line) against the bandwidth
-# (log scale, each transformation's own range), columns for transformation
-# and rows for number of cells and then separation, so the low and high
+# Estimated frequency (percent, truth as a grey line; y from 0 to at least
+# `truth_upper` times the truth, further only if the data reach higher)
+# against the bandwidth (log scale, each transformation's own range).
+# Transformations are columns (top strips); rows combine the number of cells
+# and the separation in one strip on the right, as Analysis 6's figures label
+# scenarios (e.g. "5,000 cells," over "low separation"), so the low and high
 # separation of each cell count sit on adjacent rows.
-.simBandwidthThesisPlot <- function(summary, band_lines = c("dotted", "thin", "none")) {
+.simBandwidthThesisPlot <- function(summary, band_lines = c("dotted", "thin", "none"),
+                                    truth_upper = 1.5) {
   cells <- sort(unique(summary$n_cell))
   sep <- intersect(c("low", "high"), as.character(summary$mean_pos_setting))
   d <- data.frame(
@@ -65,5 +69,5 @@
       breaks = c(0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 1.5),
       expand = ggplot2::expansion(mult = 0.04)),
     x_lab = "Bandwidth", measure = "frequency", band_lines = band_lines, truth = truth,
-    single_dodge = 0.05)
+    truth_upper = truth_upper, free_y = "row", row_sep = ",\n", single_dodge = 0.05)
 }

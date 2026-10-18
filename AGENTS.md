@@ -894,7 +894,11 @@ count, to `<shift type>/bands/` (`.simCompareThesisMismatchPlot()`); Analysis
 against the bandwidth for Analysis 6's focused design (0.2% response, low/high
 separation, 5k/100k cells, low bias), rows cells then separation. Frequency
 band panels have their own x and y ranges (`facet_wrap`); F1 band panels share
-0-1 in a grid.
+0-1 in a grid. 2a's frequency figure is a grid instead (`free_y = "row"`):
+transformations on top and one combined row strip on the right in Analysis 6's
+wording ("5,000 cells," over "low separation"); its y axes run from 0 to at
+least 1.5 times the truth (`truth_upper`, trained with `geom_blank`, never
+clipped), further only when the data reach higher.
 
 ### Thesis tables
 

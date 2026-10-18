@@ -326,22 +326,29 @@
 # column; frequencies are in percent with x and y free per panel
 # (`facet_wrap`, strips naming the row on one line and the transformation on
 # the next). One method alone gets
-# no legend.
+# no legend. With `truth_upper` (e.g. 1.5), each frequency panel's y range
+# runs from 0 to at least `truth_upper` times its truth, expanded further by
+# the data rather than clipped, so there is always room above the truth line.
+# `free_y = "row"` lays frequencies out as a grid instead, with the row facets
+# combined (joined by `row_sep`) in one strip on the right and y free per row.
 .simCompareThesisBandPlot <- function(d, rows, x_scale, x_lab,
                                       measure = c("frequency", "f1"),
                                       band_lines = c("dotted", "thin", "none"),
-                                      truth = NULL, single_dodge = 0.18,
+                                      truth = NULL, truth_upper = NULL,
+                                      free_y = c("panel", "row"), row_sep = ", ",
+                                      single_dodge = 0.18,
                                       band_alpha = .analysis_band_alpha) {
   measure <- match.arg(measure)
   band_lines <- match.arg(band_lines)
+  free_y <- match.arg(free_y)
   methods <- intersect(.simCompareThesisMethods, as.character(d$method))
   d$method <- factor(as.character(d$method), methods)
   d$transformation <- .analysis_trans_factor(d$transformation)
   if (!is.null(truth)) truth$transformation <- .analysis_trans_factor(truth$transformation)
   series <- c("method", rows, "transformation")
-  d$.row_label <- interaction(d[rows], sep = ", ", lex.order = TRUE, drop = TRUE)
+  d$.row_label <- interaction(d[rows], sep = row_sep, lex.order = TRUE, drop = TRUE)
   if (!is.null(truth)) {
-    truth$.row_label <- factor(do.call(paste, c(lapply(truth[rows], as.character), sep = ", ")),
+    truth$.row_label <- factor(do.call(paste, c(lapply(truth[rows], as.character), sep = row_sep)),
       levels(d$.row_label))
   }
   single <- .analysis_band_single(d, "x", series)
@@ -364,6 +371,11 @@
     (if (identical(measure, "f1")) {
       ggplot2::facet_grid(rows = ggplot2::vars(!!!rlang::syms(rows)),
         cols = ggplot2::vars(.data$transformation), scales = "free_x")
+    } else if (identical(free_y, "row")) {
+      # One combined row strip on the right, transformation on top; y free
+      # per row (for rows that share a truth), x free per column.
+      ggplot2::facet_grid(rows = ggplot2::vars(.data$.row_label),
+        cols = ggplot2::vars(.data$transformation), scales = "free")
     } else {
       # Frequencies differ by orders of magnitude between transformations
       # (e.g. gamma under a shift), so each panel gets its own range.
@@ -372,6 +384,11 @@
         ncol = nlevels(droplevels(d$transformation)), scales = "free")
     }) +
     (if (identical(measure, "frequency")) ggplot2::expand_limits(y = 0)) +
+    (if (!is.null(truth) && !is.null(truth_upper)) {
+      # Train (never clip) each panel's y range up to truth_upper x truth.
+      ggplot2::geom_blank(data = transform(truth, y = truth_upper * truth$y),
+        mapping = ggplot2::aes(y = .data$y), inherit.aes = FALSE)
+    }) +
     x_scale +
     (if (identical(measure, "f1")) ggplot2::scale_y_continuous(limits = c(0, 1)) else
       ggplot2::scale_y_continuous(labels = .analysis_label_number)) +

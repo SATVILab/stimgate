@@ -620,13 +620,27 @@ test_that("2a thesis band figures summarise the focused scenarios against bandwi
     expect_identical(levels(p$data$cells), c("5,000 cells", "100,000 cells"))
     expect_identical(levels(p$data$separation), c("low separation", "high separation"))
     expect_equal(nrow(b$layout$layout), 4L * 2L)
-    expect_s3_class(p$facet, "FacetWrap")
-    expect_identical(levels(p$data$.row_label)[1:2],
-      c("5,000 cells, low separation", "5,000 cells, high separation"))
+    # one combined row strip on the right, transformations on top
+    expect_s3_class(p$facet, "FacetGrid")
+    expect_identical(levels(p$data$.row_label), c(
+      "5,000 cells,\nlow separation", "5,000 cells,\nhigh separation",
+      "100,000 cells,\nlow separation", "100,000 cells,\nhigh separation"))
     expect_identical(p$labels$x, "Bandwidth")
     expect_identical(p$theme$legend.position, "none")
     expect_true(any(vapply(p$layers, function(l) inherits(l$geom, "GeomHline"), logical(1))))
+    # every panel runs from 0 to at least 1.5 times the 0.2% truth
+    for (pp in b$layout$panel_params) {
+      expect_lte(pp$y.range[1], 0)
+      expect_gte(pp$y.range[2], 1.5 * 0.2)
+    }
   }
+  # the multiplier is an option; data above it extend the range, never clip
+  b_two <- ggplot2::ggplot_build(env$.simBandwidthThesisPlot(s, "thin", truth_upper = 2))
+  for (pp in b_two$layout$panel_params) expect_gte(pp$y.range[2], 2 * 0.2)
+  s_high <- s
+  s_high$freq_q90 <- 1
+  b_high <- ggplot2::ggplot_build(env$.simBandwidthThesisPlot(s_high, "thin"))
+  for (pp in b_high$layout$panel_params) expect_gte(pp$y.range[2], 1)
   qmd <- paste(readLines(file.path(root_dir, "analysis", "2a-sim-bw-freq_bs-global.qmd")), collapse = "\n")
   expect_match(qmd, 'thesis_parts <- c("results", "qmd2a", fig_key[-1L])', fixed = TRUE)
   expect_match(qmd, '"sim-bandwidth-thesis.R"', fixed = TRUE)
