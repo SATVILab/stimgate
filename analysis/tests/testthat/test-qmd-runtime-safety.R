@@ -9,12 +9,14 @@ test_that("analysis QMDs do not overwrite sourced helper functions", {
     pattern = "[.]R$",
     full.names = TRUE
   )
+  # Only top-level definitions are sourced helpers; functions defined inside
+  # other functions are local and cannot be overwritten by a QMD.
   helper_names <- unique(unlist(lapply(script_paths, function(path) {
     lines <- readLines(path, warn = FALSE)
     matches <- regmatches(
       lines,
       regexec(
-        "^\\s*([.A-Za-z][A-Za-z0-9._]*)\\s*<-\\s*function\\s*\\(",
+        "^([.A-Za-z][A-Za-z0-9._]*)\\s*<-\\s*function\\s*\\(",
         lines,
         perl = TRUE
       )
