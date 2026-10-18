@@ -555,8 +555,12 @@ populations, columns cytokines), with larger outlined points. One set of
 figures shows all three methods (colour method, shape stimulation); the other
 draws one figure per method (colour and shape stimulation). Each comes with a
 least-squares line per stimulation (`fit-per-stim`), one line per panel
-(`fit-per-panel`; per method in the all-method figures) or no lines (`no-fit`).
-Failed thresholds are left out, and the grey diagonal is $y = x$.
+(`fit-per-panel`; per method in the all-method figures) or no lines (`no-fit`);
+groups with fewer than four points or three distinct manual frequencies get
+no line. Failed thresholds are left out. Each panel is square, with the same
+range on both axes, so the grey diagonal ($y = x$) is at 45°. Both axes use a
+signed square root ($\operatorname{sign}(x)\sqrt{|x|}$), labelled in
+percentages; lines are fitted on the percentage scale, so they curve.
 
 ```{r}
 #| label: thesis-scatter-alt
