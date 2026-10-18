@@ -64,7 +64,7 @@ show_mcse <- mcse_mode != "off"
 sim_retry_errors <- .as_flag(.get_qmd_param_env("sim_retry_errors", "SIM_RETRY_ERRORS", TRUE))
 analysis_run_id <- .get_qmd_param_env("analysis_run_id", "ANALYSIS_RUN_ID", NULL)
 
-analysis_semantics_version <- "sim-low-separation-batch-v1"
+analysis_semantics_version <- "sim-low-separation-batch-v3"
 analysis_dev <- .analysis_is_dev()
 analysis_quick <- .analysis_is_quick() && !analysis_dev
 sim_size <- .analysis_sim_size()
@@ -90,12 +90,12 @@ for (fn in c(
 
 Everything except the mismatch is as in Analysis 11a: two cytokines on the Gaussian transformation, positive cells centred at 4.5 ("low" separation) with variance 1.5, 100,000 or 5,000 cells per tube, gates from `gateStim()` with threshold clustering, the capped local-FDR threshold method (`locThresholdMethod = "cap"`) and the antimode gates (`gateStim(calcCytPosGates = TRUE)`, `stimControl(cytPosMethod = "antimode")`), and both co-expression rules applied afterwards to the ordinary gates. The baseline scenarios are a subset of Analysis 11a's families, at low separation, every response level and both cell counts:
 
-- **Main grid**: 1% or 5% response, 60% of responders TNF+ IFNγ+, 25% TNF+ only and 15% IFNγ+ only.
+- **Main grid**: 1% or 5% response, 60% of responders TNF+ IFNγ+, 25% TNF+ only and 15% IFNγ+ only. Both tubes have background positive cells at 0.2 times the response, in the same proportions, and the stimulated tube adds the response on top (as in Analyses 2 to 8), so the net frequency is the response itself.
 - **Responders single-positive only**: no double-positive response.
-- **Weak double-positive response**: 6% of responders TNF+ IFNγ+, so a net double-positive frequency of 0.048% or 0.24%.
+- **Weak double-positive response**: 6% of responders TNF+ IFNγ+, so a net double-positive frequency of 0.06% or 0.3%.
 - **Responders double-positive only**.
-- **No response**: both tubes have the same 1% background.
-- **No response, co-expressing background**: both tubes have the same 1% background, all TNF+ IFNγ+.
+- **No response**: both tubes have the same 1% background and there is no response.
+- **No response, co-expressing background**: both tubes have the same 1% background, all TNF+ IFNγ+, and there is no response.
 
 Each baseline scenario keeps Analysis 11a's scenario ID (`base_scenario_id`) and data seeds, so its no-mismatch rows reproduce Analysis 11a's datasets.
 

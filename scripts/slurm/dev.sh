@@ -24,9 +24,7 @@ scripts=(
   "dev-12-sim-cluster-gates.sh"
   "dev-13-real-debug-acs-cytof.sh"
   "dev-14-real-compare-omip111.sh"
-  "dev-14b-real-compare-omip111-shifted-peak.sh"
   "dev-15-real-compare-omip016.sh"
-  "dev-15b-real-compare-omip016-shifted-peak.sh"
   "dev-17-explore-acs-cytof-coexpression.sh"
 )
 
@@ -75,8 +73,8 @@ if (( $# > 0 )); then
 fi
 
 # Some analyses read another's results, so submit the one they read first
-# when both run: 9b reads 9a, 13, 17 and 18 read 9b (and 9a's selection),
-# 14b reads 14 and 15b reads 15. The OMIP
+# when both run: 9b reads 9a, and 13, 17 and 18 read 9b (and 9a's
+# selection). The OMIP
 # analyses and 17 also wait for Analysis 1's projr build, which clears the
 # figure folder.
 move_after() {
@@ -91,8 +89,7 @@ move_after() {
     scripts=("${scripts[@]}" "$moved")
   fi
 }
-for omip_script in dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh \
-  dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh \
+for omip_script in dev-14-real-compare-omip111.sh dev-15-real-compare-omip016.sh \
   dev-17-explore-acs-cytof-coexpression.sh; do
   move_after dev-1-sim-trans.sh "$omip_script"
 done
@@ -100,8 +97,6 @@ move_after dev-9a-real-tune-acs-cytof-tailgate.sh dev-9b-real-compare-acs-cytof.
 move_after dev-9b-real-compare-acs-cytof.sh dev-13-real-debug-acs-cytof.sh
 move_after dev-9b-real-compare-acs-cytof.sh dev-17-explore-acs-cytof-coexpression.sh
 move_after dev-9b-real-compare-acs-cytof.sh dev-18-explore-acs-cytof-coexpression-gates.sh
-move_after dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh
-move_after dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh
 
 poll_seconds="${POLL_SECONDS:-5}"
 sim_grid_n_chunks_set="${SIM_GRID_N_CHUNKS:-}"
@@ -191,10 +186,9 @@ plot_qmds_for_script() {
     dev-13-real-debug-acs-cytof.sh)
       echo "analysis/13-real-debug-acs-cytof.qmd"
       ;;
-    # The OMIP analyses (14, 14b, 15, 15b) and 17 draw their plots in their
+    # The OMIP analyses (14, 15) and 17 draw their plots in their
     # own job (plots_in_sim_job), so they have no plot job.
-    dev-14-real-compare-omip111.sh | dev-14b-real-compare-omip111-shifted-peak.sh | \
-      dev-15-real-compare-omip016.sh | dev-15b-real-compare-omip016-shifted-peak.sh | \
+    dev-14-real-compare-omip111.sh | dev-15-real-compare-omip016.sh | \
       dev-17-explore-acs-cytof-coexpression.sh)
       ;;
     *)
@@ -210,8 +204,7 @@ plot_qmds_for_script() {
 # Analysis 17, which only draws plots.
 plots_in_sim_job() {
   case "$1" in
-    dev-14-real-compare-omip111.sh | dev-14b-real-compare-omip111-shifted-peak.sh | \
-      dev-15-real-compare-omip016.sh | dev-15b-real-compare-omip016-shifted-peak.sh | \
+    dev-14-real-compare-omip111.sh | dev-15-real-compare-omip016.sh | \
       dev-17-explore-acs-cytof-coexpression.sh | dev-18-explore-acs-cytof-coexpression-gates.sh)
       return 0
       ;;
@@ -222,8 +215,7 @@ plots_in_sim_job() {
 # Simulation jobs that must wait for another launcher's jobs to succeed, as
 # ':'-prefixed job IDs (empty when that launcher is not in this submission).
 # Analysis 9b reads Analysis 9a's GatingSets and Tailgate selection. Analyses
-# 13 and 18 read Analysis 9b's caches and results, and 17 reads its gates; 14b
-# and 15b compare against Analysis 14's and 15's saved results.
+# 13 and 18 read Analysis 9b's caches and results, and 17 reads its gates.
 sim_dependency_for_script() {
   case "$1" in
     dev-9b-real-compare-acs-cytof.sh)
@@ -232,12 +224,6 @@ sim_dependency_for_script() {
     dev-13-real-debug-acs-cytof.sh | dev-17-explore-acs-cytof-coexpression.sh | \
       dev-18-explore-acs-cytof-coexpression-gates.sh)
       echo "${script_job_ids[dev-9b-real-compare-acs-cytof.sh]:-}"
-      ;;
-    dev-14b-real-compare-omip111-shifted-peak.sh)
-      echo "${script_job_ids[dev-14-real-compare-omip111.sh]:-}"
-      ;;
-    dev-15b-real-compare-omip016-shifted-peak.sh)
-      echo "${script_job_ids[dev-15-real-compare-omip016.sh]:-}"
       ;;
     *) echo "" ;;
   esac

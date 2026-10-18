@@ -79,6 +79,9 @@ test_that("the scenario grid keeps earlier IDs and seeds and appends new familie
   expect_equal(grid$scenario_seed[33:40], stream(55702L, 8L))
   expect_true(all(grid$family[1:8] == "main"))
   expect_setequal(unique(grid$family[33:40]), c("weak_double", "null_background_coexpression"))
+  # The no-response families keep their IDs.
+  expect_equal(grid$scenario_id[grid$family == "null"], 25:28)
+  expect_equal(grid$scenario_id[grid$family == "null_background_coexpression"], 37:40)
   expect_setequal(unique(grid$family), names(env$.simLowSepFamilies))
   expect_true(all(grid$mismatch_type == "none"))
   expect_equal(grid$base_scenario_id, grid$scenario_id)
@@ -364,15 +367,62 @@ test_that("expected net frequencies say where a rejection is a false positive", 
     ids <- grid$scenario_id[grid$family == fam & grid$response_level == level]
     unique(round(net$net_expected[net$scenario_id %in% ids & net$quantity == q], 12))
   }
-  expect_equal(get("main", "TNF+IFNg+", "lower"), 0.01 * 0.6 * 0.8)
+  # Background is shared by both tubes, so the net frequency is the response
+  # times its split, whatever the background (as in Analyses 2-8).
+  expect_equal(get("main", "TNF+IFNg+", "lower"), 0.01 * 0.6)
+  expect_equal(get("main", "any", "higher"), 0.05)
   expect_equal(get("no_coexpression", "TNF+IFNg+", "higher"), 0)
-  expect_equal(get("weak_double", "TNF+IFNg+", "lower"), round(0.01 * 0.06 * 0.8, 12))
-  expect_equal(get("weak_double", "TNF+", "higher"), round(0.05 * 0.53 * 0.8, 12))
+  expect_equal(get("weak_double", "TNF+IFNg+", "lower"), round(0.01 * 0.06, 12))
+  expect_equal(get("weak_double", "TNF+", "higher"), round(0.05 * 0.53, 12))
+  expect_equal(get("background_coexpression", "TNF+IFNg+", "higher"), 0.05 * 0.6)
   for (fam in c("null", "null_background_coexpression")) {
     ids <- grid$scenario_id[grid$family == fam]
+    expect_true(all(net$net_expected[net$scenario_id %in% ids] == 0))
     expect_true(all(net$response_truth[net$scenario_id %in% ids] == "none"))
   }
   expect_setequal(unique(net$quantity), env$.simLowSepQuantities$quantity)
+})
+
+test_that("both tubes share the background and the stimulated tube adds the response", {
+  env <- .lowSepEnv()
+  grid <- env$.simLowSepGrid(55700L)
+  net <- env$.simLowSepExpectedNet(grid)
+  pos <- env$.simLowSepCombn[-1L]
+  for (i in seq_len(nrow(grid))) {
+    row <- grid[i, ]
+    probs <- env$.simLowSepTubeProbs(row)
+    expect_equal(sum(probs$uns), 1, info = i)
+    expect_equal(sum(probs$stim), 1, info = i)
+    expect_equal(sum(probs$response), 0, info = i)
+    split <- env$.simLowSepSplits[[row$response_split]][pos]
+    # Stimulated positives = background + prob_response * split.
+    expect_equal(probs$stim[pos] - probs$uns[pos], row$prob_response * split, info = i)
+    # The simulated net agrees with the expected net of each exclusive combination.
+    exp_i <- net[net$scenario_id == row$scenario_id & net$quantity %in% pos, ]
+    expect_equal(unname(probs$response[exp_i$quantity]), exp_i$net_expected, info = i)
+  }
+  main <- grid[grid$family == "main" & grid$response_level == "lower", ][1, ]
+  probs <- env$.simLowSepTubeProbs(main)
+  expect_equal(sum(probs$uns[pos]), 0.2 * 0.01)
+  expect_equal(sum(probs$stim[pos]), 1.2 * 0.01)
+  coex <- grid[grid$family == "background_coexpression" & grid$response_level == "higher", ][1, ]
+  probs <- env$.simLowSepTubeProbs(coex)
+  expect_equal(unname(probs$uns[pos]), c(0, 0, 0.5 * 0.05))
+  expect_equal(sum(probs$stim[pos]), 1.5 * 0.05)
+  # The no-response families: no response and a 1% background in both tubes,
+  # in the default split or all double-positive.
+  nulls <- grid[grid$family %in% c("null", "null_background_coexpression"), ]
+  expect_true(all(nulls$prob_response == 0))
+  expect_true(all(nulls$prob_background == 0.01))
+  expect_true(all(is.na(grid$prob_background[!grid$family %in% nulls$family])))
+  for (i in seq_len(nrow(nulls))) {
+    probs <- env$.simLowSepTubeProbs(nulls[i, ])
+    expect_equal(probs$stim, probs$uns)
+    bg <- env$.simLowSepSplits[[if (nulls$family[[i]] == "null") "default" else "double"]]
+    expect_equal(unname(probs$uns[pos]), unname(0.01 * bg[pos]))
+  }
+  lab <- env$.simLowSepScenarioLab(nulls)
+  expect_true(all(grepl("no response (background 1%)", lab, fixed = TRUE)))
 })
 
 test_that("validation and collation check and unnest each dataset's tables", {

@@ -229,7 +229,7 @@ test_that("analysis 10 keeps default-settings F-beta for its appendix only", {
   chunk_env$run_plots <- TRUE
   for (label in c("appendix-t-cell-correlations", "appendix-all-correlations")) {
     out <- capture.output(eval(chunk_code(label), envir = chunk_env))
-    expect_true(any(grepl("#### Method: F-beta (default settings)", out, fixed = TRUE)))
+    expect_true(any(grepl("#### Method: F-beta", out, fixed = TRUE)))
     expect_true(any(grepl("Concordance correlation", out, fixed = TRUE)))
   }
   # One method, two metrics, two population sets.
@@ -412,19 +412,109 @@ test_that("heatmaps distinguish excluded strata from unavailable eligible correl
   expect_true(all(is.na(tbl$pcc[tbl$stim == "p1"])))
   expect_setequal(attr(tbl, "excludedStrata")$stim, "mtb")
   p <- env$.acsCytofValidationPlotCorrelation(tbl, "stimgate")
-  expect_true(all(p$data$cellLabel[p$data$excluded] == "excl."))
+  expect_true(all(p$data$cellLabel[p$data$excluded] == ""))
   expect_true(all(p$data$cellLabel[as.character(p$data$stim) == "Secreted Mtb proteins"] == "NA"))
   expect_true(all(p$data$textColour[p$data$excluded] == "black"))
   expect_true(all(p$data$textColour[as.character(p$data$stim) == "EBV and CMV"] == "white"))
   built <- ggplot2::ggplot_build(p)
-  expect_true(all(built$data[[2]]$fill == "grey85"))
+  expect_true(all(built$data[[2]]$fill == "white"))
   expect_true(all(built$data[[3]]$size == 3))
-  expect_match(p$labels$caption, "eligible but correlation unavailable", fixed = TRUE)
+  expect_null(p$labels$caption)
   expect_no_error(ggplot2::ggplotGrob(p))
 
-  # Both signs use white text at the 0.6 boundary; weaker values use black.
-  tbl$pcc <- rep(c(-0.6, 0.59), length.out = nrow(tbl))
+  # Dark endpoint fills need white labels; the pale middle needs black.
+  tbl$pcc <- rep(c(-1, 0), length.out = nrow(tbl))
   p <- env$.acsCytofValidationPlotCorrelation(tbl, "stimgate")
-  expect_true(all(p$data$textColour[!p$data$excluded & p$data$pcc == -0.6] == "white"))
-  expect_true(all(p$data$textColour[!p$data$excluded & p$data$pcc == 0.59] == "black"))
+  expect_true(all(p$data$textColour[!p$data$excluded & p$data$pcc == -1] == "white"))
+  expect_true(all(p$data$textColour[!p$data$excluded & p$data$pcc == 0] == "black"))
+})
+
+test_that("thesis heatmaps stack methods with shared scales and stimulus columns", {
+  rows <- .acs_validation_fixture()
+  expect_identical(env$.acsCytofValidationMethodLabels()[["fbeta"]], "F-beta (zeros removed)")
+  expect_identical(env$.acsCytofValidationMethodLabels()[["fbeta_default"]], "F-beta")
+  expect_error(
+    env$.acsCytofThesisPlotCorrelation(env$.acsCytofValidationCorrelationTable(rows)),
+    "F-beta with all cells"
+  )
+  rows <- dplyr::bind_rows(
+    rows,
+    dplyr::mutate(dplyr::filter(rows, .data$method == "fbeta"),
+      method = "fbeta_default", freq_bs_auto = .data$freq_bs_auto * 2)
+  )
+  rows$freq_stim_man[rows$stim == "mtb"] <- 0.01
+  tbl <- env$.acsCytofValidationCorrelationTable(rows)
+  for (metric in c("pcc", "ccc")) {
+    p <- env$.acsCytofThesisPlotCorrelation(tbl, metric)
+    built <- ggplot2::ggplot_build(p)
+    expect_identical(levels(p$data$method), c("StimGate", "F-beta", "Tailgate"))
+    expect_equal(
+      p$data[[metric]][as.character(p$data$method) == "F-beta" & !p$data$excluded],
+      tbl[[metric]][tbl$method == "fbeta_default" & tbl$stim != "p4" &
+        tbl$pop %in% env$.acsCytofValidationRealPopulations()]
+    )
+    expect_setequal(unique(built$layout$layout$ROW), 1:3)
+    expect_setequal(unique(built$layout$layout$COL), 1:3)
+    expect_equal(built$plot$scales$get_scales("fill")$limits, c(-1, 1))
+    expect_true(all(built$data[[2]]$fill == "white"))
+    expect_true(all(p$data$cellLabel[p$data$excluded] == ""))
+    expect_null(p$labels$caption)
+    expect_no_error(ggplot2::ggplotGrob(p))
+  }
+})
+
+
+test_that("thesis palette variants preserve scores and separate method rows", {
+  rows <- .acs_validation_fixture()
+  rows <- dplyr::bind_rows(
+    rows,
+    dplyr::mutate(dplyr::filter(rows, .data$method == "fbeta"), method = "fbeta_default")
+  )
+  rows$freq_stim_man[rows$stim == "mtb"] <- 0.01
+  tbl <- env$.acsCytofValidationCorrelationTable(rows)
+  tbl$ccc <- rep(c(-0.5, 0, 0.5, 1), length.out = nrow(tbl))
+  baseline <- env$.acsCytofThesisPlotCorrelation(tbl, "ccc")
+  for (palette in c("standard", "midpoint_0_5", "f1", "viridis")) {
+    p <- env$.acsCytofThesisPlotCorrelation(tbl, "ccc", palette = palette)
+    built <- ggplot2::ggplot_build(p)
+    fill <- built$plot$scales$get_scales("fill")
+    expect_identical(p$data$ccc, baseline$data$ccc)
+    expect_identical(p$data$cellLabel, baseline$data$cellLabel)
+    expect_equal(fill$limits, c(-1, 1))
+    separators <- p$layers[[4]]$data
+    expect_identical(as.character(separators$method), c("StimGate", "F-beta"))
+    expect_true(all(separators$yintercept == 0.5))
+    expect_equal(nrow(built$data[[4]]), 6L)
+    expect_true(all(built$layout$layout$ROW[
+      match(built$data[[4]]$PANEL, built$layout$layout$PANEL)
+    ] %in% 1:2))
+    expect_true(all(is.na(p$data$tileColour[p$data$excluded])))
+    expect_true(all(p$data$cellLabel[p$data$excluded] == ""))
+    if (palette == "standard") {
+      expect_true(all(is.na(p$data$tileColour)))
+    } else {
+      expect_true(all(p$data$tileColour[!p$data$excluded] == "grey80"))
+      expect_identical(fill$map(c(-1, -0.5, 0)), rep(fill$map(0), 3))
+      expect_true(all(p$data$textColour[!p$data$excluded & p$data$ccc <= 0] == "white"))
+    }
+    if (palette == "midpoint_0_5") {
+      expect_identical(toupper(fill$map(0.5)), "#FFFFFF")
+      endpoints <- rev(RColorBrewer::brewer.pal(11, "RdBu"))[c(1, 11)]
+      expect_equal(grDevices::col2rgb(fill$map(c(0, 1))), grDevices::col2rgb(endpoints))
+      expect_true(all(p$data$textColour[!p$data$excluded & p$data$ccc == 0.5] == "black"))
+    }
+    if (palette %in% c("f1", "viridis")) {
+      f1tbl <- tbl
+      f1tbl$f1 <- pmax(tbl$ccc, 0)
+      f1plot <- env$.acsCytofThesisPlotCorrelation(f1tbl, "f1")
+      f1fill <- ggplot2::ggplot_build(f1plot)$plot$scales$get_scales("fill")
+      expect_equal(f1fill$limits, c(0, 1))
+      probes <- seq(0, 1, length.out = 17)
+      reference <- ggplot2::scale_fill_viridis_c(limits = c(0, 1))
+      expect_equal(fill$map(probes), f1fill$map(probes))
+      expect_equal(fill$map(probes), reference$map(probes))
+      expect_equal(env$.acsCytofF1Palette(probes), reference$palette(probes))
+    }
+    expect_no_error(ggplot2::ggplotGrob(p))
+  }
 })

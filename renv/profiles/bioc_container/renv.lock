@@ -8565,7 +8565,7 @@
       "RemoteUsername": "SATVILab",
       "RemoteRepo": "simcyto",
       "RemoteRef": "main",
-      "RemoteSha": "355ff1fd573f7ccc7e8196eafb00d7a303391843"
+      "RemoteSha": "ded6259a04a6b87d27028d90fee51e8558512af6"
     },
     "snow": {
       "Package": "snow",

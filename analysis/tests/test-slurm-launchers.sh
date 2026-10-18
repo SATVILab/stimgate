@@ -225,33 +225,18 @@ run_selection
 grep -Fq -- 'dev-17-explore-acs-cytof-coexpression.sh' "$SLURM_TEST_LOG"
 
 # OMIP analyses draw their plots in the simulation job, with no plot job.
-# 14b and 15b wait for 14 and 15 when both are submitted, whatever the order
-# requested, and run alone without a dependency.
-for pair in "14 14b real-compare-omip111" "15 15b real-compare-omip016"; do
-  read -r base variant stem <<< "$pair"
-  run_selection "$variant"
+for pair in "14 real-compare-omip111" "15 real-compare-omip016"; do
+  read -r base stem <<< "$pair"
+  run_selection "$base"
   [[ $(wc -l < "$SLURM_TEST_LOG") -eq 1 ]]
-  sim_variant=$(grep -F "dev-${variant}-${stem}-shifted-peak.sh" "$SLURM_TEST_LOG")
-  [[ "$sim_variant" != *"--dependency"* ]]
-  [[ "$sim_variant" == *",RUN_SIMULATIONS=true,RUN_PLOTS=true|"* ]]
-  for selection in "$base $variant" "$variant $base"; do
-    # shellcheck disable=SC2086
-    run_selection $selection
-    [[ $(wc -l < "$SLURM_TEST_LOG") -eq 2 ]]
-    sim_base=$(grep -F "dev-${base}-${stem}.sh" "$SLURM_TEST_LOG")
-    sim_variant=$(grep -F "dev-${variant}-${stem}-shifted-peak.sh" "$SLURM_TEST_LOG")
-    [[ "$sim_base" != *"--dependency"* ]]
-    [[ "$sim_variant" == *"|--dependency=afterok:101|"* ]]
-    [[ "$sim_base" == *",RUN_PLOTS=true|"* ]]
-  done
+  sim_base=$(grep -F "dev-${base}-${stem}.sh" "$SLURM_TEST_LOG")
+  [[ "$sim_base" != *"--dependency"* ]]
+  [[ "$sim_base" == *",RUN_SIMULATIONS=true,RUN_PLOTS=true|"* ]]
   # Analysis 1's projr build clears the figure folder, so the OMIP job waits
   # for it whatever the order requested.
   run_selection "$base" 1
   sim_base=$(grep -F "dev-${base}-${stem}.sh" "$SLURM_TEST_LOG")
   [[ "$sim_base" == *"|--dependency=afterany:101|"* ]]
-  run_selection 1 "$base" "$variant"
-  sim_variant=$(grep -F "dev-${variant}-${stem}-shifted-peak.sh" "$SLURM_TEST_LOG")
-  [[ "$sim_variant" == *"|--dependency=afterok:102,afterany:101|"* ]]
   # Prepared data are reused unless preprocessing is requested.
   : > "$SLURM_TEST_LOG"
   bash "$project_root/scripts/slurm/dev-${base}-${stem}.sh" > "$test_dir/output" 2>&1
@@ -262,8 +247,7 @@ for pair in "14 14b real-compare-omip111" "15 15b real-compare-omip016"; do
   grep -Fq -- 'preprocessing=true|' "$SLURM_TEST_LOG"
 done
 run_selection
-for launcher in dev-14-real-compare-omip111.sh dev-14b-real-compare-omip111-shifted-peak.sh \
-  dev-15-real-compare-omip016.sh dev-15b-real-compare-omip016-shifted-peak.sh; do
+for launcher in dev-14-real-compare-omip111.sh dev-15-real-compare-omip016.sh; do
   grep -Fq -- "$launcher" "$SLURM_TEST_LOG"
 done
 

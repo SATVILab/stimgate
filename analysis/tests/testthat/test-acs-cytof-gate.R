@@ -273,7 +273,7 @@ test_that("analysis 9 stages inherit simulation controls and allow overrides", {
   code <- parse(text = lines[seq.int(start + 1L, end - 1L)])
   controls <- Filter(function(expr) {
     is.call(expr) && identical(expr[[1]], as.name("<-")) &&
-      as.character(expr[[2]]) %in% c(
+      is.name(expr[[2]]) && as.character(expr[[2]]) %in% c(
         "run_simulations", "run_preprocessing", "run_stimgate", "run_comparators"
       )
   }, as.list(code))
