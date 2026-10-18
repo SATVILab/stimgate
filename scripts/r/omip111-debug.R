@@ -16,7 +16,8 @@
       asinh(references$cytokineLowerRaw[match(c(sg$sampleStim, sg$sampleUns), references$sample)] / cofactor)
     ),
     colour = c(
-      "#D55E00", "#D55E00", .analysis_method_colours[["fbeta"]],
+      .analysis_method_colours[["stimgate"]], .analysis_method_colours[["stimgate"]],
+      .analysis_method_colours[["fbeta"]],
       .analysis_method_colours[["tailgate"]], "#7B3294", "#7B3294"
     ),
     linetype = c("solid", "dashed", "solid", "solid", "longdash", "dotted"),

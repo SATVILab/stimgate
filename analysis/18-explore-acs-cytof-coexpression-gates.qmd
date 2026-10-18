@@ -382,7 +382,7 @@ if (isTRUE(run_plots)) {
     pop_paired <- paired_all[paired_all$pop == pop, ]
     cat("\n\n## ", pop, "\n\n", sep = "")
     cat("\n\n### Single- and multi-positive frequencies\n\n")
-    cat("Blue: coexpression (screened); purple: coexpression (unscreened).\n\n")
+    cat("Blue: coexpression (screened); light blue: coexpression (unscreened).\n\n")
     .analysis_print_save_fig(.acsCoexGatesScatterPlot(pop_paired),
       file.path(fig_dir, "single-multi-scatter.png"), width = 30, height = 16)
     cat("\n\n### Change for each cytokine\n\n")
@@ -428,7 +428,7 @@ if (isTRUE(run_plots)) {
           label = paste0(f$donor[[i]], " ", f$stim[[i]], ": ", lw$b, " among ", lw$a, "+")
         )
       })
-      .analysis_print_save_fig(.acsCoexGatesTubeHexPlot(tubes),
+      .analysis_print_save_fig(.acsCoexGatesTubeHexPlot(tubes, rule),
         file.path(fig_dir, paste0("most-changed-hex-", rule, ".png")), width = 30, height = 34)
     }
   }
@@ -443,7 +443,7 @@ that rule's combination counts. Every fit uses the same categories: the
 all-negative one and those with at least 5 stimulated cells in at least 3
 donors under any rule (the rare ones carry no information and slow the
 sampler). Each point is a donor's score with the ordinary gates (x) and with
-a coexpression version (y; blue screened, purple unscreened).
+a coexpression version (y; blue screened, light blue unscreened).
 
 ```{r}
 #| label: compass-plots

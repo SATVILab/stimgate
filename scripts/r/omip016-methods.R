@@ -144,8 +144,9 @@
     line = c("final gate", "final cyt+ gate", "F-beta", "Tailgate", "manual"),
     x = c(sg$gate, sg$gateCyt, gateOf("fbeta"), gateOf("tailgate"), man$gate),
     colour = c(
-      "#D55E00", "#D55E00", .analysis_method_colours[["fbeta"]],
-      .analysis_method_colours[["tailgate"]], "#CC0000"
+      .analysis_method_colours[["stimgate"]], .analysis_method_colours[["stimgate"]],
+      .analysis_method_colours[["fbeta"]],
+      .analysis_method_colours[["tailgate"]], "#7B3294"
     ),
     linetype = c("solid", "dotted", "solid", "solid", "solid"),
     linewidth = c(1.1, 0.9, 0.9, 0.9, 0.9)

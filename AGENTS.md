@@ -1612,6 +1612,17 @@ spacing for dose/size trends where it carries meaning. Method factors and
 scales use `.analysis_method_factor()` / `.analysis_scale_method()` in the order
 StimGate, F-beta, Tailgate, Tailgate (default settings), including after filtering.
 Keep the method palette unchanged when softening shared themes.
+Real-data figures use the same encodings: method colours and shapes from
+`.analysis_method_colours` / `.analysis_method_shapes` (Analyses 14 and 15
+included; key them by display label where a table stores labels), StimGate
+gates orange on every gate page (13, 14, 15, 2c), F-beta blue, Tailgate
+green and manual or author reference lines purple (`#7B3294`). StimGate's
+intermediate boundaries on those pages avoid the method colours. Variants of
+StimGate (e.g. the shifted-peak rule) keep orange for the default and use a
+non-method colour for the variant. Cytokine-positive rules use Analysis 11's
+colours (`.simLowSepGateColours`: ordinary grey, screened blue, unscreened
+light blue) in Analyses 16-18, and tubes use the simulation pages' colours
+(stimulated `#C2410C`, unstimulated `#1D4E89`).
 
 Sample-level response detection (Analyses 7/7b) uses final applied positive/total
 counts in both tubes, a positive `propRespEst`, and one-sided Fisher log upper

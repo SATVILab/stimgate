@@ -48,9 +48,9 @@ For each, per manually gated donor (12):
    log scale; cells scoring 0 are omitted from the plot but counted);
 2. the fraction of cells at or above each score in both tubes (log scale);
 3. the net (stimulated minus control) frequency at or above each score, with
-   the net frequency of cells above both ordinary gates (orange dashed line);
+   the net frequency of cells above both ordinary gates (grey dashed line);
 4. hexagon plots with the score's contours at 2, 3 and 4 (products of 10⁻²,
-   10⁻³, 10⁻⁴; white) and StimGate's ordinary gates (orange).
+   10⁻³, 10⁻⁴; white) and StimGate's ordinary gates (grey).
 
 For IFNγ and TNF, a second view asks where the two markers co-occur more than
 their marginals explain. In each tube, on bins 0.2 wide, two Poisson GAMs of
@@ -116,7 +116,7 @@ and the lowered TNF gate. The same is done for IFNγ among TNF+ cells. Cells
 called IFNγ+TNF+ are those above both ordinary gates or added by either lowered
 gate, in both tubes; the net frequency subtracts the control tube's.
 
-On the hexagon plots the ordinary gates are orange and the lowered gates blue,
+On the hexagon plots the ordinary gates are grey and the lowered gates blue,
 each drawn from the raised cut on the other marker. The histograms show each
 marker among cells positive for the other, as cells per 100,000 cells of each
 tube, so the bars compare directly: where the control bar is a quarter of the

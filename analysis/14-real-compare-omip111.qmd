@@ -618,7 +618,10 @@ and negative net frequencies. No confidence intervals are inferred from the
 #| fig-height: 7
 if (isTRUE(run_plots)) {
   figure_dir <- .analysis_fig_dir(c(fig_key, "agreement"), root_dir)
-  method_colours <- c(StimGate = "#0072B2", `F-beta` = "#D55E00", Tailgate = "#009E73")
+  # The shared method colours and shapes, keyed by this table's method labels.
+  method_ids <- c("stimgate", "fbeta", "tailgate")
+  method_colours <- stats::setNames(.analysis_method_colours[method_ids], .analysis_method_labels[method_ids])
+  method_shapes <- stats::setNames(.analysis_method_shapes[method_ids], .analysis_method_labels[method_ids])
   for (population in c("CD4", "CD8")) {
     cat("\n\n### CD44-high ", population, "\n\n", sep = "")
     plot_data <- comparison_results[comparison_results$population == population & comparison_results$referenceAccepted, ]
@@ -629,6 +632,7 @@ if (isTRUE(run_plots)) {
       ggplot2::geom_point(size = 1.7, alpha = 0.5, na.rm = TRUE) +
       ggplot2::facet_wrap(ggplot2::vars(strain, marker), scales = "free", ncol = 5) +
       ggplot2::scale_colour_manual(values = method_colours) +
+      ggplot2::scale_shape_manual(values = method_shapes) +
       ggplot2::scale_y_continuous(labels = .analysis_label_number) +
       ggplot2::scale_x_continuous(labels = .analysis_label_number) +
       ggplot2::labs(x = "Background-subtracted frequency\n(manual gating, %)",
