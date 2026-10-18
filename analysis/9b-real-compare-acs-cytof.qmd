@@ -62,7 +62,10 @@ source(file.path(scripts_r_dir, "sim-compare-freq_bs.R"))
 source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
 source(file.path(scripts_r_dir, "acs_cytof-manual.R"))
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
+.analysis_method_labels[c("fbeta", "fbeta_default")] <-
+  .acsCytofValidationMethodLabels()[c("fbeta", "fbeta_default")]
 source(file.path(scripts_r_dir, "acs_cytof-tailgate-select.R"))
+source(file.path(scripts_r_dir, "acs_cytof-threshold-plots.R"))
 
 run_simulations <- .as_flag(.get_qmd_param_env(
   "run_simulations",
@@ -794,6 +797,55 @@ if (isTRUE(run_plots)) {
       "stimgate_check_sample_2.pdf"
     )
     .analysis_print_save_fig(p, path_check, height = 14)
+  }
+}
+```
+
+
+### Threshold distributions over stimulated expression
+
+Each figure compares the final ordinary StimGate (`loc_minClust`), selected
+Tailgate and F-beta (zeros removed) thresholds across all donors for one population,
+stimulation and cytokine, including populations without manual references.
+These are base gates; cytokine-positive conditional cutoffs are not pooled
+with them. Outline histograms use common bins on the cached asinh scale.
+The grey density pools a reproducible sample of up to 2,000 cells from every
+stimulated tube in that stratum, retaining exact zeros. Tubes with fewer cells
+contribute all their cells. Its peak is scaled to the tallest threshold bin,
+so its height shows shape rather than a comparable density value.
+Finite fallback gates are included; each figure reports finite/total and
+fallback counts. CSVs retain missing gates and threshold provenance.
+Nothing is gated again, and the source caches are read only.
+
+```{r}
+#| label: acs-threshold-distributions
+#| echo: false
+#| results: asis
+#| fig-width: 9
+#| fig-height: 6
+if (isTRUE(run_plots)) {
+  for (pop in pop_vec) {
+    paths <- .acsCytofPopulationPaths(pop, path_fcs_base, path_gs_base, path_scratch_base)
+    gs <- flowWorkspace::load_gs(paths$gs, backend_readonly = TRUE)
+    threshold_sample_map <- .acsCytofReadPreprocessing(paths$gs, gs)$sampleMap
+    threshold_tbl <- .acsCytofReadThresholds(
+      paths, threshold_sample_map, stimgate_loc_threshold_method, tailgate_selection
+    )
+    threshold_cells <- .acsCytofThresholdCells(gs, threshold_sample_map)
+    threshold_dir <- .analysis_fig_dir(c(fig_key, "threshold_distributions", pop), root_dir)
+    utils::write.csv(threshold_tbl, file.path(threshold_dir, "thresholds.csv"), row.names = FALSE)
+    .analysis_heading(paste("Population:", pop), 4)
+    for (stim in sort(unique(threshold_tbl$stim))) {
+      .analysis_heading(paste("Stimulation:", stim), 5)
+      for (cyt in unname(.acsCytofChannelMap())) {
+        threshold_subset <- threshold_tbl[threshold_tbl$stim == stim & threshold_tbl$cyt == cyt, ]
+        expression_subset <- threshold_cells[threshold_cells$stim == stim & threshold_cells$cyt == cyt, ]
+        .analysis_print_save_fig(
+          .acsCytofThresholdPlot(threshold_subset, expression_subset, paste(pop, stim, cyt, sep = " / ")),
+          file.path(threshold_dir, paste0(stim, "-", cyt, ".png")), width = 23, height = 16
+        )
+      }
+    }
   }
 }
 ```

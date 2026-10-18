@@ -22,7 +22,7 @@ test_that("every ACS projr path remains stable across Quarto working-directory c
     "analysis/10-real-compare-acs-cytof-validation.qmd",
     "scripts/r/acs_cytof-manual.R", "scripts/r/acs_cytof-gate.R")
   calls <- unlist(lapply(file.path(root, files), .acs_path_document_calls), recursive = FALSE)
-  expect_length(calls, 7L)
+  expect_length(calls, 8L)
   for (call in calls) expect_identical(as.list(call)[["format"]], "absolute")
   testthat::skip_if_not_installed("projr")
   withr::local_envvar(PROJR_PROFILE = NA)
@@ -45,7 +45,9 @@ test_that("every ACS projr path remains stable across Quarto working-directory c
   env <- new.env(parent = baseenv())
   env$fn <- "manual.csv"
   paths <- withr::with_dir(analysis, lapply(calls, function(call) {
-    call <- as.call(c(as.list(call), list(create = FALSE)))
+    args <- as.list(call)
+    args$create <- FALSE
+    call <- as.call(args)
     eval(call, env)
   }))
   withr::with_dir(project, {

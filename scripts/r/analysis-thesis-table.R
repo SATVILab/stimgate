@@ -87,8 +87,8 @@
 
 # Fixed decimals with leading zeros, the same number in a column; NA stays
 # visible as "NA" rather than becoming zero.
-.analysis_md_num <- function(x, digits = 3) {
-  ifelse(is.finite(x), formatC(x, format = "f", digits = digits), "NA")
+.analysis_md_num <- function(x, digits = 3, big.mark = "") {
+  ifelse(is.finite(x), formatC(x, format = "f", digits = digits, big.mark = big.mark), "NA")
 }
 
 # Render the table in the HTML (`results: asis` chunk; Typst blocks are not

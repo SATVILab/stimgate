@@ -3,6 +3,7 @@ title: ACS CyTOF validation outputs
 format:
   html:
     embed-resources: true
+    code-copy: true
     toc: true
 knitr:
   opts_chunk:
@@ -28,7 +29,7 @@ statistics; correlation tables state total, failed and scored counts for each
 included stratum. Analysis 9b also saves coverage for all strata and an exclusion
 table for unmatched cohort keys.
 
-The saved `acs_cytof/manual-comparison/manual-comparison.rds` table is sufficient; raw FCS files are not needed here. Render Analyses 9a and 9b with `RUN_SIMULATIONS=true RUN_PLOTS=false` first if that table is missing. `RUN_PLOTS=true` displays and saves the validation figures; this document does not rerun the gating methods.
+The saved `acs_cytof/manual-comparison/manual-comparison.rds` table is sufficient for frequency and correlation plots. The F₁ heatmaps also read the prepared population GatingSets from `acs_cytof/gs`; raw FCS files are not needed here. Render Analyses 9a and 9b with `RUN_SIMULATIONS=true RUN_PLOTS=false` first if that table is missing. `RUN_PLOTS=true` displays and saves the validation figures; this document does not rerun the gating methods.
 
 ```{r}
 #| label: setup
@@ -43,12 +44,20 @@ knitr::opts_knit$set(root.dir = root_dir)
 scripts_r_dir <- file.path(root_dir, "scripts", "r")
 source(file.path(scripts_r_dir, "analysis-runtime.R"))
 source(file.path(scripts_r_dir, "analysis-plot-style.R"))
+source(file.path(scripts_r_dir, "analysis-thesis-table.R"))
 source(file.path(scripts_r_dir, "analysis-mcse.R"))
 source(file.path(scripts_r_dir, "sim-bandwidth-analysis-plot.R"))
 fig_key <- .analysis_mode_key("10-real-compare-acs-cytof-validation", sized = FALSE)
 source(file.path(scripts_r_dir, "acs_cytof-helper.R"))
+source(file.path(scripts_r_dir, "acs_cytof-gate.R"))
 source(file.path(scripts_r_dir, "acs_cytof-manual.R"))
 source(file.path(scripts_r_dir, "acs_cytof-plot_cyt.R"))
+source(file.path(scripts_r_dir, "acs_cytof-ccc-summary.R"))
+source(file.path(scripts_r_dir, "acs_cytof-scatter-stacked.R"))
+source(file.path(scripts_r_dir, "acs_cytof-scatter-alt.R"))
+source(file.path(scripts_r_dir, "acs_cytof-f1.R"))
+.analysis_method_labels[c("fbeta", "fbeta_default")] <-
+  .acsCytofValidationMethodLabels()[c("fbeta", "fbeta_default")]
 source(file.path(scripts_r_dir, "acs_cytof-methods.R"))
 source(file.path(scripts_r_dir, "acs_cytof-tailgate-select.R"))
 
@@ -272,7 +281,76 @@ if (isTRUE(run_plots)) {
 
 ### Correlation heatmaps for CD4, CD8 and TCRgd T cells
 
-Cytokines run across columns and the three T-cell populations across rows, with panels for stimuli. Colour and text show Pearson or concordance correlation for each method after applying the eligibility rules. Values closer to one indicate stronger agreement; light-grey cells labelled `excl.` mark strata excluded by the signal eligibility rules, while white cells labelled `NA` mark eligible strata whose correlation is unavailable. Blank positions have no matched stratum.
+Cytokines run across columns and the three T-cell populations across rows, with panels for stimuli. Colour and text show Pearson or concordance correlation for each method after applying the eligibility rules. Values closer to one indicate stronger agreement. Excluded strata are left white without a label; `NA` marks eligible strata whose correlation is unavailable. Blank positions can also have no matched stratum.
+
+```{r}
+#| label: thesis-correlation-heatmaps
+#| include: false
+if (isTRUE(run_plots)) {
+  thesis_heatmap_dir <- .analysis_project_dir(
+    "output-thesis", c("results", "qmd10", "heatmaps"), root_dir
+  )
+  # Thesis F-beta uses every cell, including exact zeros (cached fbeta_default).
+  thesis_correlation_tbl <- .acsCytofValidationCorrelationTable(manual_comparison_all_tbl)
+  .acsCytofReplaceDir(thesis_heatmap_dir, function(stage) {
+    # Preserve the independently generated F1 figures and coverage tables.
+    existing <- list.files(thesis_heatmap_dir, full.names = TRUE)
+    if (length(existing)) stopifnot(all(file.copy(existing, stage, recursive = TRUE)))
+    palette_dirs <- c(standard = "", midpoint_0_5 = "palette-midpoint-0.5", viridis = "palette-viridis")
+    for (palette in names(palette_dirs)) {
+      for (real_only in c(TRUE, FALSE)) {
+        for (metric in c("pcc", "ccc")) {
+          .analysis_save_thesis_fig(
+            .acsCytofThesisPlotCorrelation(
+              thesis_correlation_tbl, metric, real_only, palette = palette
+            ),
+            file.path(stage, palette_dirs[[palette]], paste0(
+              metric, "-stacked-", if (real_only) "real-pops" else "all-pops"
+            )),
+            height = if (real_only) 120 else 155
+          )
+        }
+      }
+    }
+  })
+}
+```
+
+Thesis exports include the original red-blue scale and two companions: blue at
+zero or below, white at 0.5 and red at one (`palette-midpoint-0.5/`); and the
+Analysis 7 viridis scale (`palette-viridis/`). The companions outline eligible tiles so pale
+values remain distinct from excluded blanks. Thick lines divide methods.
+All versions retain signed correlations and the same -1 to 1 legend; colour
+saturates at the low endpoint below zero in the companions.
+
+### CCC comparison summary
+
+The table compares the displayed eligible strata for T cells, B cells and NK
+cells using all-cell $F_{\beta}$. Counts are recalculated from the same signed,
+unrounded CCCs as the thesis heatmaps. The source below includes the scoped
+Typst rules and can be copied into the thesis.
+
+```{r}
+#| label: thesis-ccc-comparison-summary
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  ccc_comparison_summary <- .acsCytofCccSummary(thesis_correlation_tbl)
+  for (part in c("counts", "coverage", "method_coverage", "strata")) {
+    .analysis_report_table(
+      ccc_comparison_summary[[part]],
+      c(fig_key, paste0("ccc-comparison-", part, ".csv")),
+      paste("CCC comparison", part), path_root = root_dir, quiet = TRUE
+    )
+  }
+  .analysis_md_show(
+    .acsCytofCccSummaryMarkdown(ccc_comparison_summary),
+    file.path(.analysis_project_dir(
+      "output-thesis", c("results", "qmd10", "tables"), root_dir
+    ), "ccc-comparison.md")
+  )
+}
+```
 
 ```{r}
 #| label: acs-validation-t-cell-correlations
@@ -325,6 +403,184 @@ if (isTRUE(run_plots)) {
       ))
     }
   }
+}
+```
+
+### Cell agreement with the manual-frequency reference
+
+For each donor, stimulation, population and cytokine, we place a reference gate
+on the stimulated expression so the fraction strictly above it is closest to the
+manual stimulated frequency minus its matched manual control frequency. Negative
+missing or above-100% net frequencies have no attainable reference and remain unscored. Tied values
+stay together; equally close counts use the lower gate. The reference selects the
+highest-expression cells and does not recover the original manual cell labels.
+
+We compare each method's saved final base gate on these same cells using
+$F_1 = 2TP/(2TP + FP + FN)$. No additional background subtraction is applied to
+the predicted cell set. Both sets empty gives an undefined score; one empty set
+gives zero. Failed gates remain missing. Heatmap values are mean per-tube F₁
+scores with equal donor weight within each stratum. Median and 10th-percentile
+companions use the same finite per-tube scores. All use the same manual signal
+eligibility rules as the correlation figures and omitting `p4`. Coverage tables
+report failed, undefined and scored tubes, invalid references and missing saved
+audit counts. Reconstructed gates must match saved positive counts and stimulated
+frequencies.
+White unlabelled tiles are excluded;
+`NA` marks eligible strata without a score. Thesis figures use all-cell F-beta.
+
+```{r}
+#| label: acs-validation-f1-heatmaps
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots)) {
+  path_f1_gs <- projr::projr_path_get(
+    "cache", "acs_cytof", "gs", format = "absolute", create = FALSE
+  )
+  f1_tubes <- .acsCytofF1Table(manual_comparison_all_tbl, path_f1_gs)
+  f1_summary <- .acsCytofF1Summary(f1_tubes)
+  .analysis_report_table(f1_tubes, c(fig_key, "f1-per-tube.csv"),
+    "Reference gates, attainable frequencies and cell confusion counts.", path_root = root_dir)
+  .analysis_report_table(
+    dplyr::bind_rows(f1_summary, attr(f1_summary, "excludedStrata")),
+    c(fig_key, "f1-coverage.csv"),
+    "Mean per-tube F1 scores and eligibility/failure coverage.", path_root = root_dir
+  )
+  for (real_only in c(TRUE, FALSE)) {
+    for (method in validation_methods) {
+      .analysis_heading(paste(.acsCytofValidationMethodLabels()[[method]],
+        if (real_only) "— T cells" else "— all matched populations"), 4)
+      .analysis_print_fig(.acsCytofValidationPlotCorrelation(
+        f1_summary, method, "f1", real_only
+      ))
+    }
+  }
+  .acsCytofReplaceDir(file.path(thesis_heatmap_dir, "f1"), function(stage) {
+    utils::write.csv(f1_tubes, file.path(stage, "f1-per-tube.csv"), row.names = FALSE)
+    utils::write.csv(
+      dplyr::bind_rows(f1_summary, attr(f1_summary, "excludedStrata")),
+      file.path(stage, "f1-coverage.csv"), row.names = FALSE
+    )
+    f1_fields <- c(mean = "f1", median = "f1_median", q10 = "f1_q10")
+    f1_titles <- c(mean = "Mean F1 score", median = "Median F1 score", q10 = "10th percentile F1 score")
+    for (statistic in names(f1_fields)) {
+      plot_summary <- f1_summary
+      plot_summary$f1 <- f1_summary[[f1_fields[[statistic]]]]
+      for (real_only in c(TRUE, FALSE)) {
+        p <- .acsCytofThesisPlotCorrelation(plot_summary, "f1", real_only)
+        f1_scale <- p$scales$get_scales("fill")
+        f1_scale$name <- f1_titles[[statistic]]
+        .analysis_save_thesis_fig(
+          p, file.path(stage, paste0(
+            "f1-", if (statistic == "mean") "" else paste0(statistic, "-"),
+            "stacked-", if (real_only) "real-pops" else "all-pops"
+          )), height = if (real_only) 120 else 155
+        )
+      }
+    }
+  })
+}
+```
+
+### F1 comparison summary
+
+This table compares mean finite per-tube F1 scores. Manual net frequency is used
+once to infer a reference gate; the score then compares the two positive cell
+sets in the same stimulated tube, without further background subtraction.
+
+```{r}
+#| label: thesis-f1-comparison-summary
+#| echo: false
+#| results: asis
+if (isTRUE(run_plots) && exists("f1_summary")) {
+  f1_comparison_summary <- .acsCytofCccSummary(f1_summary, metric = "f1")
+  for (part in c("counts", "coverage", "method_coverage", "strata")) {
+    .analysis_report_table(
+      f1_comparison_summary[[part]],
+      c(fig_key, paste0("f1-comparison-", part, ".csv")),
+      paste("F1 comparison", part), path_root = root_dir, quiet = TRUE
+    )
+  }
+  .analysis_md_show(
+    .acsCytofCccSummaryMarkdown(f1_comparison_summary),
+    file.path(.analysis_project_dir(
+      "output-thesis", c("results", "qmd10", "tables"), root_dir
+    ), "f1-comparison.md")
+  )
+}
+```
+
+### Stacked frequency scatter plots
+
+Thesis exports stack methods within each population in both 2×3 and 1×6
+cytokine panels, and stack populations within each method in 1×6 panels.
+These use all-cell F-beta and the existing scatter cohorts and stimulation colours.
+
+```{r}
+#| label: thesis-stacked-scatter
+#| include: false
+if (isTRUE(run_plots)) {
+  stacked_scatter_dir <- .analysis_project_dir(
+    "output-thesis", c("results", "qmd10", "scatter"), root_dir
+  )
+  .acsCytofReplaceDir(stacked_scatter_dir, function(stacked_scatter_dir) {
+    for (population in unique(as.character(manual_comparison_all_tbl$pop))) {
+      population_key <- gsub("[^A-Za-z0-9_.-]+", "_", population)
+      for (columns in c(3L, 6L)) {
+        stacked_scatter <- .acsCytofStackedScatter(
+          manual_comparison_all_tbl, population = population, ncol = columns
+        )
+        .analysis_save_thesis_fig(
+          stacked_scatter$plot,
+          file.path(stacked_scatter_dir, paste0("methods-stacked-", if (columns == 3L) "2x3" else "1x6"), population_key),
+          height = stacked_scatter$height, width = stacked_scatter$width
+        )
+      }
+    }
+    for (method in c("stimgate", "fbeta_default", "tailgate")) {
+      stacked_scatter <- .acsCytofStackedScatter(manual_comparison_all_tbl, method = method)
+      .analysis_save_thesis_fig(
+        stacked_scatter$plot,
+        file.path(stacked_scatter_dir, "populations-stacked-1x6", method),
+        height = stacked_scatter$height, width = stacked_scatter$width
+      )
+    }
+  })
+}
+```
+
+### Population-grid frequency scatter plots
+
+Alternatives to the stacked plots: every population in one figure (rows
+populations, columns cytokines), with larger outlined points. One set of
+figures shows all three methods (colour method, shape stimulation); the other
+draws one figure per method (colour and shape stimulation). Each comes with a
+least-squares line per stimulation (`fit-per-stim`), one line per panel
+(`fit-per-panel`; per method in the all-method figures) or no lines (`no-fit`).
+Failed thresholds are left out, and the grey diagonal is $y = x$.
+
+```{r}
+#| label: thesis-scatter-alt
+#| include: false
+if (isTRUE(run_plots)) {
+  scatter_alt_dir <- .analysis_project_dir(
+    "output-thesis", c("results", "qmd10", "scatter-grid"), root_dir
+  )
+  scatter_alt_fits <- c(stim = "fit-per-stim", panel = "fit-per-panel", none = "no-fit")
+  .acsCytofReplaceDir(scatter_alt_dir, function(scatter_alt_dir) {
+    for (fit in names(scatter_alt_fits)) {
+      for (method in list(NULL, "stimgate", "fbeta_default", "tailgate")) {
+        scatter_alt <- .acsCytofScatterAlt(manual_comparison_all_tbl, method = method, fit = fit)
+        .analysis_save_thesis_fig(
+          scatter_alt$plot,
+          file.path(
+            scatter_alt_dir, if (is.null(method)) "all-methods" else method,
+            scatter_alt_fits[[fit]]
+          ),
+          height = scatter_alt$height, width = scatter_alt$width
+        )
+      }
+    }
+  })
 }
 ```
 
