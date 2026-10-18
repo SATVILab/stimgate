@@ -43,8 +43,8 @@
 .simLowSepScenCols <- c(
   "scenario_id", "base_scenario_id", "family", "separation", "mean_pos", "mean_pos_ifng",
   "response_level", "prob_response", "response_split", "background_relative",
-  "background_split", "n_cell", "mismatch_type", "mismatch_label", "stim_mean_shift",
-  "stim_sd_multiplier"
+  "prob_background", "background_split", "n_cell", "mismatch_type", "mismatch_label",
+  "stim_mean_shift", "stim_sd_multiplier"
 )
 # Columns identifying one simulation row (one dataset of one scenario).
 .simLowSepRowCols <- c("sim_id", "sim_seed", "iter")
@@ -54,7 +54,7 @@
 .simLowSepIterMax <- 20L
 
 # Share of the responding cells in each positive combination (TNF+IFNg-,
-# TNF-IFNg+, TNF+IFNg+), and of the unstimulated tube's background cells.
+# TNF-IFNg+, TNF+IFNg+), and of the background cells shared by both tubes.
 .simLowSepSplits <- list(
   default = c("TNF+IFNg-" = 0.25, "TNF-IFNg+" = 0.15, "TNF+IFNg+" = 0.6),
   single = c("TNF+IFNg-" = 0.5, "TNF-IFNg+" = 0.5, "TNF+IFNg+" = 0),
@@ -165,6 +165,12 @@
 # (stream `simulation_seed`), the first families (`simulation_seed + 1`) and
 # the weak double-positive and co-expressing no-response families
 # (`simulation_seed + 2`).
+#
+# As in Analyses 2-8, background is a share of the net response: both tubes
+# have background positive cells at `background_relative` times
+# `prob_response`, and the stimulated tube adds the response on top, so the
+# net frequency is `prob_response`. The no-response families have no response
+# and an absolute background (`prob_background`, NA elsewhere) instead.
 .simLowSepGrid <- function(simulation_seed) {
   main <- tidyr::expand_grid(
     tibble::tibble(separation = c("low", "lower"), mean_pos = c(4.5, 3.5)),
@@ -175,8 +181,8 @@
     sample.int(.Machine$integer.max, nrow(main))
   })
   main <- dplyr::mutate(main, family = "main", mean_pos_ifng = .data$mean_pos,
-    response_split = "default", background_relative = 0.2, background_split = "response",
-    scenario_seed = as.integer(seeds_main))
+    response_split = "default", background_relative = 0.2, prob_background = NA_real_,
+    background_split = "response", scenario_seed = as.integer(seeds_main))
   resp <- tibble::tibble(response_level = c("lower", "higher"), prob_response = c(0.01, 0.05))
   sep_null <- tibble::tibble(separation = c("low", "lower"), mean_pos = c(4.5, 3.5))
   cells <- c(1e5, 5e3)
@@ -194,8 +200,9 @@
       mean_pos_ifng = 3, resp, response_split = "default", background_relative = 0.2,
       background_split = "response", n_cell = cells),
     tidyr::expand_grid(family = "null", sep_null,
-      response_level = "none", prob_response = 0.01, response_split = "default",
-      background_relative = 1, background_split = "response", n_cell = cells) |>
+      response_level = "none", prob_response = 0, response_split = "default",
+      background_relative = NA_real_, prob_background = 0.01, background_split = "default",
+      n_cell = cells) |>
       dplyr::mutate(mean_pos_ifng = .data$mean_pos),
     tidyr::expand_grid(family = "background_coexpression", separation = "low", mean_pos = 4.5,
       mean_pos_ifng = 4.5, resp, response_split = "default", background_relative = 0.5,
@@ -213,8 +220,9 @@
       mean_pos_ifng = 4.5, resp, response_split = "weak_double", background_relative = 0.2,
       background_split = "response", n_cell = cells),
     tidyr::expand_grid(family = "null_background_coexpression", sep_null,
-      response_level = "none", prob_response = 0.01, response_split = "double",
-      background_relative = 1, background_split = "response", n_cell = cells) |>
+      response_level = "none", prob_response = 0, response_split = "double",
+      background_relative = NA_real_, prob_background = 0.01, background_split = "double",
+      n_cell = cells) |>
       dplyr::mutate(mean_pos_ifng = .data$mean_pos)
   )
   seeds_added <- .analysis_with_seed(simulation_seed + 2L, {
@@ -310,7 +318,8 @@
 # Scenario label. With `mismatch = TRUE` the 11b mismatch is appended, and
 # with `cells = TRUE` the cell count.
 .simLowSepScenarioLab <- function(grid, mismatch = TRUE, cells = FALSE) {
-  resp <- ifelse(grid$response_level == "none", "no response (background 1%)",
+  resp <- ifelse(grid$response_level == "none",
+    paste0("no response (background ", 100 * grid$prob_background, "%)"),
     paste0(grid$response_level, " response (", 100 * grid$prob_response, "%)"))
   means <- ifelse(grid$mean_pos == grid$mean_pos_ifng,
     paste0(grid$separation, " separation (mean ", grid$mean_pos, ")"),
@@ -351,19 +360,14 @@
 }
 
 # Expected net (stimulated minus unstimulated) frequency of each quantity in
-# each scenario, from the simulation settings. Quantities with no expected
+# each scenario, from the simulation settings. Background is the same in both
+# tubes, so the net frequency is the response alone. Quantities with no expected
 # net response are those where a positive test is a false positive (the
 # batch mismatch of 11b is not a response).
 .simLowSepExpectedNet <- function(grid, splits = .simLowSepSplits) {
   purrr::map_dfr(seq_len(nrow(grid)), function(i) {
     r <- grid[i, , drop = FALSE]
-    split <- splits[[r$response_split[[1]]]][.simLowSepCombn[-1L]]
-    split_bg <- if (identical(r$background_split[[1]], "response")) {
-      split
-    } else {
-      splits[[r$background_split[[1]]]][.simLowSepCombn[-1L]]
-    }
-    net <- r$prob_response[[1]] * (split - r$background_relative[[1]] * split_bg)
+    net <- r$prob_response[[1]] * splits[[r$response_split[[1]]]][.simLowSepCombn[-1L]]
     vals <- c(
       any = sum(net),
       "TNF+" = net[["TNF+IFNg-"]] + net[["TNF+IFNg+"]],
@@ -374,6 +378,38 @@
   }) |>
     dplyr::filter(.data$quantity %in% .simLowSepQuantities$quantity) |>
     dplyr::mutate(response_truth = dplyr::if_else(abs(.data$net_expected) > 1e-12, "response", "none"))
+}
+
+# Total background probability of each scenario row: `prob_background` where
+# set, otherwise `background_relative` times the net response.
+.simLowSepProbBackground <- function(grid) {
+  rel <- grid$prob_response * grid$background_relative
+  if (!"prob_background" %in% names(grid)) {
+    return(rel)
+  }
+  ifelse(is.na(grid$prob_background), rel, grid$prob_background)
+}
+
+# Component probabilities (in `.simLowSepCombn` order) of one scenario row:
+# the unstimulated tube (`uns`), the response added to it in the stimulated
+# tube (`response`, summing to zero) and the stimulated tube (`stim`). Both
+# tubes share the background, so the stimulated tube's positive cells are the
+# background plus `prob_response` times the response split.
+.simLowSepTubeProbs <- function(row, splits = .simLowSepSplits) {
+  split <- splits[[row$response_split]][.simLowSepCombn[-1L]]
+  split_bg <- if (identical(row$background_split, "response")) {
+    split
+  } else {
+    splits[[row$background_split]][.simLowSepCombn[-1L]]
+  }
+  if (!isTRUE(all.equal(sum(split), 1)) || !isTRUE(all.equal(sum(split_bg), 1))) {
+    stop("Response and background splits must each sum to one.")
+  }
+  prob_resp <- row$prob_response * split
+  prob_uns <- .simLowSepProbBackground(row) * split_bg
+  uns <- stats::setNames(c(1 - sum(prob_uns), prob_uns), .simLowSepCombn)
+  response <- stats::setNames(c(-sum(prob_resp), prob_resp), .simLowSepCombn)
+  list(uns = uns, response = response, stim = uns + response)
 }
 
 # Combinations (`x`, from `.simLowSepCombn`) that belong to quantity `q`.
@@ -396,17 +432,7 @@
   if (!identical(settings$transformation, "gaussian")) {
     stop("This demonstration uses the Gaussian transformation only.")
   }
-  split <- settings$splits[[row$response_split]][.simLowSepCombn[-1L]]
-  split_bg <- if (identical(row$background_split, "response")) {
-    split
-  } else {
-    settings$splits[[row$background_split]][.simLowSepCombn[-1L]]
-  }
-  if (!isTRUE(all.equal(sum(split), 1)) || !isTRUE(all.equal(sum(split_bg), 1))) {
-    stop("Response and background splits must each sum to one.")
-  }
-  prob_resp <- row$prob_response * split
-  prob_uns <- row$prob_response * row$background_relative * split_bg
+  probs <- .simLowSepTubeProbs(row, settings$splits)
   n_cell_uns <- round(row$n_cell * settings$n_cell_uns_relative_to_stim)
   args <- list(
     nSample = n_sample,
@@ -421,11 +447,9 @@
       ncol = 2L, byrow = TRUE
     ),
     clusterLabelVec = .simLowSepCombn,
-    probVecUns = c(1 - sum(prob_uns), prob_uns),
+    probVecUns = unname(probs$uns),
     probExact = settings$prob_exact,
-    probResponseVecByStimCondition = list(c(
-      -sum(prob_resp - prob_uns), prob_resp - prob_uns
-    )),
+    probResponseVecByStimCondition = list(unname(probs$response)),
     covEvMin = settings$cov_ev,
     covEvMax = settings$cov_ev
   )
