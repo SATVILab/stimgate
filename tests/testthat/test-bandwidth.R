@@ -13,7 +13,7 @@ test_that("bwCalcOne supports all six ordinary bandwidth selectors", {
   x <- .makeTestVec()
   for (method in c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")) {
     bw <- stimgate:::.bwCalcOne(x, bwMtd = method)
-    expect_type(bw, "double", info = method)
+    expect_type(bw, "double")
     expect_length(bw, 1L)
     expect_true(is.finite(bw) && bw > 0, info = method)
     expected <- switch(method,

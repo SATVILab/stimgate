@@ -40,21 +40,19 @@ jobs:
             man/
             NAMESPACE
             DESCRIPTION
-      - name: Check formatting and lint
-        continue-on-error: true
-        shell: Rscript {0}
-        run: |
-          styler::style_pkg(dry = "on")
-          lintr::lint_package()
+      - name: Check Slurm analysis selection
+        shell: bash
+        run: bash analysis/tests/test-slurm-launchers.sh
       - name: Focused package tests
         shell: Rscript {0}
-        run: devtools::test(filter = "bandwidth|bw_shared|control|verify|cache-reuse|cp_cluster-bandwidth|cp_uns_loc_threshold|loc-negative-width|shifted-peak-ref")
+        run: devtools::test(filter = "bandwidth|bw_shared|control|verify|cache-reuse|cp_cluster-bandwidth|cp_uns_loc_threshold|loc-negative-width|shifted-peak-ref", stop_on_failure = TRUE)
       - name: Bounded analysis tests
         shell: Rscript {0}
         run: |
           devtools::load_all()
           testthat::test_dir("analysis/tests/testthat", filter = "bandwidth|bw|wrapper-api|analysis-execution-controls|analysis-sim-size|analysis-mcse|analysis-transactional-migrations-339|qmd-figure-style|qmd-runtime-safety|common-random-numbers|qmd-2-cache-guidance", stop_on_failure = TRUE)
       - name: R CMD check including full package tests
+        if: ${{ !cancelled() }}
         uses: r-lib/actions/check-r-package@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05
         with:
           upload-snapshots: true
