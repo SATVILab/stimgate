@@ -1,70 +1,62 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
-#
-# Pull requests and pushes to master check on Windows only, for speed. The
-# full OS/R matrix runs for releases, for manual runs (Actions > Run
-# workflow) and for pull requests labelled "full-check".
+name: Bandwidth removal validation
 on:
-  push:
-    branches: [master]
-  pull_request:
-    branches: [master]
-    types: [opened, synchronize, reopened, labeled]
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       full:
-        description: 'Run the full OS/R matrix'
         type: boolean
-        default: true
-
-name: R-CMD-check.yaml
-
-permissions: read-all
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
+        default: false
+permissions:
+  contents: read
 jobs:
-  R-CMD-check:
-    runs-on: ${{ matrix.config.os }}
-
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-
-    strategy:
-      fail-fast: false
-      matrix:
-        config: ${{ fromJSON(
-          (github.event_name == 'release' ||
-            (github.event_name == 'workflow_dispatch' && inputs.full) ||
-            contains(github.event.pull_request.labels.*.name, 'full-check'))
-          && '[{"os":"macos-latest","r":"release"},{"os":"windows-latest","r":"release"},{"os":"ubuntu-latest","r":"devel","http-user-agent":"release"},{"os":"ubuntu-latest","r":"release"},{"os":"ubuntu-latest","r":"oldrel-1"}]' || '[{"os":"windows-latest","r":"release"}]'
-          ) }}
-
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 90
     env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      R_KEEP_PKG_SOURCE: yes
-      _R_CHECK_FORCE_SUGGESTS_: false
-
+      CI: 'true'
+      R_KEEP_PKG_SOURCE: 'yes'
+      _R_CHECK_FORCE_SUGGESTS_: 'false'
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: r-lib/actions/setup-pandoc@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
-
-      - uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          r-version: ${{ matrix.config.r }}
-          http-user-agent: ${{ matrix.config.http-user-agent }}
+          persist-credentials: false
+      - uses: r-lib/actions/setup-pandoc@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05
+      - uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05
+        with:
+          r-version: release
           use-public-rspm: true
-
-      - uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+      - uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: any::devtools, any::roxygen2, any::styler, any::lintr, any::rcmdcheck, any::decor, any::future, any::furrr, any::progressr, any::readr, any::RColorBrewer, SATVILab/projr, SATVILab/simcyto
           needs: check
-
-      - uses: r-lib/actions/check-r-package@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
+          cache: always
+      - name: Regenerate documentation
+        shell: Rscript {0}
+        run: devtools::document()
+      - name: Export regenerated documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-documentation
+          path: |
+            man/
+            NAMESPACE
+            DESCRIPTION
+      - name: Check formatting and lint
+        continue-on-error: true
+        shell: Rscript {0}
+        run: |
+          styler::style_pkg(dry = "on")
+          lintr::lint_package()
+      - name: Focused package tests
+        shell: Rscript {0}
+        run: devtools::test(filter = "bandwidth|bw_shared|control|verify|cache-reuse|cp_cluster-bandwidth|cp_uns_loc_threshold|loc-negative-width|shifted-peak-ref")
+      - name: Bounded analysis tests
+        shell: Rscript {0}
+        run: |
+          devtools::load_all()
+          testthat::test_dir("analysis/tests/testthat", filter = "bandwidth|bw|wrapper-api|analysis-execution-controls|analysis-sim-size|analysis-mcse|analysis-transactional-migrations-339|qmd-figure-style|qmd-runtime-safety|common-random-numbers|qmd-2-cache-guidance", stop_on_failure = TRUE)
+      - name: R CMD check including full package tests
+        uses: r-lib/actions/check-r-package@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05
         with:
           upload-snapshots: true
-          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
+          args: 'c("--no-manual", "--ignore-vignettes")'

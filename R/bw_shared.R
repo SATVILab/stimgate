@@ -12,7 +12,7 @@
 # and every selected tube's bandwidth is estimated on `bwNcellMax` cells, so the
 # shared bandwidth matches one cell count. A sample then uses the smaller of its
 # stimulated and unstimulated tube bandwidths, as in the per-sample calculation.
-# Fixed (`bw`) and adaptive bandwidths are unaffected.
+# Fixed (`bw`) bandwidths are unaffected.
 
 .bwSharedNTarget <- 100L
 # Fraction of the left-complex peak height at which the clustering range ends
@@ -31,8 +31,7 @@
   chnlSettings$bwSharedTbl <- NULL
   if (
     identical(chnlSettings$bwScope, "sample") ||
-      !is.null(chnlSettings$bw) ||
-      .getCpUnsLocUseAdaptiveBw(chnlSettings)
+      !is.null(chnlSettings$bw)
   ) {
     return(chnlSettings)
   }

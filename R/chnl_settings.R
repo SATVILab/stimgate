@@ -81,14 +81,7 @@
   }
 
   # Bandwidth-method settings shared by every automatic bandwidth below
-  bwArgs <- lapply(
-    stats::setNames(nm = c(
-      "bwMtd", "bwAdj", "normPeakMinRel", "normExtraFrac",
-      "normExtraMax", "normLambda", "normDensityN",
-      "normExcessBwMtd", "normExcessNcell", "normAdaptiveNcell", "normMtd"
-    )),
-    function(nm) chnlSettings[[nm]]
-  )
+  bwArgs <- list(bwMtd = chnlSettings$bwMtd, bwAdj = chnlSettings$bwAdj)
 
   needBwMin <- .completeChnlSettingsBwLimitIsAuto(chnlSettings$bwMin) &&
     !.completeChnlSettingsBwLimitIsNone(chnlSettings$bwMin)
@@ -222,7 +215,7 @@
 
 # The scalar local-FDR bandwidth every sample of the channel uses: a fixed
 # `bw`, or the per-channel shared bandwidth (`bwScope = "cytokine"`). NULL when
-# samples use different bandwidths (per-sample, per-cluster or adaptive).
+# samples use different bandwidths (per-sample or per-cluster).
 #' @keywords internal
 .completeChnlSettingsBwCommon <- function(chnlSettings) {
   bw <- if (!is.null(chnlSettings$bw)) {

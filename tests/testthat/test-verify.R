@@ -25,22 +25,6 @@ test_that("stimControl validates every tuning setting eagerly", {
     list("bwMax", 0, 0.5),
     list("bwMax", "foo", "none"),
     list("bwFallback", "none", 0.1),
-    list("bwAdaptive", "yes", TRUE),
-    list("bwAdaptiveDensityN", 0, 256),
-    list("bwAdaptivePadFrac", -1, 0),
-    list("bwAdaptiveCore", 0, 1),
-    list("bwAdaptiveExtra", 0, 1),
-    list("bwAdaptiveCrossover", Inf, 0.5),
-    list("bwAdaptiveTransitionWidth", -1, 0),
-    list("normPeakMinRel", -1, 0.5),
-    list("normExtraFrac", 2, 0.1),
-    list("normExtraMax", 0, 10),
-    list("normLambda", c(1, Inf), c(-1, 1)),
-    list("normDensityN", 0, 256),
-    list("normExcessBwMtd", "nrd0Norm", "sj"),
-    list("normExcessNcell", -1, 100),
-    list("normAdaptiveNcell", 0, 100),
-    list("normMtd", "foo", "boxcox"),
     list("locProbCol", "foo", "probSmooth"),
     list("locMinPeakProb", 1.5, 0.3),
     list("locEnforceShapeThreshold", "yes", TRUE),
@@ -64,7 +48,6 @@ test_that("stimControl validates every tuning setting eagerly", {
 
   # Cross-setting rules.
   expect_error(stimControl(bwMin = 1, bwMax = 0.5))
-  expect_error(stimControl(bwAdaptive = TRUE, normMtd = "boxcox"))
   expect_no_error(stimControl(bwMin = 0.1, bwMax = 0.5))
 
   # Settings that must always be supplied.

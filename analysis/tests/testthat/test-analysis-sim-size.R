@@ -152,8 +152,7 @@ test_that("each simulation QMD sets final and draft sample counts in one place",
     `8` = list(final = c(20L, 20L), draft = c(20L, 5L), quick = c(1L, 1L))
   )
   for (id in names(expected)) {
-    # The adaptive-bandwidth analyses 5 and 6 are archived.
-    dir <- file.path(root, "analysis")
+        dir <- file.path(root, "analysis")
     if (id %in% c("5", "6")) dir <- file.path(dir, "_archive")
     file <- list.files(dir, paste0("^", id, "-.*qmd$"), full.names = TRUE)
     expect_length(file, 1L)

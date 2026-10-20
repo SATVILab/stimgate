@@ -464,12 +464,6 @@ test_that("zero-weight leading rows are removed only within half a bandwidth", {
   expect_equal(out$IFNg, 3:6)
   expect_equal(out$weight, rep(1, 4))
   expect_equal(pkg_ns$.getCpUnsLocProbBsEst(out), 4 * 0.8 / nrow(fx$stim))
-
-  # Adaptive shared bandwidth at x0 is 4, not the bandwidth farther right.
-  attr(fx$dataMod, "locDensityBw") <- list(
-    grid = c(0, 6), sharedGrid = c(4, 12)
-  )
-  expect_equal(.locLeadingRunThreshold(fx)$IFNg, 3:6)
 })
 
 test_that("partial leading weights are linear and end with the initial run", {
@@ -502,10 +496,7 @@ test_that("cap can select a gate inside the former leading run", {
 })
 
 test_that("unavailable bandwidth keeps full weights and candidates", {
-  bandwidths <- list(
-    NULL, NA_real_, NaN, Inf, -Inf, 0, -1,
-    list(grid = 0:1, sharedGrid = c(NA_real_, -1))
-  )
+  bandwidths <- list(NULL, NA_real_, NaN, Inf, -Inf, 0, -1)
   for (bw in bandwidths) {
     fx <- .locLeadingRunFixture(0:4, 0.8, 0.5, bw)
     out <- .locLeadingRunThreshold(fx)
