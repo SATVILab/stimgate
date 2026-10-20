@@ -186,8 +186,7 @@
 #' All threshold methods share the bounded leading-run discount; the estimate
 #' sums candidate rows' weighted fitted probabilities over the original
 #' stimulated cell count.
-#' @param densityBw numeric, list or NULL Local-FDR density bandwidth; adaptive
-#'   objects use the shared bandwidth at the lowest estimate value. Default: NULL.
+#' @param densityBw numeric or NULL Local-FDR density bandwidth. Default: NULL.
 #' @keywords internal
 .getCpUnsLocGetCpDataThreshold <- function(
   dataMod,
@@ -250,7 +249,7 @@
 #' rows in that window are removed as candidate gates. The existing exclusion
 #' of minimum-expression rows (except a single row) is retained.
 #' @param dataMod data.frame Estimate rows after lower-margin exclusion.
-#' @param densityBw numeric, list or NULL Density bandwidth. Default: NULL.
+#' @param densityBw numeric or NULL Density bandwidth. Default: NULL.
 #' @return data.frame Candidate rows with a response-estimate `weight` column.
 #' @keywords internal
 .getCpUnsLocGetCpDataThresholdCount <- function(dataMod, densityBw = NULL) {
@@ -360,8 +359,7 @@
 #'
 #' @param exTblStimOrig,exTblUnsOrig data.frame or NULL Expression used to
 #'   find the gap below the selected cell; NULL keeps the gate at the cell.
-#' @param densityBw numeric, list or NULL Local-FDR density bandwidth; an
-#'   adaptive bandwidth uses the shared bandwidth at the selected cell.
+#' @param densityBw numeric or NULL Local-FDR density bandwidth.
 #' @return list from `.getCpUnsLocConditionOut()`, with the selected cell value
 #'   as attribute `cpSelected`.
 #' @keywords internal
@@ -470,27 +468,11 @@
 #' Resolve the shared local-FDR density bandwidth at an expression value
 #'
 #' @param x numeric Expression value.
-#' @param densityBw numeric, list or NULL Density bandwidth. Default: NULL.
+#' @param densityBw numeric or NULL Density bandwidth. Default: NULL.
 #' @return numeric Scalar bandwidth, or NA when unavailable.
 #' @keywords internal
 .getCpUnsLocDensityBwAt <- function(x, densityBw = NULL) {
-  if (is.list(densityBw)) {
-    grid <- densityBw$grid
-    bwGrid <- densityBw$sharedGrid
-    valid <- if (length(grid) == length(bwGrid)) {
-      is.finite(grid) & is.finite(bwGrid) & bwGrid > 0
-    } else {
-      logical(0)
-    }
-    bw <- if (sum(valid) > 1L) {
-      stats::approx(grid[valid], bwGrid[valid], xout = x, rule = 2)$y
-    } else {
-      NA_real_
-    }
-  } else {
-    bw <- suppressWarnings(as.numeric(densityBw)[1L])
-  }
-  bw
+  suppressWarnings(as.numeric(densityBw)[1L])
 }
 
 #' Place a gate in the gap below a selected cell value
@@ -499,8 +481,7 @@
 #'
 #' @param cp numeric Selected cell value.
 #' @param x numeric Stimulated and unstimulated expression; NULL keeps `cp`.
-#' @param densityBw numeric, list or NULL Density bandwidth. An adaptive
-#'   bandwidth object is interpolated at `cp`; an unavailable bandwidth leaves
+#' @param densityBw numeric or NULL Density bandwidth. An unavailable bandwidth leaves
 #'   only the half-gap limit.
 #' @return numeric Gate strictly below `cp` and above every lower value of `x`.
 #' @keywords internal

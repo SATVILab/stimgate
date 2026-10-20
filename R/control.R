@@ -31,8 +31,8 @@
 #' @param cpMin numeric or NULL Minimum cutpoint. NULL estimates a 10% trimmed
 #'   mean of tube medians after excluding minimum expression. Default: NULL.
 #' @param bwMtd character Bandwidth selector: "nrd0", "sj", "hpi0", "hpi1",
-#'   "hpi2", "hpi3", or any of these with a "Norm" suffix for background
-#'   normalisation. Ignored with fixed `bw`. Default: "nrd0".
+#'   "hpi2", "hpi3".
+#'   Ignored with fixed `bw`. Default: "nrd0".
 #' @param bwScope character Scalar bandwidth sharing: "cytokine" uses a 10%
 #'   trimmed mean over about 100 tubes spread across batches; "cluster" groups
 #'   tube densities up to the right shoulder of the background modal complex
@@ -41,7 +41,7 @@
 #'   datasets use all tubes. Shared estimates exclude tubes below `minCell`.
 #'   Each pair uses the smaller tube bandwidth. Inspect `bwShared` and, for
 #'   clusters, `bwSharedTbl` with [stimgateMetaReadSettingsChnls()]. Ignored
-#'   with fixed `bw` or adaptive bandwidths. Default: "cytokine".
+#'   with fixed `bw`. Default: "cytokine".
 #' @param bwAdj numeric Bandwidth multiplier; ignored with fixed `bw`. Default: 1.
 #' @param bwMin numeric or character Lower bandwidth limit: "auto"
 #'   estimates it, "none" disables it, or supply a number. Ignored with
@@ -55,14 +55,11 @@
 #'   Default: "auto".
 #' @param bwNcellMin numeric Minimum selector sample size: a tube with fewer
 #'   cells is upsampled (with jitter) to this many before its bandwidth is
-#'   chosen. Scalar "Norm" methods use it when selecting background-core and
-#'   right-excess cells. Ignored with fixed `bw`. Must not exceed `bwNcellMax`.
+#'   chosen. Ignored with fixed `bw`. Must not exceed `bwNcellMax`.
 #'   Default: `bwNcellMax`, so every tube is resampled to exactly
 #'   `bwNcellMax` cells.
-#' @param bwNcellMax numeric Maximum selector sample size. Ordinary methods
-#'   downsample; scalar "Norm" methods cap the constructed sample after
-#'   inspecting the full distribution. Adaptive methods use
-#'   `normAdaptiveNcell`. Shared bandwidths (`bwScope` "cytokine" or
+#' @param bwNcellMax numeric Maximum selector sample size. Larger tubes are
+#'   downsampled. Shared bandwidths (`bwScope` "cytokine" or
 #'   "cluster") prefer tubes with at least this many cells, then larger tubes
 #'   down to half of it, and estimate each selected tube's bandwidth on exactly
 #'   this many cells, upsampling smaller tubes. Ignored with fixed `bw`.
@@ -140,8 +137,7 @@
 #'   for triggering this rule is the shared bandwidth estimated on
 #'   `bwNcellMax` cells, without the widening for small tubes from
 #'   `bwScaleNcell`; a fixed `bw` when supplied; the sample's own bandwidth
-#'   with `bwScope = "sample"`; and, for adaptive bandwidths, the bandwidth
-#'   curve at the unstimulated peak. Tubes where the rule applied are flagged
+#'   with `bwScope = "sample"`. Tubes where the rule applied are flagged
 #'   in the `locShiftedPeakRef` column of [getStimGates()]. Default: FALSE.
 #' @param locShiftedPeakBwMult numeric Number of bandwidths by which the
 #'   stimulated main peak must exceed the unstimulated main peak for
@@ -169,48 +165,10 @@
 #' @param locMarginalRefQuantile numeric Upper cell quantile right of the
 #'   initial derivative boundary defining the cells-per-bin reference interval.
 #'   Purity uses all cells right of that boundary. Default: 0.75.
-#' @param bwAdaptive logical Use location-specific bandwidths when `bw` is
-#'   NULL. Blend stimulated and control normalised bandwidth curves by
-#'   preliminary density heights; use the shared curve for both final
-#'   densities. Default: FALSE.
-#' @param bwAdaptiveDensityN numeric or NULL Adaptive density grid points; NULL
-#'   uses `normDensityN`. Default: NULL.
-#' @param bwAdaptivePadFrac numeric Extend each end of the adaptive grid by
-#'   this fraction of the combined expression range before area normalisation.
-#'   Default: 0.15.
-#' @param bwAdaptiveCore numeric or NULL Override the estimated
-#'   background-component bandwidth in the adaptive curve. Default: NULL.
-#' @param bwAdaptiveExtra numeric or NULL Override the estimated
-#'   high-expression-component bandwidth in the adaptive curve. Default: NULL.
-#' @param bwAdaptiveCrossover numeric or NULL Expression value at which the
-#'   adaptive curve switches between components; NULL uses component-density
-#'   weighting. Default: NULL.
-#' @param bwAdaptiveTransitionWidth numeric Transition width in expression
-#'   units around `bwAdaptiveCrossover`; 0 makes a hard switch. Default: 0.
-#' @param normPeakMinRel numeric Relative peak/trough threshold identifying the
-#'   background modal complex for "Norm" methods. Default: 0.75.
-#' @param normExtraFrac numeric Target fraction of additional high-side values
-#'   sampled for the normalised high component. Default: 0.2.
-#' @param normExtraMax numeric Maximum additional high-side values for
-#'   normalised methods; Inf allows no cap. Default: Inf.
-#' @param normLambda numeric vector Box-Cox search grid; used only with
-#'   `normMtd = "boxcox"`. Default: seq(-2, 2, length.out = 81).
-#' @param normDensityN numeric Grid points for normalised bandwidth estimation.
-#'   Default: 512.
-#' @param normExcessBwMtd character Ordinary bandwidth selector for right-side
-#'   excess density: "nrd0", "sj", "hpi0", "hpi1", "hpi2", or "hpi3".
-#'   Default: "hpi3".
-#' @param normExcessNcell numeric Maximum cells for estimating the
-#'   excess-density bandwidth. Default: 10000.
-#' @param normAdaptiveNcell numeric Fixed synthetic normal sample size per
-#'   component for adaptive normalised bandwidths. Default: 2500.
-#' @param normMtd character Normalisation for "Norm" selectors: "moments"
-#'   replaces components with normals having matching moments; "boxcox" uses
-#'   Box-Cox transformations for scalar bandwidths only. Default: "moments".
 #' @details
 #' Settings follow the gating workflow: cell and expression limits, bandwidth
-#' selection and sharing, threshold sharing, local-FDR filtering, then adaptive
-#' and normalised bandwidths. A fixed `bw` on [gateStim()] overrides automatic
+#' selection and sharing, threshold sharing, and local-FDR filtering. A fixed
+#' `bw` on [gateStim()] overrides automatic
 #' bandwidth selection. Use its `markerControl` for per-marker settings.
 #'
 #' Thresholds are shared within a batch (`gateCombn`) and then within
@@ -267,22 +225,6 @@ stimControl <- function(
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  bwAdaptive = FALSE,
-  bwAdaptiveDensityN = NULL,
-  bwAdaptivePadFrac = 0.15,
-  bwAdaptiveCore = NULL,
-  bwAdaptiveExtra = NULL,
-  bwAdaptiveCrossover = NULL,
-  bwAdaptiveTransitionWidth = 0,
-  normPeakMinRel = 0.75,
-  normExtraFrac = 0.2,
-  normExtraMax = Inf,
-  normLambda = seq(-2, 2, length.out = 81),
-  normDensityN = 512L,
-  normExcessBwMtd = "hpi3",
-  normExcessNcell = 10000L,
-  normAdaptiveNcell = 2500L,
-  normMtd = "moments",
   cytPosMethod = "coexpression",
   coexNBin = 20L,
   coexResidualMin = 3.5,

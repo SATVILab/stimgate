@@ -12,7 +12,6 @@ scripts=(
   "dev-2a-stim-bw-freq_bs-global.sh"
   "dev-2b-stim-bias_uns-freq_bs.sh"
   "dev-3-sim-bw-est-base.sh"
-  "dev-4-sim-bw-est-norm.sh"
   "dev-6-sim-tune-comparators.sh"
   "dev-7-sim-compare-freq_bs.sh"
   "dev-7b-sim-compare-null.sh"
@@ -138,9 +137,6 @@ chunked_qmd_stem_for_script() {
       ;;
     dev-3-sim-bw-est-base.sh)
       echo "3-sim-bw-est-base"
-      ;;
-    dev-4-sim-bw-est-norm.sh)
-      echo "4-sim-bw-est-norm"
       ;;
     dev-7-sim-compare-freq_bs.sh)
       echo "7-sim-compare-freq_bs"

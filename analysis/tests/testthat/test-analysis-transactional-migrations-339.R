@@ -57,10 +57,7 @@ test_that("analysis Slurm launchers render top-level QMDs with one run ID", {
   launcher_specs <- list(
     list(script = "dev-2a-stim-bw-freq_bs-global.sh", qmd = "2a-sim-bw-freq_bs-global.qmd"),
     list(script = "dev-2b-stim-bias_uns-freq_bs.sh", qmd = "2b-sim-bias_uns-freq_bs.qmd"),
-    list(script = "dev-3-sim-bw-est-base.sh", qmd = "3-sim-bw-est-base.qmd"),
-    list(script = "dev-4-sim-bw-est-norm.sh", qmd = "4-sim-bw-est-norm.qmd"),
-    list(script = "_archive/dev-5-sim-bw-est-adaptive.sh", qmd = "_archive/5-sim-bw-est-adaptive.qmd"),
-    list(script = "_archive/dev-6-sim-bw-freq_bs-adaptive.sh", qmd = "_archive/6-sim-bw-freq_bs-adaptive.qmd")
+    list(script = "dev-3-sim-bw-est-base.sh", qmd = "3-sim-bw-est-base.qmd")
   )
 
   for (spec in launcher_specs) {
@@ -84,19 +81,13 @@ test_that("analysis Slurm launchers render top-level QMDs with one run ID", {
   expect_true(grepl("ANALYSIS_RUN_ID", dev_launcher, fixed = TRUE))
 })
 
-test_that("obsolete analysis 2 and 6 split QMDs are removed", {
+test_that("obsolete analysis 2 split QMDs are removed", {
   split_paths <- c(
     file.path(
       root_dir,
       "analysis",
       "split",
       paste0("2-sim-bw-freq_bs-global-", 1:4, ".qmd")
-    ),
-    file.path(
-      root_dir,
-      "analysis",
-      "split",
-      paste0("6-sim-bw-freq_bs-adaptive-", 1:4, ".qmd")
     )
   )
 
@@ -162,17 +153,4 @@ test_that("promoted bandwidth outputs are discoverable without a simulation run"
 
   expect_length(discovered, 1L)
   expect_equal(readRDS(discovered[[1]])$sim_id, 1L)
-})
-
-test_that("analysis 6 promotes its summaries through the shared runner", {
-  content <- read_project_file("analysis", "_archive", "6-sim-bw-freq_bs-adaptive.qmd")
-  expect_true(grepl(".simBandwidthFinishChunk(", content, fixed = TRUE))
-  expect_true(grepl(".simBandwidthFreqBsAdaptiveCollate(tbl,",
-                   content, fixed = TRUE))
-  expect_true(grepl("sim_grid_spec = analysis_grid_spec",
-                   content, fixed = TRUE))
-  expect_true(grepl('relative_path = c("collated", "summary_tbl.rds")',
-                   content, fixed = TRUE))
-  expect_false(grepl("staging_collated_dir", content, fixed = TRUE))
-  expect_false(grepl(".write_rds_atomic(", content, fixed = TRUE))
 })

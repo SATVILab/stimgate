@@ -2,7 +2,6 @@ root_dir <- normalizePath(file.path(testthat::test_path(), "../../.."), mustWork
 
 script_bw_io <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-io.R")
 script_bw_plot <- file.path(root_dir, "scripts", "r", "sim-bandwidth-analysis-plot.R")
-qmd_6 <- file.path(root_dir, "analysis", "_archive", "6-sim-bw-freq_bs-adaptive.qmd")
 
 .load_bw_analysis_env <- function() {
   env <- new.env(parent = getNamespace("stimgate"))
@@ -139,7 +138,7 @@ test_that("output discovery prefers active output and does not mix with cache", 
   on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
 
   active_dir <- file.path(tmp_dir, "active-output")
-  cache_dir <- file.path(tmp_dir, "cache", "sim", "bw", "freq_bs", "adaptive", "current")
+  cache_dir <- file.path(tmp_dir, "cache", "sim", "bw", "freq_bs", "global", "current")
   dir.create(active_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(cache_dir, "chunks", "001-of-002", "output"), recursive = TRUE, showWarnings = FALSE)
 
@@ -164,7 +163,7 @@ test_that("output discovery falls back to cache only when active output is empty
   on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
 
   active_dir <- file.path(tmp_dir, "active-output")
-  cache_dir <- file.path(tmp_dir, "cache", "sim", "bw", "freq_bs", "adaptive", "current")
+  cache_dir <- file.path(tmp_dir, "cache", "sim", "bw", "freq_bs", "global", "current")
   dir.create(active_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(cache_dir, "chunks", "001-of-002", "output"), recursive = TRUE, showWarnings = FALSE)
 
@@ -187,7 +186,7 @@ test_that("output discovery can disable cache fallback", {
   on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
 
   active_dir <- file.path(tmp_dir, "active-output")
-  cache_dir <- file.path(tmp_dir, "cache", "sim", "bw", "freq_bs", "adaptive", "current")
+  cache_dir <- file.path(tmp_dir, "cache", "sim", "bw", "freq_bs", "global", "current")
   dir.create(active_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(cache_dir, "chunks", "001-of-002", "output"), recursive = TRUE, showWarnings = FALSE)
   saveRDS(2L, file.path(
@@ -245,15 +244,6 @@ test_that("output discovery does not use implicit legacy fallbacks", {
   )
 })
 
-test_that("QMD 6 does not retain the stale adaptive shim reference", {
-  qmd_lines <- readLines(qmd_6, warn = FALSE)
-  expect_false(any(grepl("\\.run_sim_bandwidth_bs_freq_adaptive", qmd_lines)))
-  expect_true(any(grepl("sim-bandwidth-analysis-run.R",
-                       qmd_lines, fixed = TRUE)))
-  expect_true(any(grepl(".simBandwidthFreqBsAdaptiveScenario",
-                       qmd_lines, fixed = TRUE)))
-})
-
 test_that(".update_progress_summary() works without chunk/output metadata for non-chunked analyses", {
   env <- .load_bw_analysis_env()
 
@@ -299,7 +289,7 @@ test_that(".update_progress_summary() still reports chunk/output metadata when s
 
   expect_true(grepl("Chunk              : 1 of 3", summary_text, fixed = TRUE))
   expect_true(grepl(paste0("Output directory   : ", tmp_dir), summary_text, fixed = TRUE))
-  expect_true(grepl("ADAPTIVE SIMULATION PROGRESS DASHBOARD", summary_text))
+  expect_true(grepl("SIMULATION PROGRESS DASHBOARD", summary_text))
 })
 
 test_that(".update_progress_summary() tolerates a concurrent write failure", {
@@ -324,8 +314,8 @@ test_that(".update_progress_summary() tolerates a concurrent write failure", {
   expect_false(file.exists(path_progress_file))
 })
 
-test_that("QMDs 3 and 4 use shared runners with chunk controls", {
-  for (qmd_name in c("3-sim-bw-est-base.qmd", "4-sim-bw-est-norm.qmd")) {
+test_that("QMD 3 uses shared runners with chunk controls", {
+  for (qmd_name in c("3-sim-bw-est-base.qmd")) {
     qmd_lines <- readLines(file.path(root_dir, "analysis", qmd_name), warn = FALSE)
     for (contract in c(
       "sim_grid_chunk_index <- as.integer",

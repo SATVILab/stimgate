@@ -305,9 +305,6 @@ separate analysis integration test suite in `analysis/tests/testthat/`.
   no-cutpoint outcomes and threshold fallbacks.
 - Transactional simulation/collation chunks must not use Quarto
   `error: true`; validation and promotion errors must fail the render/job.
-- For adaptive normalised bandwidth estimation, `normAdaptiveNcell` controls
-  the fixed-size synthetic core/extra samples. Do not vary `bwNcellMax` as if
-  it controlled that adaptive branch unless the implementation changes.
 - When an estimator can legitimately fail to return a finite scientific
   estimate, retain that failure as analysis data (for example with
   `n_*_finite` / `prop_*_finite`) rather than hiding it behind a magic
@@ -598,7 +595,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
 - `R/`: Core R source code for the installed package.
   - `UtilsCytoRSV-chnl_lab.R`: Channel label utilities (get markers/channels from cytometry objects).
   - `UtilsGGSV-axisLimits.R`: `ggplot2` axis limit helpers.
-  - `bw_norm_helpers.R`: Shared bandwidth helpers for standard and normalised bandwidth methods.
+  - `bandwidth.R`: Shared helpers for ordinary scalar bandwidth selection.
   - `bw_shared.R`: Per-cytokine and per-tube-cluster shared local-FDR bandwidths (`bwScope`).
   - `check.R`: Input validation helpers.
   - `chnl_settings.R`: Complete channel parameter list with all required settings.
@@ -649,7 +646,7 @@ installs CRAN and Bioconductor binaries while Ubuntu compiles the
   - `sim-bandwidth.R`: Simulation bandwidth utilities.
   - `sim-bandwidth-analysis-io.R` / `sim-bandwidth-analysis-plot.R`: Output-file lookup and plotting helpers for the bandwidth QMDs.
   - `sim-bandwidth-thesis.R`: Analysis 2a thesis band figures against the bandwidth (sourced after `sim-compare-thesis.R`).
-  - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2-6 (the adaptive-bandwidth QMDs 5 and 6 are archived in `analysis/_archive/`), followed by one delimited section of scenario/validation/collation callbacks per analysis.
+  - `sim-bandwidth-analysis-run.R`: Shared seeded row runner, resumable grid runner, typed error rows, validation and promotion for bandwidth QMDs 2a, 2b and 3, followed by one delimited section of scenario/validation/collation callbacks per analysis.
   - `acs_cytof-*.R`: ACS CyTOF real-data preprocessing, gating, comparator, manual-comparison and plotting helpers for analyses 9a, 9b and 10. `.acsCytofGateStim()` (in `acs_cytof-gate.R`) is the one `gateStim()` call shared by Analyses 9b and 13.
   - `acs_cytof-debug.R`: Analysis 13 (`13-real-debug-acs-cytof.qmd`): re-gates
     each ACS population inside `.simDebugLoc()` and draws one 2c-style page per
@@ -1261,8 +1258,7 @@ Keep the ordinary-method plots unchanged when that table is unavailable.
    Empirical local-FDR selection counts cells at or above the selected cell
    value. Since gates use strict `x > gate`, place the applied gate below that
    value by the smaller of twice the density bandwidth and half the gap to
-   the highest excluded value in either tube. For adaptive densities, use the
-   shared bandwidth at the selected value. Retain the selected cell value
+   the highest excluded value in either tube. Retain the selected cell value
    separately for threshold diagnostics.
    Workers and interactive single-row reruns use the same explicitly seeded row runner; resume retries
    failed rows by default. Comparison scenarios in QMDs 7/8 use explicit RNG
@@ -1327,8 +1323,7 @@ Keep the ordinary-method plots unchanged when that table is unavailable.
    `stimgate_bw_ncell_min` beside `stimgate_bw_ncell_max`;
    `"cluster"` clusters tubes up front on densities up to the left-complex
    shoulder, independently of the threshold-sharing clusters in
-   `cp_cluster.R`; `"sample"` keeps per-sample estimation. Fixed `bw` and the
-   adaptive path bypass shared bandwidths. A sample still uses the smaller of
+   `cp_cluster.R`; `"sample"` keeps per-sample estimation. Fixed `bw` bypasses shared bandwidths. A sample still uses the smaller of
    its stim and unstim tube bandwidths. Threshold sharing uses a supplied
    `bwCluster`, else `bwShared`; `bwCluster` is not estimated automatically.
    The clustering densities are not reusable as local-FDR densities (different
@@ -1420,7 +1415,7 @@ Keep the ordinary-method plots unchanged when that table is unavailable.
    back to the tube's data minimum only when neither exists.
    The reference bandwidth is the unscaled shared bandwidth (no small-tube
    widening), else the fixed `bw`, the per-sample bandwidth
-   (`bwScope = "sample"`) or the adaptive curve at the unstimulated peak
+   (`bwScope = "sample"`)
    (`.getCpUnsLocShiftedPeakSettings()`). Provenance is the
    `locShiftedPeakRef` column of `getStimGates()` and `locShiftedPeak*`
    columns of the condition rows in `getStimGatesDetailed()`, present only
@@ -1707,3 +1702,7 @@ finite stimulated-tube scores and explicit coverage, not pooled-cell F1.
 ACS mean, median and 10th-percentile F1 figures share their per-tube scores and
 eligibility; use raw finite scores (type-7 quantiles) and never substitute zero
 for undefined outcomes. The ACS F1 winner table compares the mean scores.
+
+Bandwidth selection supports only ordinary scalar methods (`nrd0`, `sj`,
+`hpi0`-`hpi3`). Reject removed normalised/adaptive options in supplied controls
+and marker overrides before gating; never reinterpret saved research settings.

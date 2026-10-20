@@ -13,7 +13,7 @@
 
 \item{exVec}{numeric Tube expression values, used for the fallback only.}
 
-\item{bw}{numeric Local-FDR bandwidth at this peak (shared curve if adaptive).}
+\item{bw}{numeric Local-FDR bandwidth at this peak.}
 }
 \value{
 list Width, source (\code{half_height}, \code{dip}, or \code{fallback}), selected

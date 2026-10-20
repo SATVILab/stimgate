@@ -315,7 +315,7 @@ fi
 [[ ! -s "$SLURM_TEST_LOG" ]]
 grep -Fq -- 'Unknown analysis target: missing' "$test_dir/output"
 
-for stem in 2a-stim-bw-freq_bs-global 2b-stim-bias_uns-freq_bs 3-sim-bw-est-base 4-sim-bw-est-norm 7-sim-compare-freq_bs 7b-sim-compare-null 8-sim-compare-freq_bs-batch \
+for stem in 2a-stim-bw-freq_bs-global 2b-stim-bias_uns-freq_bs 3-sim-bw-est-base 7-sim-compare-freq_bs 7b-sim-compare-null 8-sim-compare-freq_bs-batch \
   11a-sim-low-separation-cyt-pos 11b-sim-low-separation-batch; do
   : > "$SLURM_TEST_LOG"
   bash "$project_root/scripts/slurm/dev-${stem}.sh" 2 > "$test_dir/output" 2>&1

@@ -40,7 +40,7 @@
     sim_grid_chunk_index = NULL,
     sim_grid_n_chunks = NULL,
     dir_output = NULL,
-    heading = "ADAPTIVE SIMULATION PROGRESS DASHBOARD") {
+    heading = "SIMULATION PROGRESS DASHBOARD") {
   if (!dir.exists(dir_jobs_chunk)) {
     return(invisible(NULL))
   }

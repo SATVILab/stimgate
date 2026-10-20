@@ -171,8 +171,7 @@
     x = x,
     chnlSettings = chnlSettings,
     bwMtd = bwMtd,
-    bwAdj = bwAdj,
-    adaptive = FALSE
+    bwAdj = bwAdj
   )
 
   if (!is.finite(bwCalc) || bwCalc <= 0) {
