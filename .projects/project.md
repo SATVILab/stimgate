@@ -3,13 +3,16 @@
 | Key | Value |
 | --- | --- |
 | Contract version | 1 |
+| Sub-project storage | field |
+| Sub-project field | Sub-project |
+| Sub-project field type | SINGLE_SELECT |
 | Mode | single |
 | Issue repository | SATVILab/stimgate |
 | Project owner | SATVILab |
 | Owner type | organization |
 | Project number | 30 |
 | Project title | stimgate |
-| Routing | linked repository; no project:* label |
+| Routing | membership |
 | Privacy | public repository with a private organisation Project |
 
 ## Field locations
@@ -21,7 +24,7 @@
 | Status | project field | Status |
 | Due date | project field | Target date |
 | Parent | native issue relationship | Parent issue |
-| Sub-project | repository label | subproject:* |
+| Sub-project | project field | Sub-project |
 
 ## Other value mappings
 
@@ -32,8 +35,8 @@
 ## Routing and grouping
 
 - The Project is linked directly to this one repository, so no `project:*` routing label is required or permitted merely for membership.
-- Use at most one existing `subproject:*` label when a genuine local grouping requires it.
-- Do not invent a sub-project label merely to route an issue.
+- Use the Project’s `Sub-project` single-select field for genuine local grouping; leave it blank when no grouping is declared.
+- Do not invent a Sub-project option merely to route an issue.
 - Labels must not duplicate Issue Type, Priority or Status.
 
 ## Governance
@@ -44,3 +47,10 @@
 - Private operator sources, personal tasks and credentials are forbidden in repository content, issues, comments, commits and logs.
 - The repository has no external scope-design source requirement for ordinary administration.
 - R, Bioconductor, package and analysis dependencies are unrelated to Project administration.
+
+## Storage authority
+
+- The field includes a schema-only `Not assigned` option. Leave unclassified item values blank; clearing does not select that option.
+- `Sub-project` is the sole writable grouping representation. Legacy grouping labels are read-only migration artifacts until verified cleanup.
+- Resolve field and option IDs freshly; require the exact configured name, SINGLE_SELECT type and vocabulary mapping. Stop if the expected field is missing or inaccessible.
+- Multiple memberships require explicit Project context unless exactly one relevant managed membership resolves it. An explicit add-membership request may name its target before placement.
