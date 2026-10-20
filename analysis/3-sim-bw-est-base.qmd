@@ -450,8 +450,7 @@ if (isTRUE(run_plots)) {
 ## Results
 
 Each figure has a companion table showing finite paired bandwidth estimates
-out of the expected sample count and the selected bandwidth's normalisation
-fallback share. Means use complete finite stim/unstim pairs. Analysis 3 disables
+out of the expected sample count. Means use complete finite stim/unstim pairs. Analysis 3 disables
 numeric bandwidth fallbacks; an estimator failure remains a coverage failure,
 rather than a fallback estimate.
 
@@ -553,7 +552,7 @@ if (isTRUE(run_plots)) {
         n_bw_finite, n_bw_total, prop_bw_finite
       ),
         c(fig_key, "bandwidth-coverage", paste0(tools::file_path_sans_ext(basename(path_plot)), ".csv")),
-        "Finite bandwidth-estimate coverage and normalisation fallback rates for this figure.", path_root = root_dir)
+        "Finite bandwidth-estimate coverage for this figure.", path_root = root_dir)
     }
   }
 }
