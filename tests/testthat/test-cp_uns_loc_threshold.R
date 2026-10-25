@@ -255,23 +255,6 @@ test_that("selected-cell ties and diagnostics agree with the applied gate", {
   expect_equal(detail$propBsDiff, 0, tolerance = 1e-14)
 })
 
-test_that("adaptive gates use shared bandwidth at the selected cell", {
-  gate_below <- get(".getCpUnsLocGateBelowCell", envir = pkg_ns)
-  adaptive <- list(
-    adaptive = TRUE, grid = c(0, 4), sharedGrid = c(0.05, 0.15)
-  )
-  # Interpolation gives bandwidth 0.1 at 2, and the wide gap leaves room
-  # to move down by twice that bandwidth.
-  expect_equal(gate_below(2, c(0, 2), adaptive), 1.8)
-  # Outside the padded density grid, use its nearest endpoint bandwidth.
-  expect_equal(gate_below(8, c(0, 8), adaptive), 7.7)
-  expect_equal(gate_below(-2, c(-4, -2), adaptive), -2.1)
-  # The half-gap limit still prevents including the next lower observation.
-  expect_equal(gate_below(2, c(1.9, 2), adaptive), 1.95)
-  adaptive$sharedGrid <- c(NA_real_, -1)
-  expect_equal(gate_below(2, c(0, 2), adaptive), 1)
-})
-
 test_that("a lone top responding cell is counted by the applied gate", {
   gate_below <- get(".getCpUnsLocGateBelowCell", envir = pkg_ns)
   x <- c(stats::qnorm(seq(0.01, 0.99, length.out = 99)), 8.868)

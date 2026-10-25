@@ -124,9 +124,6 @@ run_local_fdr_inspection <- function(scenario) {
   cp_ind <- read_optional("cpInd")
 
   bandwidth <- read_optional("bwCpUnsLoc")
-  if (is.null(bandwidth)) {
-    bandwidth <- read_optional("bwCpUnsLocAdaptive")
-  }
 
   shape_info <- list(
     requested = attr(data_mod, "locShapeThresholdRequested"),

@@ -19,8 +19,7 @@
 \item{exTblStimOrig, exTblUnsOrig}{data.frame or NULL Expression used to
 find the gap below the selected cell; NULL keeps the gate at the cell.}
 
-\item{densityBw}{numeric, list or NULL Local-FDR density bandwidth; an
-adaptive bandwidth uses the shared bandwidth at the selected cell.}
+\item{densityBw}{numeric or NULL Local-FDR density bandwidth.}
 }
 \value{
 list from \code{.getCpUnsLocConditionOut()}, with the selected cell value

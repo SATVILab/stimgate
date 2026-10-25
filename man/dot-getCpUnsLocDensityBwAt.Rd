@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{numeric Expression value.}
 
-\item{densityBw}{numeric, list or NULL Density bandwidth. Default: NULL.}
+\item{densityBw}{numeric or NULL Density bandwidth. Default: NULL.}
 }
 \value{
 numeric Scalar bandwidth, or NA when unavailable.

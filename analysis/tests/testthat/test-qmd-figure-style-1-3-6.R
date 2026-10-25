@@ -1,6 +1,5 @@
 .style_qmd_files <- c(
-  "1-sim-trans.qmd", "3-sim-bw-est-base.qmd", "4-sim-bw-est-norm.qmd",
-  "_archive/5-sim-bw-est-adaptive.qmd", "_archive/6-sim-bw-freq_bs-adaptive.qmd"
+  "1-sim-trans.qmd", "3-sim-bw-est-base.qmd"
 )
 
 .style_qmd_lines <- function(file) {
@@ -9,7 +8,7 @@
   ), warn = FALSE)
 }
 
-test_that("figure QMDs 1 and 3-6 source the shared style and use it for plots", {
+test_that("figure QMDs 1 and 3 source the shared style and use it for plots", {
   for (file in .style_qmd_files) {
     lines <- .style_qmd_lines(file)
     code <- lines[!grepl("^\\s*#", lines)]
@@ -24,7 +23,7 @@ test_that("figure QMDs 1 and 3-6 source the shared style and use it for plots", 
   }
 })
 
-test_that("figure loops in QMDs 3-6 write headings and avoid fig- labels", {
+test_that("figure loops in QMD 3 write headings and avoid fig- labels", {
   for (file in .style_qmd_files[-1]) {
     lines <- .style_qmd_lines(file)
     expect_false(any(grepl("^#\\| label: fig-", lines)), info = file)

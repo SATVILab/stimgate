@@ -52,9 +52,6 @@ test_that("bwScope sets shared local-FDR bandwidths in the channel settings", {
   for (settings in runSettings(bwScope = "sample")) {
     expect_null(settings$bwShared)
   }
-  for (settings in runSettings(bwAdaptive = TRUE)) {
-    expect_null(settings$bwShared)
-  }
 })
 
 test_that("local-FDR uses the smaller shared bandwidth of the sample's tubes", {

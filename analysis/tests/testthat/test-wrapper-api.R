@@ -29,20 +29,6 @@ test_that("analysis wrapper functions do not expose removed calcSinglePosGates a
   expect_false("calcSinglePosGates" %in% names(formals(env$.simCompareFreqBs)))
 })
 
-test_that(".simBandwidthBsFreq exposes adaptive bandwidth settings directly", {
-  env <- .load_analysis_env()
-
-  adaptive_nm <- c(
-    "bwAdaptive",
-    "bwAdaptiveCore",
-    "bwAdaptiveExtra",
-    "bwAdaptiveCrossover",
-    "bwAdaptiveTransitionWidth"
-  )
-
-  expect_true(all(adaptive_nm %in% names(formals(env$.simBandwidthBsFreq))))
-})
-
 test_that("analysis calls use the gateStim and stimControl argument contracts", {
   gate_args <- names(formals(stimgate::gateStim))
   control_args <- names(formals(stimgate::stimControl))
@@ -136,11 +122,7 @@ test_that(".simBandwidthBsFreq forwards to gateStim without unknown-argument err
     nCluster = 2L,
     nIter = 1L,
     biasUns = 0,
-    bwAdaptive = TRUE,
-    bwAdaptiveCore = 0.1,
-    bwAdaptiveExtra = 0.25,
-    bwAdaptiveCrossover = NULL,
-    bwAdaptiveTransitionWidth = 0,
+    bw = 0.1,
     bwFallback = 0.2,
     bwMin = "none",
     bwMax = "none",
@@ -222,7 +204,7 @@ test_that("threshold clustering accepts only one non-missing logical value", {
       )
     }
   }
-  for (wrapper in c(".simBandwidthEstBwDirect", ".simBandwidthEstBwDirectAdaptive")) {
+  for (wrapper in c(".simBandwidthEstBwDirect")) {
     expect_false("clusterGates" %in% names(formals(env[[wrapper]])))
   }
 })

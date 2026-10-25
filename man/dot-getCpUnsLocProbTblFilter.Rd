@@ -20,7 +20,7 @@
 \arguments{
 \item{densityStim, densityUns}{list Density grids used to identify the peaks.}
 
-\item{densityBw}{numeric or list Local-FDR bandwidth or adaptive shared curve.}
+\item{densityBw}{numeric Local-FDR bandwidth.}
 }
 \description{
 Start above the higher main peak plus half the larger tube width, with

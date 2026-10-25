@@ -2,9 +2,7 @@ test_that("simulation QMDs share actionable cache errors without creating run st
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
   documents <- c(
     "2a-sim-bw-freq_bs-global.qmd", "2b-sim-bias_uns-freq_bs.qmd",
-    "3-sim-bw-est-base.qmd", "4-sim-bw-est-norm.qmd",
-    "_archive/5-sim-bw-est-adaptive.qmd", "_archive/6-sim-bw-freq_bs-adaptive.qmd",
-    "7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd"
+    "3-sim-bw-est-base.qmd", "7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd"
   )
   for (i in seq_along(documents)) {
     lines <- readLines(file.path(root, "analysis", documents[[i]]))

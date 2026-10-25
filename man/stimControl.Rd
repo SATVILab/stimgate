@@ -40,22 +40,6 @@ stimControl(
   locMarginalPurityRel = 0.5,
   locMarginalCellBinRatio = 2,
   locMarginalRefQuantile = 0.75,
-  bwAdaptive = FALSE,
-  bwAdaptiveDensityN = NULL,
-  bwAdaptivePadFrac = 0.15,
-  bwAdaptiveCore = NULL,
-  bwAdaptiveExtra = NULL,
-  bwAdaptiveCrossover = NULL,
-  bwAdaptiveTransitionWidth = 0,
-  normPeakMinRel = 0.75,
-  normExtraFrac = 0.2,
-  normExtraMax = Inf,
-  normLambda = seq(-2, 2, length.out = 81),
-  normDensityN = 512L,
-  normExcessBwMtd = "hpi3",
-  normExcessNcell = 10000L,
-  normAdaptiveNcell = 2500L,
-  normMtd = "moments",
   cytPosMethod = "coexpression",
   coexNBin = 20L,
   coexResidualMin = 3.5,
@@ -80,8 +64,8 @@ Default: TRUE.}
 mean of tube medians after excluding minimum expression. Default: NULL.}
 
 \item{bwMtd}{character Bandwidth selector: "nrd0", "sj", "hpi0", "hpi1",
-"hpi2", "hpi3", or any of these with a "Norm" suffix for background
-normalisation. Ignored with fixed \code{bw}. Default: "nrd0".}
+"hpi2", "hpi3".
+Ignored with fixed \code{bw}. Default: "nrd0".}
 
 \item{bwScope}{character Scalar bandwidth sharing: "cytokine" uses a 10\%
 trimmed mean over about 100 tubes spread across batches; "cluster" groups
@@ -91,7 +75,7 @@ and uses cluster medians from about 100 tubes (at least one per cluster);
 datasets use all tubes. Shared estimates exclude tubes below \code{minCell}.
 Each pair uses the smaller tube bandwidth. Inspect \code{bwShared} and, for
 clusters, \code{bwSharedTbl} with \code{\link[=stimgateMetaReadSettingsChnls]{stimgateMetaReadSettingsChnls()}}. Ignored
-with fixed \code{bw} or adaptive bandwidths. Default: "cytokine".}
+with fixed \code{bw}. Default: "cytokine".}
 
 \item{bwAdj}{numeric Bandwidth multiplier; ignored with fixed \code{bw}. Default: 1.}
 
@@ -110,15 +94,12 @@ Default: "auto".}
 
 \item{bwNcellMin}{numeric Minimum selector sample size: a tube with fewer
 cells is upsampled (with jitter) to this many before its bandwidth is
-chosen. Scalar "Norm" methods use it when selecting background-core and
-right-excess cells. Ignored with fixed \code{bw}. Must not exceed \code{bwNcellMax}.
+chosen. Ignored with fixed \code{bw}. Must not exceed \code{bwNcellMax}.
 Default: \code{bwNcellMax}, so every tube is resampled to exactly
 \code{bwNcellMax} cells.}
 
-\item{bwNcellMax}{numeric Maximum selector sample size. Ordinary methods
-downsample; scalar "Norm" methods cap the constructed sample after
-inspecting the full distribution. Adaptive methods use
-\code{normAdaptiveNcell}. Shared bandwidths (\code{bwScope} "cytokine" or
+\item{bwNcellMax}{numeric Maximum selector sample size. Larger tubes are
+downsampled. Shared bandwidths (\code{bwScope} "cytokine" or
 "cluster") prefer tubes with at least this many cells, then larger tubes
 down to half of it, and estimate each selected tube's bandwidth on exactly
 this many cells, upsampling smaller tubes. Ignored with fixed \code{bw}.
@@ -209,8 +190,7 @@ negative width with the same one-density-bandwidth minimum. The bandwidth
 for triggering this rule is the shared bandwidth estimated on
 \code{bwNcellMax} cells, without the widening for small tubes from
 \code{bwScaleNcell}; a fixed \code{bw} when supplied; the sample's own bandwidth
-with \code{bwScope = "sample"}; and, for adaptive bandwidths, the bandwidth
-curve at the unstimulated peak. Tubes where the rule applied are flagged
+with \code{bwScope = "sample"}. Tubes where the rule applied are flagged
 in the \code{locShiftedPeakRef} column of \code{\link[=getStimGates]{getStimGates()}}. Default: FALSE.}
 
 \item{locShiftedPeakBwMult}{numeric Number of bandwidths by which the
@@ -249,60 +229,6 @@ Default: 2.}
 initial derivative boundary defining the cells-per-bin reference interval.
 Purity uses all cells right of that boundary. Default: 0.75.}
 
-\item{bwAdaptive}{logical Use location-specific bandwidths when \code{bw} is
-NULL. Blend stimulated and control normalised bandwidth curves by
-preliminary density heights; use the shared curve for both final
-densities. Default: FALSE.}
-
-\item{bwAdaptiveDensityN}{numeric or NULL Adaptive density grid points; NULL
-uses \code{normDensityN}. Default: NULL.}
-
-\item{bwAdaptivePadFrac}{numeric Extend each end of the adaptive grid by
-this fraction of the combined expression range before area normalisation.
-Default: 0.15.}
-
-\item{bwAdaptiveCore}{numeric or NULL Override the estimated
-background-component bandwidth in the adaptive curve. Default: NULL.}
-
-\item{bwAdaptiveExtra}{numeric or NULL Override the estimated
-high-expression-component bandwidth in the adaptive curve. Default: NULL.}
-
-\item{bwAdaptiveCrossover}{numeric or NULL Expression value at which the
-adaptive curve switches between components; NULL uses component-density
-weighting. Default: NULL.}
-
-\item{bwAdaptiveTransitionWidth}{numeric Transition width in expression
-units around \code{bwAdaptiveCrossover}; 0 makes a hard switch. Default: 0.}
-
-\item{normPeakMinRel}{numeric Relative peak/trough threshold identifying the
-background modal complex for "Norm" methods. Default: 0.75.}
-
-\item{normExtraFrac}{numeric Target fraction of additional high-side values
-sampled for the normalised high component. Default: 0.2.}
-
-\item{normExtraMax}{numeric Maximum additional high-side values for
-normalised methods; Inf allows no cap. Default: Inf.}
-
-\item{normLambda}{numeric vector Box-Cox search grid; used only with
-\code{normMtd = "boxcox"}. Default: seq(-2, 2, length.out = 81).}
-
-\item{normDensityN}{numeric Grid points for normalised bandwidth estimation.
-Default: 512.}
-
-\item{normExcessBwMtd}{character Ordinary bandwidth selector for right-side
-excess density: "nrd0", "sj", "hpi0", "hpi1", "hpi2", or "hpi3".
-Default: "hpi3".}
-
-\item{normExcessNcell}{numeric Maximum cells for estimating the
-excess-density bandwidth. Default: 10000.}
-
-\item{normAdaptiveNcell}{numeric Fixed synthetic normal sample size per
-component for adaptive normalised bandwidths. Default: 2500.}
-
-\item{normMtd}{character Normalisation for "Norm" selectors: "moments"
-replaces components with normals having matching moments; "boxcox" uses
-Box-Cox transformations for scalar bandwidths only. Default: "moments".}
-
 \item{cytPosMethod}{character Cytokine-positive rule, "coexpression" or
 "antimode"; used only when \code{\link[=gateStim]{gateStim()}}'s \code{calcCytPosGates} is TRUE. "coexpression" lowers a
 cytokine's gate, for cells above another cytokine's gate, where the two
@@ -337,8 +263,8 @@ set only the options you need to change.
 }
 \details{
 Settings follow the gating workflow: cell and expression limits, bandwidth
-selection and sharing, threshold sharing, local-FDR filtering, then adaptive
-and normalised bandwidths. A fixed \code{bw} on \code{\link[=gateStim]{gateStim()}} overrides automatic
+selection and sharing, threshold sharing, and local-FDR filtering. A fixed
+\code{bw} on \code{\link[=gateStim]{gateStim()}} overrides automatic
 bandwidth selection. Use its \code{markerControl} for per-marker settings.
 
 Thresholds are shared within a batch (\code{gateCombn}) and then within

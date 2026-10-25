@@ -9,7 +9,7 @@
 \arguments{
 \item{dataMod}{data.frame Estimate rows after lower-margin exclusion.}
 
-\item{densityBw}{numeric, list or NULL Density bandwidth. Default: NULL.}
+\item{densityBw}{numeric or NULL Density bandwidth. Default: NULL.}
 }
 \value{
 data.frame Candidate rows with a response-estimate \code{weight} column.

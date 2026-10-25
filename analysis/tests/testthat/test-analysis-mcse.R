@@ -322,8 +322,7 @@ test_that("comparison summaries bootstrap the plotted pooled statistic by datase
 test_that("summary-plot QMDs declare and read the show_mcse toggle", {
   for (file in c(
     "2a-sim-bw-freq_bs-global.qmd", "2b-sim-bias_uns-freq_bs.qmd",
-    "3-sim-bw-est-base.qmd", "4-sim-bw-est-norm.qmd",
-    "7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd"
+    "3-sim-bw-est-base.qmd", "7-sim-compare-freq_bs.qmd", "8-sim-compare-freq_bs-batch.qmd"
   )) {
     lines <- readLines(file.path(root_dir, "analysis", file), warn = FALSE)
     expect_true('  show_mcse: "on"' %in% lines, info = file)

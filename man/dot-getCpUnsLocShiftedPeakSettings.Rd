@@ -8,8 +8,7 @@ at the \code{bwNcellMax} reference size, before any widening for small tubes
 (smaller of the stimulated and unstimulated tubes' values with
 \code{bwScope = "cluster"}). Without a shared bandwidth it is the bandwidth of the
 local-FDR densities: a fixed \code{bw}, the per-sample estimate with
-\code{bwScope = "sample"}, or for adaptive bandwidths the blended bandwidth curve,
-read at the unstimulated peak. This trigger bandwidth is separate from
+\code{bwScope = "sample"}. This trigger bandwidth is separate from
 the actual density bandwidth used for negative widths and search offsets.}
 \usage{
 .getCpUnsLocShiftedPeakSettings(
@@ -26,8 +25,7 @@ at the \code{bwNcellMax} reference size, before any widening for small tubes
 (smaller of the stimulated and unstimulated tubes' values with
 \code{bwScope = "cluster"}). Without a shared bandwidth it is the bandwidth of the
 local-FDR densities: a fixed \code{bw}, the per-sample estimate with
-\code{bwScope = "sample"}, or for adaptive bandwidths the blended bandwidth curve,
-read at the unstimulated peak. This trigger bandwidth is separate from
+\code{bwScope = "sample"}. This trigger bandwidth is separate from
 the actual density bandwidth used for negative widths and search offsets.
 }
 \keyword{internal}

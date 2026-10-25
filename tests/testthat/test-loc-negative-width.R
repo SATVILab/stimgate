@@ -118,17 +118,6 @@ test_that("tube widths combine by max and shifted peaks use only the uns width",
   expect_equal(widened$windowWidthInfo$searchStartX, 0.6)
 })
 
-test_that("adaptive widths and offsets use the shared bandwidth at each peak", {
-  dens <- list(x = -4:1, y = c(0.2, 0.5, 0.9, 0.6, 1, 0.8))
-  adaptive <- list(adaptive = TRUE, grid = c(-1, 1), sharedGrid = c(2, 4))
-  filtered <- .filterNegWidth(dens, bw = adaptive, x = c(1, 2, 3, 4))
-  expect_equal(filtered$windowWidthInfo$stim$bw, 3)
-  expect_true(is.na(filtered$windowWidthInfo$stim$dipX))
-  expect_equal(filtered$windowWidth, 3)
-  expect_equal(filtered$windowWidthInfo$searchStartX, 3)
-  expect_equal(filtered$probTbl$xStim, 4)
-})
-
 test_that("width diagnostics survive derivative row subsetting", {
   data <- data.frame(val = 1:3)
   attr(data, "locWindowWidth") <- 1

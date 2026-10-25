@@ -1,6 +1,6 @@
 # Local-FDR density and raw probability estimation
 #
-# Fits stimulated and unstimulated densities, supports fixed and adaptive
+# Fits stimulated and unstimulated densities, supports scalar
 # bandwidths, constructs raw response probabilities, and prepares the data used
 # by the monotone smoother.
 
@@ -427,7 +427,7 @@
   )
 
   # Keep the bandwidth object used here so the later antimode density can use
-  # exactly half of the same fixed or adaptive bandwidth.
+  # exactly half of the same scalar bandwidth.
   densTblRaw <- .getCpUnsLocGetDensRawTabulate(
     stimX = densList$stim$x,
     stimY = densList$stim$y,
@@ -446,29 +446,6 @@
   pathProject,
   chnlSettings
 ) {
-  useAdaptive <- .getCpUnsLocUseAdaptiveBw(chnlSettings)
-
-  if (isTRUE(useAdaptive)) {
-    densAdaptive <- .getCpUnsLocGetDensRawDensitiesAdaptive(
-      exTblStimThreshold = exTblStimThreshold,
-      exTblUnsThreshold = exTblUnsThreshold,
-      chnlSettings = chnlSettings
-    )
-
-    if (!is.null(densAdaptive)) {
-      chnl <- .getCpUnsLocGetChnl(exTblStimThreshold)
-      stageChnl <- file.path(stage, chnl)
-      .intSaveNm(
-        "bwCpUnsLocAdaptive",
-        densAdaptive$bw,
-        .getInd(exTblStimThreshold),
-        stageChnl,
-        pathProject
-      )
-      return(densAdaptive)
-    }
-  }
-
   bw <- .getCpUnsLocGetDensRawDensitiesBw(
     exTblStimThreshold = exTblStimThreshold,
     exTblUnsThreshold = exTblUnsThreshold,
@@ -496,452 +473,15 @@
 }
 
 
+# .bwCalcOne() with the bandwidth settings from chnlSettings.
 #' @keywords internal
-.getCpUnsLocUseAdaptiveBw <- function(chnlSettings) {
-  (isTRUE(chnlSettings$bwAdaptive %||% FALSE) ||
-    .getCpUnsLocHasManualAdaptiveBw(chnlSettings)) &&
-    is.null(chnlSettings$bw)
-}
-
-#' @keywords internal
-.getCpUnsLocHasManualAdaptiveBw <- function(chnlSettings) {
-  is.finite(suppressWarnings(as.numeric(chnlSettings$bwAdaptiveCore)[1])) ||
-    is.finite(suppressWarnings(as.numeric(chnlSettings$bwAdaptiveExtra)[1])) ||
-    is.finite(suppressWarnings(as.numeric(chnlSettings$bwAdaptiveCrossover)[1]))
-}
-
-#' @keywords internal
-.getCpUnsLocManualAdaptiveBwOnGrid <- function(chnlSettings, grid) {
-  bwCore <- suppressWarnings(as.numeric(chnlSettings$bwAdaptiveCore)[1])
-  bwExtra <- suppressWarnings(as.numeric(chnlSettings$bwAdaptiveExtra)[1])
-  crossover <- suppressWarnings(as.numeric(chnlSettings$bwAdaptiveCrossover)[1])
-  transitionWidth <- suppressWarnings(
-    as.numeric(chnlSettings$bwAdaptiveTransitionWidth %||% 0)[1]
-  )
-
-  if (
-    !is.finite(bwCore) ||
-      bwCore <= 0 ||
-      !is.finite(bwExtra) ||
-      bwExtra <= 0 ||
-      !is.finite(crossover)
-  ) {
-    return(NULL)
-  }
-
-  bw <- .bwNormBwFromCrossover(
-    bin = grid,
-    bwCore = bwCore,
-    bwExtra = bwExtra,
-    crossover = crossover,
-    transitionWidth = transitionWidth
-  )
-
-  bw <- .getCpUnsLocRepairBwGrid(bw)
-
-  list(
-    bin = grid,
-    bw = bw,
-    bwCore = bwCore,
-    bwExtra = bwExtra,
-    bwAdaptiveCoreManual = bwCore,
-    bwAdaptiveExtraManual = bwExtra,
-    bwAdaptiveCrossover = crossover,
-    bwAdaptiveTransitionWidth = transitionWidth,
-    adaptive = TRUE,
-    manual = TRUE
+.getCpUnsLocBwCalcOne <- function(x, chnlSettings, bwMtd, bwAdj) {
+  .bwCalcOne(
+    x = x, bwMtd = bwMtd, bwAdj = bwAdj,
+    bwNcellMin = chnlSettings$bwNcellMin,
+    bwNcellMax = chnlSettings$bwNcellMax
   )
 }
-
-#' @keywords internal
-.getCpUnsLocGetDensRawDensitiesAdaptive <- function(
-  exTblStimThreshold,
-  exTblUnsThreshold,
-  chnlSettings
-) {
-  xStim <- .getCut(exTblStimThreshold)
-  xUns <- .getCut(exTblUnsThreshold)
-  xStim <- suppressWarnings(as.numeric(xStim))
-  xUns <- suppressWarnings(as.numeric(xUns))
-  xStim <- xStim[is.finite(xStim)]
-  xUns <- xUns[is.finite(xUns)]
-
-  if (
-    length(xStim) < 20L ||
-      length(unique(xStim)) < 5L ||
-      length(xUns) < 20L ||
-      length(unique(xUns)) < 5L
-  ) {
-    return(NULL)
-  }
-
-  densityN <- .bwAsSafeSampleN(
-    chnlSettings$bwAdaptiveDensityN %||%
-      chnlSettings$normDensityN %||%
-      512L,
-    default = 512L,
-    lower = 64L
-  )
-
-  grid <- .getCpUnsLocAdaptiveGrid(
-    x = c(xStim, xUns),
-    n = densityN,
-    padFrac = chnlSettings$bwAdaptivePadFrac %||% 0.15
-  )
-
-  if (length(grid) < 10L) {
-    return(NULL)
-  }
-
-  manualBwObj <- .getCpUnsLocManualAdaptiveBwOnGrid(
-    chnlSettings = chnlSettings,
-    grid = grid
-  )
-
-  if (!is.null(manualBwObj)) {
-    bwStimObj <- manualBwObj
-    bwUnsObj <- manualBwObj
-    bwStimGrid <- manualBwObj$bw
-    bwUnsGrid <- manualBwObj$bw
-  } else {
-    bwStimObj <- .getCpUnsLocGetDensRawDensitiesBwAdaptiveOne(
-      x = xStim,
-      chnlSettings = chnlSettings
-    )
-    bwUnsObj <- .getCpUnsLocGetDensRawDensitiesBwAdaptiveOne(
-      x = xUns,
-      chnlSettings = chnlSettings
-    )
-
-    bwStimGrid <- .getCpUnsLocAdaptiveBwOnGrid(
-      bwObj = bwStimObj,
-      grid = grid,
-      fallback = chnlSettings$bwFallback
-    )
-    bwUnsGrid <- .getCpUnsLocAdaptiveBwOnGrid(
-      bwObj = bwUnsObj,
-      grid = grid,
-      fallback = chnlSettings$bwFallback
-    )
-  }
-
-  if (
-    length(bwStimGrid) != length(grid) ||
-      length(bwUnsGrid) != length(grid) ||
-      all(!is.finite(bwStimGrid)) ||
-      all(!is.finite(bwUnsGrid))
-  ) {
-    return(NULL)
-  }
-
-  bwStimGrid <- .getCpUnsLocRepairBwGrid(bwStimGrid)
-  bwUnsGrid <- .getCpUnsLocRepairBwGrid(bwUnsGrid)
-
-  # Preliminary densities use each sample's own adaptive bandwidth curve. These
-  # are only weighting curves for constructing the shared bandwidth curve.
-  densStimPre <- .getCpUnsLocDensityAdaptiveGrid(
-    x = xStim,
-    grid = grid,
-    bwGrid = bwStimGrid,
-    normalise = TRUE,
-    probGMin = attr(exTblStimThreshold, "probGMin")
-  )
-
-  densUnsPre <- .getCpUnsLocDensityAdaptiveGrid(
-    x = xUns,
-    grid = grid,
-    bwGrid = bwUnsGrid,
-    normalise = TRUE,
-    probGMin = attr(exTblUnsThreshold, "probGMin")
-  )
-
-  if (is.null(densStimPre) || is.null(densUnsPre)) {
-    return(NULL)
-  }
-
-  denom <- densStimPre$y + densUnsPre$y
-  bwShared <- ifelse(
-    is.finite(denom) & denom > 0,
-    (densStimPre$y * bwStimGrid + densUnsPre$y * bwUnsGrid) / denom,
-    rowMeans(cbind(bwStimGrid, bwUnsGrid), na.rm = TRUE)
-  )
-  bwShared <- .getCpUnsLocRepairBwGrid(bwShared)
-
-  # Final densities use the same grid and the same location-specific bandwidth
-  # vector, then are normalised separately over the full padded grid.
-  densStim <- .getCpUnsLocDensityAdaptiveGrid(
-    x = xStim,
-    grid = grid,
-    bwGrid = bwShared,
-    normalise = TRUE,
-    probGMin = attr(exTblStimThreshold, "probGMin")
-  )
-
-  densUns <- .getCpUnsLocDensityAdaptiveGrid(
-    x = xUns,
-    grid = grid,
-    bwGrid = bwShared,
-    normalise = TRUE,
-    probGMin = attr(exTblUnsThreshold, "probGMin")
-  )
-
-  if (is.null(densStim) || is.null(densUns)) {
-    return(NULL)
-  }
-
-  list(
-    stim = densStim,
-    uns = densUns,
-    bw = list(
-      adaptive = TRUE,
-      grid = grid,
-      stim = bwStimObj,
-      uns = bwUnsObj,
-      stimGrid = bwStimGrid,
-      unsGrid = bwUnsGrid,
-      sharedGrid = bwShared,
-      densStimWeight = densStimPre$y,
-      densUnsWeight = densUnsPre$y
-    )
-  )
-}
-
-#' @keywords internal
-.getCpUnsLocGetDensRawDensitiesBwAdaptiveOne <- function(
-  x,
-  chnlSettings
-) {
-  .getCpUnsLocBwCalcOne(
-    x = x,
-    chnlSettings = chnlSettings,
-    bwMtd = chnlSettings$bwMtd %||% "hpi1Norm",
-    bwAdj = chnlSettings$bwAdj %||% 1,
-    adaptive = TRUE
-  )
-}
-
-# .bwCalcOne() with the bandwidth settings from chnlSettings. Unset settings
-# fall back to .bwCalcOne()'s own defaults.
-#' @keywords internal
-.getCpUnsLocBwCalcOne <- function(x, chnlSettings, bwMtd, bwAdj, adaptive) {
-  argNm <- c(
-    "bwNcellMin", "bwNcellMax", "normPeakMinRel",
-    "normExtraFrac", "normExtraMax", "normLambda",
-    "normDensityN", "normExcessBwMtd", "normExcessNcell", "bwAdaptiveCore",
-    "bwAdaptiveExtra", "bwAdaptiveCrossover", "bwAdaptiveTransitionWidth",
-    "normMtd"
-  )
-  bwArgs <- chnlSettings[intersect(argNm, names(chnlSettings))]
-  bwArgs$normAdaptiveNcell <- chnlSettings$normAdaptiveNcell %||%
-    chnlSettings$bwAdaptiveNcell
-  do.call(.bwCalcOne, c(
-    list(x = x, bwMtd = bwMtd, bwAdj = bwAdj, adaptive = adaptive),
-    Filter(Negate(is.null), bwArgs)
-  ))
-}
-
-#' @keywords internal
-.getCpUnsLocAdaptiveGrid <- function(
-  x,
-  n = 512L,
-  padFrac = 0.15
-) {
-  x <- suppressWarnings(as.numeric(x))
-  x <- x[is.finite(x)]
-
-  if (length(x) < 2L) {
-    return(numeric(0L))
-  }
-
-  n <- .bwAsSafeSampleN(n, default = 512L, lower = 16L)
-  rangeVec <- range(x, na.rm = TRUE)
-  rangeWidth <- diff(rangeVec)
-
-  if (!is.finite(rangeWidth) || rangeWidth <= 0) {
-    rangeWidth <- .bwRobustSd(x)
-  }
-  if (!is.finite(rangeWidth) || rangeWidth <= 0) {
-    rangeWidth <- 1
-  }
-
-  padFrac <- suppressWarnings(as.numeric(padFrac)[1])
-  if (!is.finite(padFrac) || padFrac < 0) {
-    padFrac <- 0.15
-  }
-
-  pad <- padFrac * rangeWidth
-  seq(
-    from = rangeVec[[1]] - pad,
-    to = rangeVec[[2]] + pad,
-    length.out = n
-  )
-}
-
-#' @keywords internal
-.getCpUnsLocAdaptiveBwOnGrid <- function(
-  bwObj,
-  grid,
-  fallback = NULL
-) {
-  grid <- suppressWarnings(as.numeric(grid))
-  grid <- grid[is.finite(grid)]
-
-  if (
-    is.list(bwObj) &&
-      all(c("bin", "bw") %in% names(bwObj)) &&
-      length(bwObj$bin) >= 2L &&
-      length(bwObj$bin) == length(bwObj$bw)
-  ) {
-    bwGrid <- stats::approx(
-      x = suppressWarnings(as.numeric(bwObj$bin)),
-      y = suppressWarnings(as.numeric(bwObj$bw)),
-      xout = grid,
-      rule = 2
-    )$y
-    return(.getCpUnsLocRepairBwGrid(bwGrid))
-  }
-
-  bwScalar <- suppressWarnings(as.numeric(bwObj)[1])
-  if (!is.finite(bwScalar) || bwScalar <= 0) {
-    bwScalar <- suppressWarnings(as.numeric(fallback)[1])
-  }
-  if (!is.finite(bwScalar) || bwScalar <= 0) {
-    bwScalar <- NA_real_
-  }
-
-  rep(bwScalar, length(grid))
-}
-
-#' @keywords internal
-.getCpUnsLocRepairBwGrid <- function(bwGrid) {
-  bwGrid <- suppressWarnings(as.numeric(bwGrid))
-
-  if (length(bwGrid) == 0L) {
-    return(bwGrid)
-  }
-
-  good <- is.finite(bwGrid) & bwGrid > 0
-  if (!any(good)) {
-    return(rep(NA_real_, length(bwGrid)))
-  }
-
-  bwGrid[!good] <- stats::median(bwGrid[good], na.rm = TRUE)
-  pmax(bwGrid, .Machine$double.eps)
-}
-
-#' @keywords internal
-.getCpUnsLocDensityAdaptiveGrid <- function(
-  x,
-  grid,
-  bwGrid,
-  normalise = TRUE,
-  probGMin = NULL
-) {
-  x <- suppressWarnings(as.numeric(x))
-  x <- x[is.finite(x)]
-
-  grid <- suppressWarnings(as.numeric(grid))
-  bwGrid <- suppressWarnings(as.numeric(bwGrid))
-
-  ok <- is.finite(grid) & is.finite(bwGrid) & bwGrid > 0
-  grid <- grid[ok]
-  bwGrid <- bwGrid[ok]
-
-  if (
-    length(x) < 2L ||
-      length(unique(x)) < 2L ||
-      length(grid) < 2L ||
-      length(grid) != length(bwGrid)
-  ) {
-    return(NULL)
-  }
-
-  y <- vapply(
-    seq_along(grid),
-    function(i) {
-      mean(stats::dnorm(
-        x = grid[[i]],
-        mean = x,
-        sd = bwGrid[[i]]
-      ))
-    },
-    numeric(1)
-  )
-
-  y <- pmax(y, 0)
-
-  y <- .getCpUnsLocDensityNormalizeAndScale(
-    grid = grid,
-    y = y,
-    normalise = normalise,
-    probGMin = probGMin
-  )
-
-  out <- list(
-    x = grid,
-    y = y,
-    bw = bwGrid,
-    n = length(x),
-    call = match.call(),
-    data.name = deparse(substitute(x)),
-    has.na = FALSE
-  )
-  class(out) <- "density"
-  out
-}
-
-#' @keywords internal
-.getCpUnsLocTrapz <- function(x, y) {
-  x <- suppressWarnings(as.numeric(x))
-  y <- suppressWarnings(as.numeric(y))
-
-  ok <- is.finite(x) & is.finite(y)
-  x <- x[ok]
-  y <- y[ok]
-
-  if (length(x) < 2L || length(x) != length(y)) {
-    return(NA_real_)
-  }
-
-  ord <- order(x)
-  x <- x[ord]
-  y <- y[ord]
-
-  sum(diff(x) * (utils::head(y, -1L) + utils::tail(y, -1L)) / 2)
-}
-
-#' @keywords internal
-.getCpUnsLocDensityNormalizeAndScale <- function(
-  grid,
-  y,
-  normalise = TRUE,
-  probGMin = NULL
-) {
-  grid <- suppressWarnings(as.numeric(grid))
-  y <- suppressWarnings(as.numeric(y))
-
-  if (length(grid) != length(y)) {
-    return(y)
-  }
-
-  y <- pmax(y, 0)
-
-  if (isTRUE(normalise)) {
-    area <- .getCpUnsLocTrapz(grid, y)
-    if (is.finite(area) && area > 0) {
-      y <- y / area
-    }
-  }
-
-  probGMin <- suppressWarnings(as.numeric(probGMin)[1])
-  if (is.finite(probGMin)) {
-    probGMin <- max(0, min(1, probGMin))
-    y <- y * probGMin
-  }
-
-  y
-}
-
 
 #' @keywords internal
 .getCpUnsLocGetDensRawDensitiesBw <- function(
@@ -1133,8 +673,7 @@
 #'
 #' Fixed-bandwidth raw densities span the stimulated cells. If unstimulated
 #' cells extend beyond that grid, recompute both Gaussian kernel densities over
-#' the joint range at the same local-FDR bandwidth. Adaptive densities already
-#' span both tubes and are reused without changing their bandwidth curve.
+#' the joint range at the same local-FDR bandwidth.
 #' @keywords internal
 .getCpUnsLocGetPeakDensities <- function(densTblRaw, exVecStim, exVecUns) {
   bw <- attr(densTblRaw, "locDensityBw")
@@ -1195,8 +734,7 @@
     x = .data,
     chnlSettings = chnlSettings,
     bwMtd = chnlSettings$bwMtd,
-    bwAdj = chnlSettings$bwAdj,
-    adaptive = FALSE
+    bwAdj = chnlSettings$bwAdj
   )
 
   if (!is.finite(bwCalc) || bwCalc <= 0) {
@@ -1217,7 +755,7 @@
 #' @param density list Density grid with increasing `x` and corresponding `y`.
 #' @param peakX numeric Main peak location on that density grid.
 #' @param exVec numeric Tube expression values, used for the fallback only.
-#' @param bw numeric Local-FDR bandwidth at this peak (shared curve if adaptive).
+#' @param bw numeric Local-FDR bandwidth at this peak.
 #' @return list Width, source (`half_height`, `dip`, or `fallback`), selected
 #'   boundary, both candidate locations, peak height and bandwidth.
 #' @keywords internal
@@ -1285,7 +823,7 @@
 #' a minimum offset of one local-FDR bandwidth at that peak. The shifted-peak
 #' rule instead uses only the unstimulated peak, width and density bandwidth.
 #' @param densityStim,densityUns list Density grids used to identify the peaks.
-#' @param densityBw numeric or list Local-FDR bandwidth or adaptive shared curve.
+#' @param densityBw numeric Local-FDR bandwidth.
 #' @keywords internal
 .getCpUnsLocProbTblFilter <- function(
   probTbl,
@@ -1393,8 +931,7 @@
 #' (smaller of the stimulated and unstimulated tubes' values with
 #' `bwScope = "cluster"`). Without a shared bandwidth it is the bandwidth of the
 #' local-FDR densities: a fixed `bw`, the per-sample estimate with
-#' `bwScope = "sample"`, or for adaptive bandwidths the blended bandwidth curve,
-#' read at the unstimulated peak. This trigger bandwidth is separate from
+#' `bwScope = "sample"`. This trigger bandwidth is separate from
 #' the actual density bandwidth used for negative widths and search offsets.
 #' @keywords internal
 .getCpUnsLocShiftedPeakSettings <- function(
@@ -1410,10 +947,7 @@
     .getCpUnsLocSetting(chnlSettings, "locShiftedPeakBwMult", 2)
   )[1L])
   out <- list(mult = mult, bw = NA_real_, bwSource = NA_character_)
-  if (is.list(densityBw) && isTRUE(densityBw$adaptive)) {
-    out$bwSource <- "adaptive"
-    out$bwGrid <- list(x = densityBw$grid, y = densityBw$sharedGrid)
-  } else if (!is.null(chnlSettings[["bw"]])) {
+  if (!is.null(chnlSettings[["bw"]])) {
     out$bw <- suppressWarnings(as.numeric(chnlSettings[["bw"]])[1L])
     out$bwSource <- "fixed"
   } else if (!is.null(chnlSettings[["bwShared"]])) {
@@ -1445,15 +979,6 @@
     return(NULL)
   }
   bw <- shiftedPeak$bw
-  if (!is.null(shiftedPeak$bwGrid) && is.finite(peakUnsX)) {
-    grid <- shiftedPeak$bwGrid
-    ok <- is.finite(grid$x) & is.finite(grid$y)
-    bw <- if (sum(ok) >= 2L) {
-      stats::approx(grid$x[ok], grid$y[ok], xout = peakUnsX, rule = 2)$y
-    } else {
-      NA_real_
-    }
-  }
   bw <- suppressWarnings(as.numeric(bw)[1L])
   shift <- peakStimX - peakUnsX
   applied <- is.finite(bw) && bw > 0 && is.finite(shift) &&
@@ -1641,7 +1166,7 @@
 # Factor by which a sample widens the shared bandwidth, and scales an automatic
 # biasUns, given the smaller of its stimulated and unstimulated cell counts:
 # (bwNcellMax / nCell)^(1/5) below bwNcellMax, otherwise 1. Only a shared
-# bandwidth is scaled; fixed, per-sample and adaptive bandwidths use 1.
+# bandwidth is scaled; fixed and per-sample bandwidths use 1.
 #' @keywords internal
 .getCpUnsLocNcellScale <- function(nCell, chnlSettings) {
   nRef <- suppressWarnings(as.numeric(chnlSettings$bwNcellMax)[1L])
@@ -1658,8 +1183,7 @@
 #' @keywords internal
 .getCpUnsLocSampleScale <- function(nCell, chnlSettings) {
   if (
-    !is.null(chnlSettings$bw) || is.null(chnlSettings$bwShared) ||
-      isTRUE(.getCpUnsLocUseAdaptiveBw(chnlSettings))
+    !is.null(chnlSettings$bw) || is.null(chnlSettings$bwShared)
   ) {
     return(1)
   }

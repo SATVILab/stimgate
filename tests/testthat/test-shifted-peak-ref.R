@@ -56,14 +56,6 @@ test_that("the rule fires only beyond the bandwidth multiple", {
   expect_false(
     stimgate:::.getCpUnsLocShiftedPeakRule(settings, 3, 0, NA_real_)$applied
   )
-  # Adaptive bandwidths are read at the unstimulated peak.
-  adaptive <- list(
-    mult = 2, bw = NA_real_, bwSource = "adaptive",
-    bwGrid = list(x = c(-1, 1), y = c(0.1, 0.3))
-  )
-  rule <- stimgate:::.getCpUnsLocShiftedPeakRule(adaptive, 0.5, 0, 0.5)
-  expect_equal(rule$bw, 0.2)
-  expect_true(rule$applied)
 })
 
 test_that("the reference bandwidth is the unscaled shared bandwidth", {
@@ -88,11 +80,6 @@ test_that("the reference bandwidth is the unscaled shared bandwidth", {
   sample <- get(list(), densityBw = 0.4)
   expect_identical(sample$bw, 0.4)
   expect_identical(sample$bwSource, "sample")
-  adaptive <- get(list(), densityBw = list(
-    adaptive = TRUE, grid = 1:2, sharedGrid = c(0.1, 0.2)
-  ))
-  expect_identical(adaptive$bwSource, "adaptive")
-  expect_identical(adaptive$bwGrid$y, c(0.1, 0.2))
 })
 
 test_that("gates are unchanged when the rule is off", {

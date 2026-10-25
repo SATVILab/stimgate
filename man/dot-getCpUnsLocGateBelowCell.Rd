@@ -11,8 +11,7 @@
 
 \item{x}{numeric Stimulated and unstimulated expression; NULL keeps \code{cp}.}
 
-\item{densityBw}{numeric, list or NULL Density bandwidth. An adaptive
-bandwidth object is interpolated at \code{cp}; an unavailable bandwidth leaves
+\item{densityBw}{numeric or NULL Density bandwidth. An unavailable bandwidth leaves
 only the half-gap limit.}
 }
 \value{

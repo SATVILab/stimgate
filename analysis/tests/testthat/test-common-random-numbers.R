@@ -1,6 +1,6 @@
 test_that("full simulation grids seed biological scenarios rather than tuning rows", {
   root <- normalizePath(file.path(testthat::test_path(), "../../.."))
-  for (id in c("2a", "2b", "3", "4", "5", "6", "7", "8")) {
+  for (id in c("2a", "2b", "3", "7", "8")) {
     env <- new.env(parent = getNamespace("stimgate"))
     for (fn in c("analysis-runtime.R", "analysis-plot-style.R", "sim-misc.R", "sim-bandwidth.R",
                  "sim-bandwidth-analysis-run.R", "sim-compare-freq_bs.R",
@@ -14,9 +14,7 @@ test_that("full simulation grids seed biological scenarios rather than tuning ro
     env$simulation_seed <- 12345L
     env$sim_grid_shuffle_seed <- 8L
     env$sim_grid_chunk_index <- env$sim_grid_n_chunks <- 1L
-    # The adaptive-bandwidth analyses 5 and 6 are archived.
     dir <- file.path(root, "analysis")
-    if (id %in% c("5", "6")) dir <- file.path(dir, "_archive")
     lines <- readLines(list.files(dir, paste0("^", id, "-.*qmd$"), full.names = TRUE))
     chunk <- function(label) {
       start <- which(lines == paste0("#| label: ", label))
@@ -25,7 +23,7 @@ test_that("full simulation grids seed biological scenarios rather than tuning ro
     }
     eval(parse(text = chunk(if (id == "2b") "bias-uns-settings" else "actual-settings")), env)
     label <- switch(id, `2a` = "bw-manual-grid", `2b` = "bias-uns-grid",
-      `6` = "bw-manual-grid", `7` = "compare-grid", `8` = "mismatch-grids",
+      `7` = "compare-grid", `8` = "mismatch-grids",
       "bw-estimate-grid")
     # Only grid construction is needed, before diagnostics/filtering/shuffling.
     code <- chunk(label)

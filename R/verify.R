@@ -27,6 +27,8 @@
     stop("`control` must be a stimControl object; use `stimControl()`.")
   }
 
+  .verifyChnlSettingsChnl(settings = unclass(control), prefix = "Control setting error: ")
+
   # 2. Channel / Marker Mutual Exclusivity Checks
   if (!is.null(chnl) && !is.null(marker)) {
     stop("Specify only one of 'chnl' or 'marker', not both.")
@@ -92,7 +94,7 @@
 }
 
 .verifyBwMtdsOrdinary <- c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3")
-.verifyBwMtds <- c(.verifyBwMtdsOrdinary, paste0(.verifyBwMtdsOrdinary, "Norm"))
+.verifyBwMtds <- .verifyBwMtdsOrdinary
 .verifyGateCombns <- c("no", "min", "median", "max", "prejoin")
 
 #' @keywords internal
@@ -101,6 +103,10 @@
   settings,
   prefix = sprintf("Channel '%s' setting error: ", chnlCurr)
 ) {
+  removed <- names(settings)[grepl("^(bwAdaptive|norm)", names(settings))]
+  if (length(removed) > 0L) {
+    stop(prefix, "Unsupported bandwidth settings: ", paste(removed, collapse = ", "))
+  }
   if (
     !.verifyIsNullOrNa(settings[["excMin"]]) &&
       (!is.logical(settings[["excMin"]]) || length(settings[["excMin"]]) != 1)
@@ -184,6 +190,9 @@
   }
 
   bwMtd <- settings[["bwMtd"]]
+  if (is.character(bwMtd) && any(grepl("Norm$", bwMtd))) {
+    stop(prefix, "Unsupported `bwMtd` (normalised bandwidth method): ", paste(bwMtd, collapse = ", "))
+  }
   if (
     .verifyIsNullOrNa(settings[["bw"]]) &&
       !.verifyIsNullOrNa(bwMtd) &&
@@ -217,94 +226,14 @@
     stop(paste0(prefix, "`clusterGates` must be TRUE or FALSE."))
   }
 
-  .verifyNormBwSettings(settings = settings, prefix = prefix)
+  .verifyBwScope(settings = settings, prefix = prefix)
   .verifyLocSettings(settings = settings, prefix = prefix)
 
   invisible(TRUE)
 }
 
 #' @keywords internal
-.verifyNormBwSettings <- function(settings, prefix = "") {
-  if (
-    !.verifyIsNullOrNa(settings[["bwAdaptive"]]) &&
-      (!is.logical(settings[["bwAdaptive"]]) ||
-        length(settings[["bwAdaptive"]]) != 1L)
-  ) {
-    stop(paste0(prefix, "`bwAdaptive` must be a single logical value."))
-  }
-
-  .check_prob("normPeakMinRel", settings = settings, prefix = prefix)
-  .check_prob("normExtraFrac", settings = settings, prefix = prefix)
-
-  .check_positive_n(
-    "normExtraMax",
-    allow_inf = TRUE,
-    settings = settings,
-    prefix = prefix
-  )
-  .check_positive_n("normDensityN", settings = settings, prefix = prefix)
-  .check_positive_n("normExcessNcell", settings = settings, prefix = prefix)
-  .check_positive_n("normAdaptiveNcell", settings = settings, prefix = prefix)
-  .check_positive_n("bwAdaptiveDensityN", settings = settings, prefix = prefix)
-  .check_positive_n(
-    "bwAdaptivePadFrac",
-    allow_zero = TRUE,
-    settings = settings,
-    prefix = prefix
-  )
-
-  .check_positive_n("bwAdaptiveCore", settings = settings, prefix = prefix)
-  .check_positive_n("bwAdaptiveExtra", settings = settings, prefix = prefix)
-
-  if (!.verifyIsNullOrNa(settings[["bwAdaptiveCrossover"]])) {
-    val <- settings[["bwAdaptiveCrossover"]]
-    if (!is.numeric(val) || length(val) != 1L || !is.finite(val)) {
-      stop(paste0(
-        prefix,
-        "`bwAdaptiveCrossover` must be a single finite numeric value or NULL."
-      ))
-    }
-  }
-
-  .check_positive_n(
-    "bwAdaptiveTransitionWidth",
-    allow_zero = TRUE,
-    settings = settings,
-    prefix = prefix
-  )
-
-  if (!.verifyIsNullOrNa(settings[["normLambda"]])) {
-    val <- settings[["normLambda"]]
-    if (!is.numeric(val) || length(val) == 0L || any(!is.finite(val))) {
-      stop(paste0(prefix, "`normLambda` must be a finite numeric vector."))
-    }
-  }
-
-  if (!.verifyIsNullOrNa(settings[["normExcessBwMtd"]])) {
-    if (
-      !is.character(settings[["normExcessBwMtd"]]) ||
-        length(settings[["normExcessBwMtd"]]) != 1L ||
-        !settings[["normExcessBwMtd"]] %in% .verifyBwMtdsOrdinary
-    ) {
-      stop(paste0(
-        prefix,
-        "`normExcessBwMtd` must be one of: ",
-        paste(.verifyBwMtdsOrdinary, collapse = ", "),
-        "."
-      ))
-    }
-  }
-
-  if (!.verifyIsNullOrNa(settings[["normMtd"]])) {
-    if (
-      !is.character(settings[["normMtd"]]) ||
-        length(settings[["normMtd"]]) != 1L ||
-        !settings[["normMtd"]] %in% c("moments", "boxcox")
-    ) {
-      stop(paste0(prefix, "`normMtd` must be either 'moments' or 'boxcox'."))
-    }
-  }
-
+.verifyBwScope <- function(settings, prefix = "") {
   if (
     !.verifyIsNullOrNa(settings[["bwScope"]]) &&
       (!is.character(settings[["bwScope"]]) ||
@@ -316,17 +245,6 @@
       "`bwScope` must be one of 'cytokine', 'cluster' or 'sample'."
     ))
   }
-
-  if (
-    isTRUE(settings[["bwAdaptive"]]) &&
-      identical(settings[["normMtd"]], "boxcox")
-  ) {
-    stop(paste0(
-      prefix,
-      "`bwAdaptive = TRUE` currently requires `normMtd = 'moments'`."
-    ))
-  }
-
   invisible(TRUE)
 }
 

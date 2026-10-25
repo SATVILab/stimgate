@@ -2,6 +2,12 @@
 
 ## Breaking changes
 
+- Removed bandwidth normalisation (`*Norm` selectors and `norm*` controls)
+  and adaptive bandwidths (`bwAdaptive*`). Recreate saved controls with
+  `stimControl()` and select an ordinary `bwMtd` (`nrd0`, `sj`, `hpi0`-`hpi3`)
+  or supply fixed `bw` to `gateStim()`. Removed options are errors; existing
+  research results are not migrated or deleted.
+
 - `gateStim()`'s cytokine-positive gates now use the co-expression rule by
   default (`stimControl(cytPosMethod = "coexpression")`). The taut-string
   antimode rule used until now is available as
@@ -210,7 +216,7 @@
   selected cell and any ties were previously left out in both tubes; with
   very rare responses this could reduce the estimate to zero.
   The gate now sits in the empty gap below that cell, at most twice the
-  density bandwidth at that cell below it (including adaptive bandwidths),
+  density bandwidth at that cell below it,
   so it counts exactly the cells the threshold was selected for.
 
 # stimgate 0.99.21

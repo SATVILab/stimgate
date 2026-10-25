@@ -3,6 +3,58 @@
 # plus biasUns and the fixed bw, and markerControl holds per-channel overrides
 # keyed by marker label or channel name.
 
+# Values mirror historical defaults, including disabled and NULL settings.
+.removedBandwidthSettings <- list(
+  bwAdaptive = FALSE,
+  bwAdaptiveDensityN = NULL,
+  bwAdaptivePadFrac = 0.15,
+  bwAdaptiveCore = NULL,
+  bwAdaptiveExtra = NULL,
+  bwAdaptiveCrossover = NULL,
+  bwAdaptiveTransitionWidth = 0,
+  normPeakMinRel = 0.75,
+  normExtraFrac = 0.2,
+  normExtraMax = Inf,
+  normLambda = seq(-2, 2, length.out = 81),
+  normDensityN = 512L,
+  normExcessBwMtd = "hpi3",
+  normExcessNcell = 10000L,
+  normAdaptiveNcell = 2500L,
+  normMtd = "moments"
+)
+
+test_that("removed bandwidth controls are unused constructor arguments", {
+  for (nm in names(.removedBandwidthSettings)) {
+    expect_error(
+      do.call(stimControl, .removedBandwidthSettings[nm]),
+      "unused argument", info = nm
+    )
+  }
+})
+
+test_that("serialized controls with removed settings fail input validation", {
+  for (nm in names(.removedBandwidthSettings)) {
+    control <- stimControl()
+    control[nm] <- .removedBandwidthSettings[nm]
+    control <- unserialize(serialize(control, NULL))
+    # Other arguments remain missing: stale controls must fail first.
+    expect_error(
+      stimgate:::.verifyGateInputs(control = control), nm, info = nm
+    )
+  }
+})
+
+test_that("normalised bandwidth selectors are rejected consistently", {
+  for (method in paste0(c("nrd0", "sj", "hpi0", "hpi1", "hpi2", "hpi3"), "Norm")) {
+    expect_error(stimControl(bwMtd = method), "bwMtd", info = method)
+    expect_error(stimgate:::.bwCalcOne(1:100, bwMtd = method), "bwMtd", info = method)
+    # Supplying a fixed bandwidth must not bypass selector validation.
+    expect_error(stimgate:::.verifyChnlSettingsChnl(
+      settings = list(bw = 0.1, bwMtd = method), prefix = ""
+    ), "bwMtd", info = method)
+  }
+})
+
 test_that("stimControl returns a documented stimControl object", {
   control <- stimControl()
   expect_s3_class(control, "stimControl")
@@ -33,8 +85,6 @@ test_that("stimControl returns a documented stimControl object", {
   expect_identical(control$locMinPeakProb, 0.25)
   expect_false(control$locEnforceShapeThreshold)
   expect_identical(control$locThresholdMethod, "cap")
-  expect_false(control$bwAdaptive)
-  expect_identical(control$normMtd, "moments")
 
   # Supplied values are stored and the class is retained.
   override <- stimControl(
@@ -56,7 +106,6 @@ test_that("stimControl rejects invalid settings eagerly", {
   expect_error(stimControl(gateCombn = "foo"))
   expect_error(stimControl(locProbCol = "foo"))
   expect_error(stimControl(locMinPeakProb = 1.5))
-  expect_error(stimControl(normDensityN = 0))
   expect_error(stimControl(excMin = NULL))
   expect_error(stimControl(bwMtd = NULL))
   # calcCytPosGates is a gateStim() argument, not a stimControl() setting.
@@ -107,6 +156,20 @@ test_that("gateStim requires a stimControl control object", {
     do.call(gateStim, c(base, list(control = "hpi1"))),
     "stimControl"
   )
+
+  # Disabled historical options and old selectors must also fail before
+  # gateStim creates project files, even after a serialization round trip.
+  withr::local_envvar(STIMGATE_DEBUG = "FALSE")
+  for (extra in list(list(bwAdaptive = FALSE), list(normMtd = "moments"),
+      list(bwMtd = "nrd0Norm"))) {
+    control <- stimControl()
+    control[names(extra)] <- extra
+    control <- unserialize(serialize(control, NULL))
+    expect_error(
+      do.call(gateStim, c(base, list(control = control))), names(extra)
+    )
+    expect_false(dir.exists(pathProject))
+  }
 
   # The error is raised before any project directory is created.
   expect_false(dir.exists(pathProject))
@@ -180,6 +243,15 @@ test_that("markerControl rejects unknown names and settings", {
   expect_error(gateWith(stats::setNames(
     list(list(calcCytPosGates = FALSE)), markerChnl
   )))
+  # Historical options are invalid overrides even when disabled or NULL.
+  for (nm in names(.removedBandwidthSettings)) {
+    expect_error(gateWith(stats::setNames(
+      list(.removedBandwidthSettings[nm]), markerChnl
+    )), nm, info = nm)
+  }
+  expect_error(gateWith(stats::setNames(
+    list(list(bwMtd = "nrd0Norm")), markerChnl
+  )), "bwMtd")
   # Two keys that resolve to the same channel.
   expect_error(gateWith(stats::setNames(
     list(list(bwAdj = 2), list(bwAdj = 2)),

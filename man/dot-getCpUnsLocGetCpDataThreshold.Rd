@@ -15,8 +15,7 @@
 )
 }
 \arguments{
-\item{densityBw}{numeric, list or NULL Local-FDR density bandwidth; adaptive
-objects use the shared bandwidth at the lowest estimate value. Default: NULL.}
+\item{densityBw}{numeric or NULL Local-FDR density bandwidth. Default: NULL.}
 }
 \description{
 All threshold methods share the bounded leading-run discount; the estimate

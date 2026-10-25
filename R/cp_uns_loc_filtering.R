@@ -719,10 +719,6 @@
     return(list(startX = NA_real_, info = info))
   }
 
-  if (is.list(densityBw)) {
-    info$reason <- "adaptive_density_bandwidth_not_supported_for_dominance"
-    return(list(startX = NA_real_, info = info))
-  }
   densityBw <- suppressWarnings(as.numeric(densityBw))
   densityBw <- densityBw[is.finite(densityBw) & densityBw > 0]
   if (length(densityBw) == 0L) {
@@ -1663,10 +1659,6 @@
     return(list(startX = NA_real_, info = info))
   }
 
-  if (is.list(densityBw)) {
-    info$reason <- "adaptive_density_bandwidth_not_supported_for_dominance"
-    return(list(startX = NA_real_, info = info))
-  }
   densityBw <- suppressWarnings(as.numeric(densityBw))
   densityBw <- densityBw[is.finite(densityBw) & densityBw > 0]
   if (length(densityBw) == 0L) {

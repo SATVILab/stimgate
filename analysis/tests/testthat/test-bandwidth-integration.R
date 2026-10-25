@@ -18,24 +18,10 @@ test_that(".simBandwidthBwOne agrees numerically with stimgate:::.bwCalcOne", {
 
   bw_params <- list(
     x = x_sample,
-    bwMtd = "hpi1Norm",
+    bwMtd = "nrd0",
     bwAdj = 1,
     bwNcellMin = 10L,
-    bwNcellMax = 1000L,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.25,
-    normExtraMax = Inf,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    bwAdaptiveCore = NULL,
-    bwAdaptiveExtra = NULL,
-    bwAdaptiveCrossover = NULL,
-    bwAdaptiveTransitionWidth = 0,
-    normMtd = "moments",
-    adaptive = FALSE
+    bwNcellMax = 1000L
   )
 
   bw_wrapper_params <- c(
@@ -65,24 +51,10 @@ test_that(".simBandwidthBwOne resolves the current stimgate namespace in future 
   x_sample <- rnorm(200, mean = 5, sd = 1.5)
   bw_params <- list(
     x = x_sample,
-    bwMtd = "hpi1Norm",
+    bwMtd = "nrd0",
     bwAdj = 1,
     bwNcellMin = 10L,
-    bwNcellMax = 1000L,
-    normPeakMinRel = 0.75,
-    normExtraFrac = 0.25,
-    normExtraMax = Inf,
-    normLambda = seq(-2, 2, length.out = 81),
-    normDensityN = 512L,
-    normExcessBwMtd = "hpi3",
-    normExcessNcell = 10000L,
-    normAdaptiveNcell = 2500L,
-    bwAdaptiveCore = NULL,
-    bwAdaptiveExtra = NULL,
-    bwAdaptiveCrossover = NULL,
-    bwAdaptiveTransitionWidth = 0,
-    normMtd = "moments",
-    adaptive = FALSE
+    bwNcellMax = 1000L
   )
   bw_wrapper_params <- c(
     bw_params,
@@ -132,4 +104,43 @@ test_that(".simBandwidthBwOne resolves the current stimgate namespace in future 
   expect_true(is.finite(as.numeric(worker_out$bw_worker)))
   expect_equal(as.numeric(worker_out$bw_worker), as.numeric(worker_out$bw_pkg))
   expect_equal(as.numeric(worker_out$bw_worker), as.numeric(bw_pkg))
+})
+
+
+test_that("bandwidth simulation wrappers reject retired methods before fallback", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_misc, local = env)
+  source(script_bw, local = env)
+  for (method in paste0(c("hpi0", "hpi1", "hpi2", "hpi3", "nrd0", "sj"), "Norm")) {
+    expect_error(env$.simBandwidthBwOne(
+      x = numeric(), bwMtd = method, bwMin = 0, bwMax = Inf,
+      bwAdj = 1, bwNcellMin = NULL, bwNcellMax = NULL, bwFallback = 0.2
+    ), "Unsupported bandwidth method")
+    expect_error(env$.simBandwidthEstBwDirect(bwMtd = method),
+      "Unsupported bandwidth method")
+    expect_error(env$.simBandwidthBsFreq(bwMtd = method),
+      "Unsupported bandwidth method")
+  }
+})
+
+test_that("retired bandwidth options fail as unused arguments", {
+  env <- new.env(parent = getNamespace("stimgate"))
+  source(script_bw, local = env)
+  for (option in c(
+    "bwAdaptive", "bwAdaptiveCore", "bwAdaptiveExtra", "bwAdaptiveCrossover",
+    "bwAdaptiveTransitionWidth", "bwAdaptiveDensityN", "bwAdaptivePadFrac"
+  )) {
+    expect_error(do.call(env$.simBandwidthBsFreq, setNames(list(TRUE), option)),
+      "unused argument")
+  }
+  for (wrapper in c(".simBandwidthBwOne", ".simBandwidthEstBwDirect")) {
+    for (option in c(
+      "normPeakMinRel", "normExtraFrac", "normExtraMax", "normLambda",
+      "normDensityN", "normExcessBwMtd", "normExcessNcell",
+      "normAdaptiveNcell", "normMtd", "adaptive"
+    )) {
+      expect_error(do.call(env[[wrapper]], setNames(list(TRUE), option)),
+        "unused argument", info = paste(wrapper, option))
+    }
+  }
 })

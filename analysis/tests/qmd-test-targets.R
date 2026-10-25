@@ -22,9 +22,6 @@
       "test-sim-bw-est-base-simcyto.R", "test-sim-bw-est-base-run.R",
       "test-analysis-mcse.R"
     ),
-    "4-sim-bw-est-norm.qmd" = c(
-      "test-sim-bw-est-norm-simcyto.R", "test-analysis-mcse.R"
-    ),
     "6-sim-tune-comparators.qmd" = c("test-sim-tune-comparators.R", "test-analysis-thesis-table.R"),
     "7-sim-compare-freq_bs.qmd" = c(
       "test-signed-percentile-plots.R",
